@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from setuptools import setup
-import io
 import os
+from setuptools import setup
 
 about = {}
 here = os.path.abspath(os.path.dirname(__file__))
