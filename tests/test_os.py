@@ -8,8 +8,8 @@ from peek.os.file import MakeDirAll
 
 
 class TestOsFile(unittest.TestCase):
-    def test_make_dir_all(self, name):
-          MakeDirAll(name)
+    def test_make_dir_all(self):
+          MakeDirAll("mytest/0/1/2/3")
 
 
 if __name__ == '__main__':
