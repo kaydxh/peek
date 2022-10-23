@@ -21,7 +21,7 @@ def get_avaliable_devices(gpu_device=False, cpu_device=False) -> List[Device]:
         devices.append(Device(-1))
 
     if gpu_device is True:
-        for i in range (torch.cuda.device_cout()):
+        for i in range (torch.cuda.device_count()):
             device_props = torch.cuda.get_device_properties(i)
             devices.append(Device(i))
 
