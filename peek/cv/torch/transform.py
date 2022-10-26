@@ -12,6 +12,7 @@ def normalize_img(inp_img, target_width=256, target_height=256):
     inp_img = image_.resize_image_pad(inp_img, target_width=target_width,
              target_height=target_height)
     # normalize
+    inp_img = inp_img.astype('float32')
     inp_img /= 255.0
     # turn a tensor of shape [width, height, channels] into [channels, height, width] for the CNN
     inp_img = np.transpose(inp_img, axes=(2, 0, 1))
@@ -21,24 +22,21 @@ def normalize_img(inp_img, target_width=256, target_height=256):
 		std=[0.229, 0.224, 0.225])(inp_img)
     return inp_img
 
-def normalize_img_2(inp_img, target_width=256, target_height=256):
+def normalize_img_ex(inp_img, target_width=256, target_height=256):
     """ normalize_img normal distribution
     """
     inp_img = image_.resize_image_pad(inp_img, target_width=target_width,
              target_height=target_height)
     # normalize
     noramlize_tranform = transforms.Compose([
+         transforms.ToPILImage(),
+         # transforms.Resize((256, 256)),
+         # normalize and to tensor
          transforms.ToTensor(),
          transforms.Normalize(
 		     mean=[0.485, 0.456, 0.406],
-		     std=[0.229, 0.224, 0.225])(inp_img)
+		     std=[0.229, 0.224, 0.225])
          ])
     inp_img = noramlize_tranform(inp_img)
-        # turn a tensor of shape [width, height, channels] into [channels, height, width] for the CNN
-       # inp_img = np.transpose(inp_img, axes=(2, 0, 1))
-       # inp_img = torch.from_numpy(inp_img).float()
-       # inp_img = transforms.Normalize(
-       #		mean=[0.485, 0.456, 0.406],
-       #		std=[0.229, 0.224, 0.225])(inp_img)
     return inp_img
 
