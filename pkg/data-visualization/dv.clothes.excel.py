@@ -24,17 +24,13 @@ from pyecharts.charts import Bar
 
 
 bar = (
-        Bar()
-        .add_xaxis(df["商品"].to_list())
-        .add_yaxis("商家A", df["商家A"].tolist())
-        .add_yaxis("商家B", df["商家B"].to_list())
-        .set_global_opts(title_opts= opts.TitleOpts(title="商品销量对比图"))
-        )
+    Bar()
+    .add_xaxis(df["商品"].to_list())
+    .add_yaxis("商家A", df["商家A"].tolist())
+    .add_yaxis("商家B", df["商家B"].to_list())
+    .set_global_opts(title_opts=opts.TitleOpts(title="商品销量对比图"))
+)
 bar.render_notebook()
 
 
 # In[ ]:
-
-
-
-
