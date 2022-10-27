@@ -8,11 +8,11 @@ import numpy as np
 import torch
 from peek.cv.torch.device import get_avaliable_devices
 import peek.cv.torch.model as model_
-import peek.cv.torch.transform as transform_ 
-import peek.cv.torch.inference as inference_ 
+import peek.cv.torch.transform as transform_
+import peek.cv.torch.inference as inference_
+
 
 class TestTorchInference(unittest.TestCase):
-
     def test_inference(self):
         model_path = "./testdata/saliency_traced_cpu.pt"
         if not os.path.exists(model_path):
@@ -31,8 +31,9 @@ class TestTorchInference(unittest.TestCase):
 
         pred_masks = inference_.forward(loaded, inp_img)
         print(pred_masks)
-        pred_masks_raw = np.squeeze(pred_masks.numpy(), axis=(0,1))
+        pred_masks_raw = np.squeeze(pred_masks.numpy(), axis=(0, 1))
         print(pred_masks_raw)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
