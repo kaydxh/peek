@@ -31,11 +31,11 @@ def resize_pad_image(inp_img, target_width=None, target_height=None):
 
 
 def resize_crop_image(inp_img, target_width=None, target_height=None):
-    """ resize_crop_image to resize and crop image
+    """ resize_crop_image to resize and crop image and remove padded area
     """
     if (not target_width) or (not target_height):
         return inp_img
-    h, w = target_width, target_height
+    h, w =  target_height, target_width
     size = max(h, w)
     padding_h = (size - h) // 2
     padding_w = (size - w) // 2
