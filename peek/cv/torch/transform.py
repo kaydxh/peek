@@ -25,7 +25,6 @@ def normalize_img_float32(inp_img, target_width=256, target_height=256):
 def normalize_img_uint8(inp_img, target_width=256, target_height=256):
     """ normalize_img normal distribution
     """
-    inp_img = inp_img.astype(np.float32)
     inp_img = image_.resize_image_pad(inp_img, target_width=target_width,
              target_height=target_height)
     # normalize
@@ -38,6 +37,6 @@ def normalize_img_uint8(inp_img, target_width=256, target_height=256):
 		     mean=[0.485, 0.456, 0.406],
 		     std=[0.229, 0.224, 0.225])
          ])
-    inp_img = noramlize_tranform(inp_img.astype(np.uint8))
+    inp_img = noramlize_tranform(inp_img)
     return inp_img
 
