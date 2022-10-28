@@ -27,7 +27,7 @@ class TestTorchInference(unittest.TestCase):
         return crop_box
 
     def test_inference(self):
-        model_path = "./testdata/saliency_traced_cpu.pt"
+        model_path = "./testdata/test_saliency_cpu.pt"
         if not os.path.exists(model_path):
             print(f"{model_path} is not exist")
             return
