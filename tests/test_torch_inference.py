@@ -40,6 +40,9 @@ class TestTorchInference(unittest.TestCase):
             pred_masks_raw, w, h
         )
         print(f'pred_masks_raw: {pred_masks_raw}')
+        crop_box = image_.erode(pred_masks_raw , 5/4)
+        print(f'crop_box: {crop_box}')
+
 
 
 if __name__ == "__main__":
