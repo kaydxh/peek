@@ -15,7 +15,7 @@ import peek.cv.image.image as image_
 
 class TestTorchInference(unittest.TestCase):
     def pre_process(self, inp_img):
-        inp_img = transform_.normalize_img_float32(inp_img)
+        inp_img = transform_.normalize_img_uint8(inp_img)
         inp_img = inp_img.unsqueeze(0)
         return inp_img
 

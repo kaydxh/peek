@@ -11,7 +11,7 @@ class TestImageResize(unittest.TestCase):
         img_path = "./testdata/test.jpg"
         inp_img = cv2.imread(img_path)
         # inp_img = inp_img.astype("float32")
-        target_img = image_.resize_pad_image(inp_img, 100, 200)
+        target_img = image_.pad_resize_image(inp_img, 100, 200)
         cv2.imwrite("./testdata/test_target_resize_pad.jpg", target_img)
 
     def test_resize_crop_image(self):
