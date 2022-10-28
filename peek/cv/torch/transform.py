@@ -11,7 +11,7 @@ def normalize_img_float32(inp_img, target_width=256, target_height=256):
     """ normalize_img normal distribution
     """
     inp_img = inp_img.astype(np.float32)
-    inp_img = image_.resize_image_pad(
+    inp_img = image_.resize_pad_image(
         inp_img, target_width=target_width, target_height=target_height
     )
     # normalize
