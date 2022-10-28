@@ -46,6 +46,7 @@ def resize_crop_image(inp_img, target_width=None, target_height=None):
 
 
 def edge_strip(inp_img, strip_len=None, direction="row"):
+    """edge_strip to strip image row or col"""
     x0, y0, x1, y1 = 0, 0, inp_img.shape[1], inp_img.shape[0]
     if not strip_len:
         return [x0, y0, x1, y1]
@@ -72,6 +73,7 @@ def edge_strip(inp_img, strip_len=None, direction="row"):
 
 
 def erode(inp_img, ratio):
+    """erode to strip image by ratio(w/h)"""
     if ratio <= 0:
         return None
     h, w = inp_img.shape
