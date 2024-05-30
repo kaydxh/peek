@@ -40,11 +40,11 @@ def get_repo_info(file_path):
         if re_result:
             repo = re_result.group("url").split("://")[-1]
         else:
-            repo = re.search("(?P<url>@git[^\s]+)", shell_result)
-            .group("url")
+            repo = re.search("(?P<url>@git[^\s]+)", shell_result).group("url")
         git_repo = repo.split("@")[-1].replace(":", "/")
         return git_repo
     except Exception as err:
+        print("err:",err)
         return ""
     
 def get_file_repo_dir(file_path):
@@ -55,10 +55,11 @@ def get_file_repo_dir(file_path):
     """
     get_repo_dir_cmd = "cd {}; git config core.quotepath false; git log --name-only --pretty=oneline {}"
     if os.path.isdir(file_path):
+        print("err")
         return ""
     try:
         dir_name = os.path.dirname(file_path)
-        if not dir_name
+        if not dir_name:
             return ""
         file_name = file_path.rsplit("/", 1)[-1]
         cmd = get_repo_dir_cmd.format(dir_name, file_name)
@@ -72,5 +73,6 @@ def get_file_repo_dir(file_path):
             else:
                 return line
     except Exception as err:
+        print("err:",err)
         return ""
     
