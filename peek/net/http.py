@@ -27,3 +27,14 @@ def get(url, params=None, headers=None, **kwargs):
     response = _session.get(url=url, params=params, headers=headers, **kwargs)
     raise_for_http_exception(response)
     return response
+
+@retry(wait_fixed=100, stop_max_attempt_number=3)
+def post(url, data=None, json=None, **kwargs):
+    """
+    http post
+    :param url
+    :param data
+    """
+    response = _session.post(url=url, data=data, json=json, **kwargs)
+    raise_for_http_exception(response)
+    return response

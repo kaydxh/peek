@@ -9,5 +9,9 @@ class TestHttp(unittest.TestCase):
         response = http_.get("http://127.0.0.1:10000")
         print(response)
 
+    def test_http_post(self):
+        response = http_.post("http://127.0.0.1:10000", {"name": "peek"})
+        print(response)
+
 if __name__ == "__main__":
     unittest.main()
