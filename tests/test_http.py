@@ -10,7 +10,12 @@ class TestHttp(unittest.TestCase):
         print(response)
 
     def test_http_post(self):
-        response = http_.post("http://127.0.0.1:10000", {"name": "peek"})
+        body = {
+                "session_id": "session_id_12345",
+                "name": "peek"
+                }
+        url = "http://127.0.0.1:10000"
+        response = http_.post(url, body)
         print(response)
 
 if __name__ == "__main__":

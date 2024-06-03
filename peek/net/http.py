@@ -38,3 +38,12 @@ def post(url, data=None, json=None, **kwargs):
     response = _session.post(url=url, data=data, json=json, **kwargs)
     raise_for_http_exception(response)
     return response
+
+def post_json(url, data=None, **kwargs):
+    """"
+    http post json
+    :param url
+    :param data
+    """
+    headers = {"Content-Type": "application/json"}
+    return post(url, json=data, **kwargs)
