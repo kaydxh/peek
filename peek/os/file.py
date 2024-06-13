@@ -3,7 +3,6 @@
 
 import os
 
-
 def MakeDirAll(name):
     if not os.path.exists(name):
         os.makedirs(name, mode=0o755)
