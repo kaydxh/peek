@@ -12,7 +12,7 @@ import peek.encoding.base64.base64 as base64_
 
 class TestOsFile(unittest.TestCase):
     def test_make_dir_all(self):
-         #file_.MakeDirAll("mytest/0/1/2/3")
+         #file_.make_dir_all("mytest/0/1/2/3")
          pass
 
     def test_dump(self):
