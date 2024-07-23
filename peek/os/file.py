@@ -4,7 +4,7 @@
 import os
 import json
 
-def MakeDirAll(name):
+def make_dir_all(name):
     if not os.path.exists(name):
         os.makedirs(name, mode=0o755)
 
