@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# install peek
+# pip install -e .
+
 import os
 from setuptools import setup
 
@@ -10,6 +13,13 @@ with open(
     os.path.join(here, "peek", "__version__.py"), mode="r", encoding="utf-8"
 ) as f:
     exec(f.read(), about)
+
+def _read_reqs(relpath):
+    fullpath = os.path.join(os.path.dirname(__file__), relpath)
+    with open(fullpath) as f:
+        return [s.strip() for s in f.readlines() if (s.strip() and not s.startswith("#"))]
+
+REQUIREMENTS = _read_reqs("requirements.txt")
 
 setup(
     name=about["__title__"],
@@ -32,4 +42,5 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Topic :: Software Development :: Libraries",
     ],
+    install_requires=REQUIREMENTS,
 )
