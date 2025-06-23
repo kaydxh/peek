@@ -5,7 +5,7 @@
 # pip install -e .
 
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 about = {}
 here = os.path.abspath(os.path.dirname(__file__))
@@ -29,6 +29,7 @@ setup(
     author=about["__author__"],
     author_email=about["__author_email__"],
     url=about["__url__"],
+    packages=find_packages(),
     license=about["__license__"],
     packages=["peek"],
     include_package_data=True,
