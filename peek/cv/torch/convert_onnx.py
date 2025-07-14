@@ -1,12 +1,15 @@
 import torch
 import torch.onnx
 from torch import nn
+from torchvision import models
 
 # ======================
 # 1. 模型加载配置
 # ======================
-MODEL_PATH = "your_model.pt"  # 替换为你的模型路径
-OUTPUT_ONNX_PATH = "exported_model.onnx"
+# MODEL_PATH = "your_model.pt"  # 替换为你的模型路径
+MODEL_PATH = "/data/model/resnet18_imagenet.pt" 
+# OUTPUT_ONNX_PATH = "exported_model.onnx"
+OUTPUT_ONNX_PATH = "/data/model/resnet18_imagenet.onnx"
 INPUT_SHAPE = (1, 3, 224, 224)  # 根据你的模型输入形状修改
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -15,35 +18,32 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # ======================
 # 重要：必须与训练时的模型定义完全一致！
 class YourModelClass(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=1000):
         super().__init__()
-        # 这里需要与原始模型结构完全一致
-        self.backbone = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3),
-            nn.ReLU(),
-            nn.MaxPool2d(2)
-        )
-        self.classifier = nn.Linear(64*111*111, 10)  # 示例参数，需要按实际情况修改
+        # 加载预定义的resnet18结构
+        self.model = models.resnet18(pretrained=False)
+        # 修改最后的全连接层以适应类别数（如需自定义）
+        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
 
     def forward(self, x):
-        x = self.backbone(x)
-        x = x.view(x.size(0), -1)
-        return self.classifier(x)
+        return self.model(x)
 
 # ======================
 # 3. 加载模型权重
 # ======================
 def load_model():
-    # 初始化模型实例
-    model = YourModelClass().to(DEVICE)
-    
-    # 加载权重（根据保存方式选择对应方法）
-    if DEVICE == "cuda":
-        model.load_state_dict(torch.load(MODEL_PATH))
-    else:
-        model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
-    
-    model.eval()  # 必须设置为评估模式
+    # 直接加载resnet18
+    #model = models.resnet18(num_classes=1000)  # 或你的类别数
+    #model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+    #model = model.to(DEVICE)
+    #model.eval()
+
+    model = YourModelClass(num_classes=1000).to(DEVICE)
+    state_dict = torch.load(MODEL_PATH, map_location=DEVICE)
+    # 给所有key加上'model.'前缀
+    new_state_dict = {"model." + k if not k.startswith("model.") else k: v for k, v in state_dict.items()}
+    model.load_state_dict(new_state_dict)
+    model.eval()
     return model
 
 # ======================
