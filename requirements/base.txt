@@ -16,3 +16,22 @@ httpx>=0.24.0
 
 # Timezone
 pytz>=2023.3
+
+# OpenTelemetry - Core
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-semantic-conventions>=0.41b0
+
+# OpenTelemetry - Exporters
+opentelemetry-exporter-otlp>=1.20.0
+opentelemetry-exporter-otlp-proto-grpc>=1.20.0
+opentelemetry-exporter-otlp-proto-http>=1.20.0
+opentelemetry-exporter-prometheus>=0.41b0
+
+# OpenTelemetry - Instrumentation (optional, for auto-instrumentation)
+# opentelemetry-instrumentation>=0.41b0
+# opentelemetry-instrumentation-fastapi>=0.41b0
+# opentelemetry-instrumentation-grpc>=0.41b0
+
+# Prometheus client
+prometheus-client>=0.17.0
