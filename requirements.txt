@@ -1,0 +1,14 @@
+# 完整依赖（开发 + 生产）
+# 推荐使用分环境依赖：
+#   pip install -r requirements/base.txt  # 基础依赖
+#   pip install -r requirements/dev.txt   # 开发依赖
+#   pip install -r requirements/prod.txt  # 生产依赖
+#
+# 或使用 setup.py 的 extras:
+#   pip install -e .          # 基础安装
+#   pip install -e .[dev]     # 开发模式
+#   pip install -e .[prod]    # 生产模式
+#   pip install -e .[all]     # 全部依赖
+
+-r requirements/dev.txt
+-r requirements/prod.txt

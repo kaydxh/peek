@@ -1,3 +1,68 @@
+Metadata-Version: 2.4
+Name: peek
+Version: 0.0.1
+Summary: Python Base Libraries - A collection of utilities for Python development
+Home-page: https://github.com/kaydxh/peek.git
+Author: kaydxh
+Author-email: kaydxh <kaydxh@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/kaydxh/peek
+Project-URL: Documentation, https://github.com/kaydxh/peek#readme
+Project-URL: Repository, https://github.com/kaydxh/peek.git
+Project-URL: Issues, https://github.com/kaydxh/peek/issues
+Keywords: utilities,webserver,grpc,http,networking
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.28.0
+Requires-Dist: retrying>=1.3.4
+Requires-Dist: fastapi>=0.100.0
+Requires-Dist: uvicorn[standard]>=0.23.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pydantic-settings>=2.0.0
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: httpx>=0.24.0
+Requires-Dist: pytz>=2023.3
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.7.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: mypy>=1.5.0; extra == "dev"
+Requires-Dist: flake8>=6.1.0; extra == "dev"
+Requires-Dist: pylint>=2.17.0; extra == "dev"
+Requires-Dist: sphinx>=7.0.0; extra == "dev"
+Requires-Dist: sphinx-rtd-theme>=1.3.0; extra == "dev"
+Provides-Extra: prod
+Requires-Dist: opentelemetry-api>=1.20.0; extra == "prod"
+Requires-Dist: opentelemetry-sdk>=1.20.0; extra == "prod"
+Requires-Dist: opentelemetry-instrumentation-fastapi>=0.41b0; extra == "prod"
+Requires-Dist: opentelemetry-exporter-otlp>=1.20.0; extra == "prod"
+Requires-Dist: opentelemetry-semantic-conventions>=0.41b0; extra == "prod"
+Requires-Dist: grpcio>=1.57.0; extra == "prod"
+Requires-Dist: grpcio-tools>=1.57.0; extra == "prod"
+Requires-Dist: grpcio-health-checking>=1.57.0; extra == "prod"
+Requires-Dist: grpcio-reflection>=1.57.0; extra == "prod"
+Requires-Dist: gunicorn>=21.0.0; extra == "prod"
+Provides-Extra: all
+Requires-Dist: peek[dev]; extra == "all"
+Requires-Dist: peek[prod]; extra == "all"
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
 # peek
 
 Python Base Libraries - A collection of utilities for Python development.
