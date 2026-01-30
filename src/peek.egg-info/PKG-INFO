@@ -129,6 +129,8 @@ response = http.do_http_post("https://api.example.com/data", json={"key": "value
 
 ### Web 服务器
 
+#### 基础使用
+
 ```python
 from peek.net.webserver import GenericWebServer, WebHandler
 
@@ -140,6 +142,53 @@ class MyHandler(WebHandler):
 
 server = GenericWebServer(host="0.0.0.0", port=8080)
 server.install_web_handler(MyHandler())
+server.run()
+```
+
+#### 从 YAML 配置文件创建（推荐）
+
+```yaml
+# config.yaml
+web:
+  bind_address:
+    host: "0.0.0.0"
+    port: 8080
+  grpc:
+    port: 50051
+    max_workers: 10
+    timeout: "30s"
+  http:
+    timeout: "30s"
+  shutdown:
+    delay_duration: "0s"
+    timeout_duration: "5s"
+  title: "My Web Server"
+  version: "1.0.0"
+```
+
+```python
+from peek.net.webserver import GenericWebServer
+
+# 从 YAML 配置文件创建
+server = GenericWebServer.from_config_file("config.yaml")
+server.run()
+```
+
+#### 使用 Builder 创建配置
+
+```python
+from peek.net.webserver import GenericWebServer, WebServerConfigBuilder
+
+config = (
+    WebServerConfigBuilder()
+    .with_bind_address("0.0.0.0", 8080)
+    .with_grpc(port=50051, max_workers=10)
+    .with_http(timeout="30s")
+    .with_shutdown(delay="5s", timeout="10s")
+    .build()
+)
+
+server = GenericWebServer.from_config(config)
 server.run()
 ```
 

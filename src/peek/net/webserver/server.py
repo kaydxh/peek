@@ -35,6 +35,12 @@ from peek.net.webserver.hooks import (
     PreShutdownHookFunc,
 )
 from peek.net.webserver.healthz import HealthzController
+from peek.net.webserver.config import (
+    WebConfig,
+    load_config,
+    load_config_from_file,
+    WebServerConfigBuilder,
+)
 
 # 尝试导入 gRPC 相关模块
 try:
@@ -76,6 +82,29 @@ class GenericWebServer:
     - 生命周期钩子 (PostStartHook, PreShutdownHook)
     - 健康检查控制器
     - 优雅关闭
+    - YAML 配置文件支持
+
+    示例:
+        ```python
+        # 方式一：直接参数创建
+        server = GenericWebServer(host="0.0.0.0", port=8080)
+
+        # 方式二：从 YAML 配置文件创建
+        server = GenericWebServer.from_config_file("config.yaml")
+
+        # 方式三：从配置对象创建
+        config = load_config_from_file("config.yaml")
+        server = GenericWebServer.from_config(config)
+
+        # 方式四：使用 Builder 创建配置
+        config = (
+            WebServerConfigBuilder()
+            .with_bind_address("0.0.0.0", 8080)
+            .with_grpc(port=50051)
+            .build()
+        )
+        server = GenericWebServer.from_config(config)
+        ```
     """
 
     def __init__(
@@ -169,6 +198,88 @@ class GenericWebServer:
 
         # 安装默认中间件
         self._install_default_middleware()
+
+    @classmethod
+    def from_config(cls, config: WebConfig) -> "GenericWebServer":
+        """
+        从配置对象创建 GenericWebServer
+
+        Args:
+            config: WebConfig 配置对象
+
+        Returns:
+            GenericWebServer 实例
+
+        示例:
+            ```python
+            config = load_config_from_file("config.yaml")
+            server = GenericWebServer.from_config(config)
+            ```
+        """
+        return cls(
+            host=config.bind_address.host,
+            port=config.bind_address.port,
+            grpc_port=config.grpc.port,
+            shutdown_delay_duration=config.shutdown.delay_duration,
+            shutdown_timeout_duration=config.shutdown.timeout_duration,
+            max_request_body_bytes=config.http.max_request_body_bytes,
+            max_grpc_message_size=max(
+                config.grpc.max_receive_message_size,
+                config.grpc.max_send_message_size,
+            ),
+            grpc_max_workers=config.grpc.max_workers,
+            web_server_id=config.server_id,
+            title=config.title,
+            description=config.description,
+            version=config.version,
+            docs_url=config.http.docs_url,
+            redoc_url=config.http.redoc_url,
+            openapi_url=config.http.openapi_url,
+        )
+
+    @classmethod
+    def from_config_file(cls, config_file: str) -> "GenericWebServer":
+        """
+        从 YAML 配置文件创建 GenericWebServer
+
+        Args:
+            config_file: YAML 配置文件路径
+
+        Returns:
+            GenericWebServer 实例
+
+        示例:
+            ```python
+            server = GenericWebServer.from_config_file("config.yaml")
+            server.run()
+            ```
+        """
+        config = load_config_from_file(config_file)
+        return cls.from_config(config)
+
+    @classmethod
+    def from_config_dict(cls, config_dict: dict) -> "GenericWebServer":
+        """
+        从配置字典创建 GenericWebServer
+
+        Args:
+            config_dict: 配置字典
+
+        Returns:
+            GenericWebServer 实例
+
+        示例:
+            ```python
+            server = GenericWebServer.from_config_dict({
+                "web": {
+                    "bind_address": {"host": "0.0.0.0", "port": 8080},
+                    "grpc": {"port": 50051},
+                }
+            })
+            ```
+        """
+        config = load_config(config_dict=config_dict)
+        return cls.from_config(config)
 
     def _install_default_middleware(self) -> None:
         """安装默认中间件"""

@@ -1,0 +1,52 @@
+# WebServer 配置示例
+# 参考 Go 版本 golang 库的 webserver.proto 配置结构
+
+web:
+  # 绑定地址
+  bind_address:
+    host: "0.0.0.0"
+    port: 8080
+
+  # gRPC 配置
+  grpc:
+    port: 50051                              # gRPC 端口，不设置则不启用 gRPC
+    max_receive_message_size: 104857600      # 100MB
+    max_send_message_size: 104857600         # 100MB
+    max_workers: 10
+    timeout: "30s"
+
+  # HTTP 配置
+  http:
+    timeout: "30s"                           # 请求超时
+    max_request_body_bytes: 0                # 0 表示不限制
+    docs_url: "/docs"                        # Swagger UI
+    redoc_url: "/redoc"                      # ReDoc
+
+  # 关闭配置
+  shutdown:
+    delay_duration: "0s"                     # 关闭延迟
+    timeout_duration: "5s"                   # 关闭超时
+
+  # 调试配置
+  debug:
+    enable_profiling: false
+    disable_print_inoutput_methods: []
+
+  # OpenTelemetry 配置
+  open_telemetry:
+    enabled: false
+    metric_collect_duration: "60s"
+    otel_trace_exporter_type: "trace_none"   # trace_none, trace_stdout, trace_otlp, trace_jaeger
+    otel_metric_exporter_type: "metric_none" # metric_none, metric_stdout, metric_otlp, metric_prometheus
+    otel_log_exporter_type: "log_none"       # log_none, log_otlp
+    resource:
+      service_name: "my-service"
+      attrs:
+        env: "development"
+        version: "1.0.0"
+
+  # API 元数据
+  title: "My Web Server"
+  description: "A web server built with peek"
+  version: "1.0.0"
+  server_id: ""                              # 留空则自动生成
