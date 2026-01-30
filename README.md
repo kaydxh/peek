@@ -152,6 +152,136 @@ server.register_grpc_service(
 server.run()
 ```
 
+### OpenTelemetry（分布式追踪和指标）
+
+#### 从 YAML 配置文件初始化
+
+```yaml
+# config.yaml
+open_telemetry:
+  enabled: true
+
+  tracer:
+    enabled: true
+    exporter_type: "otlp"
+    otlp:
+      endpoint: "localhost:4317"
+      protocol: "grpc"
+
+  metric:
+    enabled: true
+    exporter_type: "prometheus"
+    prometheus:
+      url: "/metrics"
+
+  app_meter_provider:
+    enabled: true
+    exporter_type: "otlp"
+    otlp:
+      endpoint: "prometheus.tencentcloudapi.com:4317"
+      temporality: "delta"  # 智研平台
+
+  resource:
+    service_name: "my-service"
+    service_version: "1.0.0"
+```
+
+```python
+from peek.opentelemetry import OpenTelemetryService
+
+service = OpenTelemetryService.from_config_file("config.yaml")
+service.install()
+```
+
+#### 使用 Builder 创建配置
+
+```python
+from peek.opentelemetry import OpenTelemetryService, OpenTelemetryConfigBuilder
+
+config = (
+    OpenTelemetryConfigBuilder()
+    .with_resource(service_name="my-service", service_version="1.0.0")
+    .with_tracer_otlp("localhost:4317", protocol="grpc")
+    .with_metric_prometheus(url="/metrics")
+    .with_app_meter_provider(
+        endpoint="prometheus.tencentcloudapi.com:4317",
+        temporality="delta",  # 智研平台
+    )
+    .build()
+)
+
+service = OpenTelemetryService(config)
+service.install()
+```
+
+#### 使用 Metric API
+
+```python
+from peek.opentelemetry.metric.api import Counter, Histogram, Timer
+
+# Counter
+counter = Counter("http", "requests_total")
+counter.with_attr("method", "GET").with_attr("status", 200).incr()
+
+# Histogram
+histogram = Histogram("http", "request_duration_ms", unit="ms")
+histogram.with_attrs(method="GET", path="/api/users").record(123.45)
+
+# Timer（自动计时）
+timer = Timer("business", "process_duration_ms")
+with timer.with_attr("step", "validation").time():
+    # do something
+    pass
+```
+
+#### 使用 Tracer
+
+```python
+from peek.opentelemetry.tracer import get_tracer
+
+tracer = get_tracer("my.module")
+
+with tracer.start_as_current_span("my-operation") as span:
+    span.set_attribute("key", "value")
+    # do something
+```
+
+#### 服务端/客户端指标上报
+
+```python
+from peek.opentelemetry.metric.report import (
+    MetricReporter,
+    ServerDimension,
+    ClientDimension,
+)
+
+reporter = MetricReporter()
+
+# 服务端指标（被调）
+reporter.report_server_metric(
+    ServerDimension(
+        service="my-service",
+        method="/api/users",
+        protocol="http",
+        status_code=200,
+        success=True,
+    ),
+    cost_ms=50.0,
+)
+
+# 客户端指标（主调）
+reporter.report_client_metric(
+    ClientDimension(
+        service="user-service",
+        method="/api/users",
+        protocol="grpc",
+        status_code=0,
+        success=True,
+    ),
+    cost_ms=30.0,
+)
+```
+
 ## 开发
 
 ```bash
