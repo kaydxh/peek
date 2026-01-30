@@ -1,0 +1,18 @@
+# Production dependencies
+-r base.txt
+
+# OpenTelemetry (observability)
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-instrumentation-fastapi>=0.41b0
+opentelemetry-exporter-otlp>=1.20.0
+opentelemetry-semantic-conventions>=0.41b0
+
+# gRPC (dual-protocol support)
+grpcio>=1.57.0
+grpcio-tools>=1.57.0
+grpcio-health-checking>=1.57.0
+grpcio-reflection>=1.57.0
+
+# Production server
+gunicorn>=21.0.0
