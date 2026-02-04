@@ -43,6 +43,7 @@ dependencies = [
     "PyYAML>=6.0",
     "httpx>=0.24.0",
     "pytz>=2023.3",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
@@ -70,9 +71,15 @@ prod = [
     "grpcio-reflection>=1.57.0",
     "gunicorn>=21.0.0",
 ]
+monitor = [
+    "psutil>=5.9.0",
+    "pynvml>=11.5.0",
+    "matplotlib>=3.7.0",
+]
 all = [
     "peek[dev]",
     "peek[prod]",
+    "peek[monitor]",
 ]
 
 [project.urls]

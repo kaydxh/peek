@@ -4,11 +4,12 @@
 """
 WebServer 模块
 
-提供类似 Go 版本 golang 库的 Web 服务器框架能力，包括：
+提供 Web 服务器框架能力，包括：
 - GenericWebServer: 通用 Web 服务器
 - 生命周期钩子: PostStartHook, PreShutdownHook
 - 健康检查: HealthzController
 - 配置管理: YAML 配置文件支持
+- 中间件: 限流、超时、追踪、指标等
 """
 
 from peek.net.webserver.server import GenericWebServer, WebHandler
@@ -22,6 +23,9 @@ from peek.net.webserver.config import (
     OpenTelemetryConfig,
     ShutdownConfig,
     AppConfig,
+    # 限流配置
+    QPSLimitConfig,
+    MethodQPSConfigItem,
     # 配置加载
     ConfigLoader,
     load_config,
@@ -59,6 +63,9 @@ __all__ = [
     "OpenTelemetryConfig",
     "ShutdownConfig",
     "AppConfig",
+    # Rate Limit Config
+    "QPSLimitConfig",
+    "MethodQPSConfigItem",
     # Config Loader
     "ConfigLoader",
     "load_config",

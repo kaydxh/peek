@@ -252,6 +252,36 @@ class ShutdownConfig(BaseModel):
         return parse_duration(v)
 
 
+class MethodQPSConfigItem(BaseModel):
+    """方法/路径级 QPS 配置项"""
+
+    method: str = Field(default="*", description="HTTP 方法（GET, POST, *）或 gRPC 方法")
+    path: str = Field(default="/", description="路径，支持前缀匹配（以 * 结尾）")
+    qps: float = Field(default=0, ge=0, description="QPS 限制")
+    burst: int = Field(default=0, ge=0, description="突发容量")
+    max_concurrency: int = Field(default=0, ge=0, description="最大并发数")
+
+
+class QPSLimitConfig(BaseModel):
+    """QPS 限流配置"""
+
+    default_qps: float = Field(default=0, ge=0, description="默认 QPS（0 表示不限制）")
+    default_burst: int = Field(default=0, ge=0, description="默认突发容量")
+    max_concurrency: int = Field(default=0, ge=0, description="最大并发数（0 表示不限制）")
+    wait_timeout: float = Field(
+        default=0, ge=0, description="等待超时时间（秒），0 表示不等待"
+    )
+    method_qps: List[MethodQPSConfigItem] = Field(
+        default_factory=list, description="方法级配置列表"
+    )
+
+    @field_validator("wait_timeout", mode="before")
+    @classmethod
+    def parse_wait_timeout(cls, v):
+        """解析等待超时"""
+        return parse_duration(v)
+
+
 class WebConfig(BaseModel):
     """
     Web 服务器完整配置
@@ -268,6 +298,14 @@ class WebConfig(BaseModel):
     )
     shutdown: ShutdownConfig = Field(
         default_factory=ShutdownConfig, description="关闭配置"
+    )
+
+    # 限流配置
+    http_qps_limit: Optional[QPSLimitConfig] = Field(
+        default=None, description="HTTP QPS 限流配置"
+    )
+    grpc_qps_limit: Optional[QPSLimitConfig] = Field(
+        default=None, description="gRPC QPS 限流配置"
     )
 
     # 额外配置（非 proto 定义）
