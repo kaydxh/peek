@@ -38,6 +38,9 @@ python tools/process_monitor.py --pid 1234
 # 监控 60 秒并生成 HTML 报告
 python tools/process_monitor.py --pid 1234 --duration 60 --output report.html
 
+# 无限监控，直到 Ctrl+C 退出时自动生成报告
+python tools/process_monitor.py --pid 1234 --duration 0 --output report.html
+
 # 运行命令并监控
 python tools/process_monitor.py --command "python train.py" --output training_report.html
 ```
@@ -167,9 +170,9 @@ usage: process_monitor.py [-h] [--pid PID | --command COMMAND]
 参数说明:
   --pid PID            要监控的进程 ID
   --command, -c        运行并监控的命令
-  --duration, -d       监控时长（秒），0 表示无限
+  --duration, -d       监控时长（秒），0 表示无限监控直到 Ctrl+C
   --interval, -i       采样间隔（秒），默认 1.0
-  --output, -o         输出文件路径
+  --output, -o         输出文件路径（支持无限监控退出时生成报告）
   --format, -f         输出格式：html/json/both
   --realtime, -r       实时显示（默认开启）
   --no-realtime        禁用实时显示
@@ -184,9 +187,15 @@ usage: process_monitor.py [-h] [--pid PID | --command COMMAND]
 ### 监控训练脚本
 
 ```bash
-# 运行训练并监控资源使用
+# 运行训练并监控资源使用（命令结束时自动生成报告）
 python tools/process_monitor.py \
     --command "python train.py --epochs 100" \
+    --output training_report.html
+
+# 无限监控训练进程，Ctrl+C 时生成报告
+python tools/process_monitor.py \
+    --pid 1234 \
+    --duration 0 \
     --output training_report.html
 
 # 仅监控 GPU 0 和 GPU 1

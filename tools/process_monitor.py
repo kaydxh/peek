@@ -17,6 +17,9 @@ Usage:
     # Monitor for 60 seconds and save HTML report
     python process_monitor.py --pid 1234 --duration 60 --output report.html
 
+    # Monitor indefinitely until Ctrl+C, then save report
+    python process_monitor.py --pid 1234 --duration 0 --output report.html
+
     # Monitor and save JSON data
     python process_monitor.py --pid 1234 --duration 30 --output data.json --format json
 
@@ -24,8 +27,11 @@ Usage:
     python process_monitor.py --command "python train.py --epochs 10"
 
 Examples:
-    # Monitor training script with GPU
-    python process_monitor.py --command "python train.py" --duration 300 --output training_report.html
+    # Monitor training script with GPU, save report when done
+    python process_monitor.py --command "python train.py" --output training_report.html
+
+    # Indefinite monitoring with report generation on Ctrl+C
+    python process_monitor.py --pid 1234 --duration 0 --output report.html
 
     # Quick 10-second snapshot
     python process_monitor.py --pid $(pgrep -f myapp) --duration 10 --output snapshot.html
@@ -276,8 +282,9 @@ def monitor_process(args: argparse.Namespace, pid: int):
     try:
         if use_realtime and args.duration == 0:
             # Real-time display mode (indefinite)
+            # Ctrl+C to stop and generate report
             chart = RealtimeChart(monitor, refresh_interval=args.interval)
-            chart.start()
+            monitor = chart.start()  # Returns monitor with collected data
         else:
             # Timed monitoring mode
             monitor.start()
@@ -301,9 +308,14 @@ def monitor_process(args: argparse.Namespace, pid: int):
                     if args.duration > 0 and elapsed >= args.duration:
                         break
                     if not args.quiet:
-                        sys.stdout.write(
-                            f"\r⏳ Collecting... {elapsed:.0f}/{args.duration:.0f}s"
-                        )
+                        if args.duration > 0:
+                            sys.stdout.write(
+                                f"\r⏳ Collecting... {elapsed:.0f}/{args.duration:.0f}s"
+                            )
+                        else:
+                            sys.stdout.write(
+                                f"\r⏳ Collecting... {elapsed:.0f}s (Ctrl+C to stop)"
+                            )
                         sys.stdout.flush()
                     time.sleep(args.interval)
 

@@ -180,10 +180,13 @@ class RealtimeChart:
         self._output.write("\n".join(lines) + "\n")
         self._output.flush()
 
-    def start(self) -> None:
+    def start(self) -> "ProcessMonitor":
         """Start real-time display.
 
         Blocks until interrupted with Ctrl+C.
+
+        Returns:
+            The ProcessMonitor instance with collected data.
         """
         self._running = True
         self._monitor.start()
@@ -201,9 +204,16 @@ class RealtimeChart:
             self._monitor.stop()
             self._output.write("\n\n✅ Monitoring stopped.\n")
 
+        return self._monitor
+
     def stop(self) -> None:
         """Stop real-time display."""
         self._running = False
+
+    @property
+    def monitor(self) -> "ProcessMonitor":
+        """Get the monitor instance."""
+        return self._monitor
 
 
 class MonitorVisualizer:
