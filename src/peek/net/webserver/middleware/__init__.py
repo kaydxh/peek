@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-中间件链
+HTTP 中间件模块
 
-参考 Go 版本 golang 库的 http_handler_interceptor.go 实现
-提供 HTTP 中间件链支持
+提供 HTTP 中间件链支持：
+- 基础中间件：RequestID、Timer、Recovery、Logger
+- 限流中间件：QPS 限流、并发限流
+- 超时中间件：请求超时控制
+- OpenTelemetry 中间件：追踪、指标
 """
 
 import asyncio
@@ -20,11 +23,84 @@ from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+# 导出限流中间件
+from peek.net.webserver.middleware.ratelimit import (
+    # 配置
+    MethodQPSConfig,
+    QPSLimitConfig,
+    QPSStats,
+    # 限流器
+    TokenBucketLimiter,
+    ConcurrencyLimiter,
+    MethodLimiter,
+    MethodQPSLimiter,
+    QPSLimiter,
+    # 中间件
+    QPSRateLimitMiddleware,
+    ConcurrencyLimitMiddleware,
+    # 工厂函数
+    create_qps_limiter,
+    limit_all_qps,
+    limit_all_concurrency,
+    # 统计处理器
+    RateLimitStatsHandler,
+)
+
+# 导出超时中间件
+from peek.net.webserver.middleware.timeout import (
+    TimeoutMiddleware,
+    PathTimeoutMiddleware,
+    timeout,
+)
+
+# 导出 OpenTelemetry 中间件
+from peek.net.webserver.middleware.opentelemetry import (
+    TraceMiddleware,
+    MetricMiddleware,
+)
 
 # 中间件函数类型
 MiddlewareFunc = Callable[[Request, Callable], Awaitable[Response]]
 PreHandlerFunc = Callable[[Request], Awaitable[Optional[Response]]]
 PostHandlerFunc = Callable[[Request, Response], Awaitable[None]]
+
+__all__ = [
+    # 基础中间件
+    "HandlerChain",
+    "HandlerChainMiddleware",
+    "RequestIDMiddleware",
+    "TimerMiddleware",
+    "RecoveryMiddleware",
+    "LoggerMiddleware",
+    "MaxBodySizeMiddleware",
+    "create_default_handler_chain",
+    # 限流
+    "MethodQPSConfig",
+    "QPSLimitConfig",
+    "QPSStats",
+    "TokenBucketLimiter",
+    "ConcurrencyLimiter",
+    "MethodLimiter",
+    "MethodQPSLimiter",
+    "QPSLimiter",
+    "QPSRateLimitMiddleware",
+    "ConcurrencyLimitMiddleware",
+    "create_qps_limiter",
+    "limit_all_qps",
+    "limit_all_concurrency",
+    "RateLimitStatsHandler",
+    # 超时
+    "TimeoutMiddleware",
+    "PathTimeoutMiddleware",
+    "timeout",
+    # OpenTelemetry
+    "TraceMiddleware",
+    "MetricMiddleware",
+    # 类型
+    "MiddlewareFunc",
+    "PreHandlerFunc",
+    "PostHandlerFunc",
+]
 
 
 class HandlerChain:

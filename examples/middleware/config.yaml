@@ -1,0 +1,92 @@
+# 中间件示例配置
+#
+# 演示如何配置 HTTP/gRPC 限流
+
+web:
+  bind_address:
+    host: "0.0.0.0"
+    port: 8080
+
+  grpc:
+    port: 50051
+    max_receive_message_size: 104857600  # 100MB
+    max_send_message_size: 104857600
+    max_workers: 10
+    timeout: 30s
+
+  http:
+    timeout: 30s
+    max_request_body_bytes: 104857600  # 100MB
+    docs_url: /docs
+    redoc_url: /redoc
+
+  debug:
+    enable_profiling: false
+    disable_print_inoutput_methods: []
+
+  open_telemetry:
+    enabled: true
+    metric_collect_duration: 60s
+    otel_trace_exporter_type: trace_stdout
+    otel_metric_exporter_type: metric_prometheus
+    resource:
+      service_name: middleware-demo
+      attrs:
+        env: development
+        version: "1.0.0"
+
+  shutdown:
+    delay_duration: 0s
+    timeout_duration: 10s
+
+  # HTTP 限流配置
+  http_qps_limit:
+    default_qps: 100
+    default_burst: 10
+    max_concurrency: 100
+    wait_timeout: 0  # 0 表示不等待，直接拒绝
+    method_qps:
+      # 上传接口限流
+      - method: POST
+        path: /api/v1/upload
+        qps: 10
+        burst: 5
+        max_concurrency: 5
+
+      # 批量操作接口
+      - method: "*"
+        path: /api/v1/batch/*
+        qps: 5
+        burst: 2
+        max_concurrency: 3
+
+      # 通用 API 限流
+      - method: GET
+        path: /api/*
+        qps: 50
+        burst: 10
+
+  # gRPC 限流配置
+  grpc_qps_limit:
+    default_qps: 200
+    default_burst: 20
+    max_concurrency: 100
+    method_qps:
+      # 上传方法限流
+      - method: /myservice.v1.Service/Upload
+        path: ""  # gRPC 方法不需要 path
+        qps: 20
+        burst: 10
+        max_concurrency: 10
+
+      # 重计算方法限流
+      - method: /myservice.v1.Service/HeavyCompute
+        path: ""
+        qps: 5
+        burst: 2
+        max_concurrency: 3
+
+  # 元数据
+  title: "Middleware Demo"
+  description: "中间件功能演示服务"
+  version: "1.0.0"
