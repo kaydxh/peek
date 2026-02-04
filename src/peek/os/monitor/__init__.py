@@ -14,6 +14,11 @@ Example:
     >>> monitor = ProcessMonitor(pid=1234)
     >>> stats = monitor.snapshot()
     >>> print(f"CPU: {stats.cpu_percent}%, Memory: {stats.memory_mb} MB")
+
+    >>> # Monitor multiple processes
+    >>> from peek.os.monitor import MultiProcessMonitor
+    >>> monitor = MultiProcessMonitor(pids=[1234, 5678])
+    >>> monitor.start()
 """
 
 from peek.os.monitor.collector import (
@@ -21,10 +26,14 @@ from peek.os.monitor.collector import (
     ProcessStats,
     GPUStats,
     MonitorConfig,
+    MultiProcessMonitor,
+    MultiProcessStats,
 )
 from peek.os.monitor.visualizer import (
     MonitorVisualizer,
     RealtimeChart,
+    MultiProcessVisualizer,
+    MultiProcessRealtimeChart,
 )
 
 __all__ = [
@@ -34,4 +43,8 @@ __all__ = [
     "MonitorConfig",
     "MonitorVisualizer",
     "RealtimeChart",
+    "MultiProcessMonitor",
+    "MultiProcessStats",
+    "MultiProcessVisualizer",
+    "MultiProcessRealtimeChart",
 ]

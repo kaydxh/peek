@@ -10,6 +10,7 @@
 - 🧠 **显存监控**: 监控 GPU 显存使用量
 - 📊 **可视化**: 终端实时图表 + HTML 报告 + JSON 数据导出
 - 🔧 **命令行工具**: 开箱即用的监控脚本
+- 🔀 **多进程监控**: 同时监控多个进程，汇总展示
 
 ## 安装
 
@@ -34,6 +35,9 @@ python tools/process_monitor.py
 
 # 监控指定 PID
 python tools/process_monitor.py --pid 1234
+
+# 监控多个进程（用逗号分隔）
+python tools/process_monitor.py --pids 1234,5678,9012
 
 # 监控 60 秒并生成 HTML 报告
 python tools/process_monitor.py --pid 1234 --duration 60 --output report.html
@@ -126,6 +130,45 @@ monitor.add_callback(on_sample)
 monitor.start()
 ```
 
+### 多进程监控
+
+```python
+from peek.os.monitor import MultiProcessMonitor, MultiProcessVisualizer
+
+# 创建多进程监控器
+monitor = MultiProcessMonitor(pids=[1234, 5678, 9012])
+
+# 方式一：上下文管理器
+with MultiProcessMonitor(pids=[1234, 5678]) as monitor:
+    time.sleep(60)
+
+# 获取汇总统计
+summary = monitor.get_summary()
+print(f"Total CPU: {summary['total']['cpu_percent']['avg']:.1f}%")
+print(f"Process count: {summary['process_count']}")
+
+# 获取每个进程的独立历史
+per_process_history = monitor.get_per_process_history()
+for pid, history in per_process_history.items():
+    print(f"PID {pid}: {len(history)} samples")
+
+# 生成多进程报告
+visualizer = MultiProcessVisualizer(monitor.history)
+visualizer.save_html("multi_process_report.html")
+```
+
+### 多进程实时显示
+
+```python
+from peek.os.monitor import MultiProcessMonitor, MultiProcessRealtimeChart
+
+monitor = MultiProcessMonitor(pids=[1234, 5678])
+chart = MultiProcessRealtimeChart(monitor)
+
+# 阻塞显示，按 Ctrl+C 停止
+monitor = chart.start()  # 返回带有数据的 monitor
+```
+
 ## 数据结构
 
 ### ProcessStats
@@ -161,7 +204,7 @@ monitor.start()
 ## 命令行参数
 
 ```
-usage: process_monitor.py [-h] [--pid PID | --command COMMAND]
+usage: process_monitor.py [-h] [--pid PID | --pids PIDS | --command COMMAND]
                           [--duration DURATION] [--interval INTERVAL]
                           [--output OUTPUT] [--format {html,json,both}]
                           [--realtime] [--no-realtime] [--quiet]
@@ -169,6 +212,7 @@ usage: process_monitor.py [-h] [--pid PID | --command COMMAND]
 
 参数说明:
   --pid PID            要监控的进程 ID
+  --pids PIDS          要监控的多个进程 ID（逗号分隔，如 "1234,5678,9012"）
   --command, -c        运行并监控的命令
   --duration, -d       监控时长（秒），0 表示无限监控直到 Ctrl+C
   --interval, -i       采样间隔（秒），默认 1.0
@@ -204,6 +248,24 @@ python tools/process_monitor.py \
     --gpu-indices "0,1" \
     --duration 300 \
     --output gpu_report.html
+```
+
+### 监控分布式训练（多进程）
+
+```bash
+# 监控多个 worker 进程
+python tools/process_monitor.py \
+    --pids 1234,5678,9012 \
+    --duration 0 \
+    --output distributed_training.html
+
+# 静默收集多进程数据
+python tools/process_monitor.py \
+    --pids 1234,5678 \
+    --duration 3600 \
+    --quiet \
+    --format both \
+    --output multi_process_metrics
 ```
 
 ### 快速诊断

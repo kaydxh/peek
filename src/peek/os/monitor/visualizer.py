@@ -18,7 +18,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, TextIO
 
-from peek.os.monitor.collector import ProcessStats, ProcessMonitor
+from peek.os.monitor.collector import (
+    ProcessStats,
+    ProcessMonitor,
+    MultiProcessStats,
+    MultiProcessMonitor,
+)
 
 # Check for optional dependencies
 try:
@@ -795,6 +800,739 @@ class MonitorVisualizer:
             "metadata": {
                 "pid": self._history[0].pid if self._history else 0,
                 "name": self._history[0].name if self._history else "",
+                "samples": len(self._history),
+                "generated_at": datetime.now().isoformat(),
+            },
+            "summary": self._calculate_summary(),
+            "history": [s.to_dict() for s in self._history],
+        }
+
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return str(path)
+
+
+class MultiProcessRealtimeChart:
+    """Real-time terminal-based chart display for multiple processes.
+
+    Displays metrics for multiple processes in terminal using ASCII characters.
+
+    Example:
+        >>> from peek.os.monitor import MultiProcessMonitor, MultiProcessRealtimeChart
+        >>> monitor = MultiProcessMonitor(pids=[1234, 5678])
+        >>> chart = MultiProcessRealtimeChart(monitor)
+        >>> chart.start()  # Press Ctrl+C to stop
+    """
+
+    def __init__(
+        self,
+        monitor: MultiProcessMonitor,
+        refresh_interval: float = 1.0,
+        output: TextIO = None,
+    ):
+        """Initialize multi-process real-time chart.
+
+        Args:
+            monitor: MultiProcessMonitor instance.
+            refresh_interval: Refresh interval in seconds.
+            output: Output stream (default: sys.stdout).
+        """
+        self._monitor = monitor
+        self._refresh_interval = refresh_interval
+        self._output = output or sys.stdout
+        self._running = False
+        self._bar_width = 40
+
+    def _draw_bar(self, value: float, max_value: float, label: str, unit: str) -> str:
+        """Draw a progress bar."""
+        if max_value <= 0:
+            percent = 0
+        else:
+            percent = min(100, (value / max_value) * 100)
+
+        filled = int((percent / 100) * self._bar_width)
+        empty = self._bar_width - filled
+
+        bar = "█" * filled + "░" * empty
+        return f"{label:10} [{bar}] {value:8.1f} {unit} ({percent:5.1f}%)"
+
+    def _clear_screen(self) -> None:
+        """Clear terminal screen."""
+        if os.name == "nt":
+            os.system("cls")
+        else:
+            self._output.write("\033[2J\033[H")
+            self._output.flush()
+
+    def _draw_frame(self, stats: MultiProcessStats) -> None:
+        """Draw a single frame."""
+        lines = []
+
+        # Header
+        lines.append("=" * 90)
+        lines.append(
+            f" 📊 Multi-Process Monitor - {len(stats.process_stats)} processes"
+        )
+        lines.append(f" 🕐 {stats.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append("=" * 90)
+        lines.append("")
+
+        # Aggregated stats
+        lines.append("📈 TOTAL RESOURCES")
+        lines.append(f"   CPU:    {stats.total_cpu_percent:8.1f} %")
+        lines.append(f"   Memory: {stats.total_memory_mb:8.1f} MB")
+        if stats.total_gpu_memory_mb > 0:
+            lines.append(f"   VRAM:   {stats.total_gpu_memory_mb:8.1f} MB")
+        lines.append("")
+        lines.append("-" * 90)
+
+        # Per-process stats
+        for pid, proc_stats in stats.process_stats.items():
+            lines.append(f"")
+            lines.append(f"🔹 PID: {pid} ({proc_stats.name})")
+            lines.append(
+                self._draw_bar(proc_stats.cpu_percent, 100 * proc_stats.cpu_count, "CPU", "%")
+            )
+            lines.append(self._draw_bar(proc_stats.memory_percent, 100, "Memory", "%"))
+            lines.append(f"   Memory: {proc_stats.memory_mb:.1f} MB | Threads: {proc_stats.num_threads}")
+
+            # GPU stats
+            if proc_stats.gpu_stats:
+                for gpu in proc_stats.gpu_stats:
+                    if gpu.memory_used_mb > 0:
+                        lines.append(
+                            f"   GPU[{gpu.index}]: {gpu.memory_used_mb:.1f} MB VRAM"
+                        )
+
+        lines.append("")
+        lines.append("-" * 90)
+        lines.append(" Press Ctrl+C to stop")
+
+        # Output
+        self._clear_screen()
+        self._output.write("\n".join(lines) + "\n")
+        self._output.flush()
+
+    def start(self) -> "MultiProcessMonitor":
+        """Start real-time display.
+
+        Blocks until interrupted with Ctrl+C.
+
+        Returns:
+            The MultiProcessMonitor instance with collected data.
+        """
+        self._running = True
+        self._monitor.start()
+
+        try:
+            while self._running:
+                history = self._monitor.history
+                if history:
+                    self._draw_frame(history[-1])
+                time.sleep(self._refresh_interval)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self._running = False
+            self._monitor.stop()
+            self._output.write("\n\n✅ Monitoring stopped.\n")
+
+        return self._monitor
+
+    def stop(self) -> None:
+        """Stop real-time display."""
+        self._running = False
+
+    @property
+    def monitor(self) -> "MultiProcessMonitor":
+        """Get the monitor instance."""
+        return self._monitor
+
+
+class MultiProcessVisualizer:
+    """Multi-process monitoring visualization.
+
+    Generates charts and reports from multi-process monitoring data.
+
+    Example:
+        >>> from peek.os.monitor import MultiProcessMonitor, MultiProcessVisualizer
+        >>> monitor = MultiProcessMonitor(pids=[1234, 5678])
+        >>> monitor.start()
+        >>> time.sleep(60)
+        >>> monitor.stop()
+        >>> visualizer = MultiProcessVisualizer(monitor.history)
+        >>> visualizer.save_html("report.html")
+    """
+
+    # Color palette for different processes
+    PROCESS_COLORS = [
+        "#2196F3",  # Blue
+        "#4CAF50",  # Green
+        "#FF9800",  # Orange
+        "#E91E63",  # Pink
+        "#9C27B0",  # Purple
+        "#00BCD4",  # Cyan
+        "#F44336",  # Red
+        "#8BC34A",  # Light Green
+        "#FF5722",  # Deep Orange
+        "#3F51B5",  # Indigo
+    ]
+
+    def __init__(
+        self,
+        history: List[MultiProcessStats],
+        config: Optional[ChartConfig] = None,
+    ):
+        """Initialize visualizer.
+
+        Args:
+            history: List of MultiProcessStats from monitoring.
+            config: Chart configuration.
+        """
+        self._history = history
+        self._config = config or ChartConfig()
+
+    def _get_all_pids(self) -> List[int]:
+        """Get all PIDs from history."""
+        all_pids = set()
+        for stats in self._history:
+            all_pids.update(stats.pids)
+        return sorted(all_pids)
+
+    def _extract_data(self) -> Dict[str, Any]:
+        """Extract time series data from history."""
+        timestamps = []
+        total_cpu = []
+        total_memory = []
+        total_gpu_memory = []
+        per_process: Dict[int, Dict[str, List]] = {}
+
+        all_pids = self._get_all_pids()
+        for pid in all_pids:
+            per_process[pid] = {
+                "name": "",
+                "cpu": [],
+                "memory": [],
+                "gpu_memory": [],
+            }
+
+        for stats in self._history:
+            timestamps.append(stats.timestamp)
+            total_cpu.append(stats.total_cpu_percent)
+            total_memory.append(stats.total_memory_mb)
+            total_gpu_memory.append(stats.total_gpu_memory_mb)
+
+            for pid in all_pids:
+                if pid in stats.process_stats:
+                    proc_stats = stats.process_stats[pid]
+                    per_process[pid]["name"] = proc_stats.name
+                    per_process[pid]["cpu"].append(proc_stats.cpu_percent)
+                    per_process[pid]["memory"].append(proc_stats.memory_mb)
+                    per_process[pid]["gpu_memory"].append(proc_stats.total_gpu_memory_mb)
+                else:
+                    # Process not available at this timestamp
+                    per_process[pid]["cpu"].append(0)
+                    per_process[pid]["memory"].append(0)
+                    per_process[pid]["gpu_memory"].append(0)
+
+        return {
+            "timestamps": timestamps,
+            "total_cpu": total_cpu,
+            "total_memory": total_memory,
+            "total_gpu_memory": total_gpu_memory,
+            "per_process": per_process,
+        }
+
+    def _calculate_summary(self) -> Dict[str, Any]:
+        """Calculate summary statistics."""
+        if not self._history:
+            return {}
+
+        data = self._extract_data()
+
+        def calc_stats(values: List[float]) -> Dict[str, float]:
+            if not values:
+                return {"min": 0, "max": 0, "avg": 0}
+            return {
+                "min": min(values),
+                "max": max(values),
+                "avg": sum(values) / len(values),
+            }
+
+        duration = 0
+        if len(self._history) > 1:
+            duration = (
+                self._history[-1].timestamp - self._history[0].timestamp
+            ).total_seconds()
+
+        # Per-process summary
+        per_process_summary = {}
+        for pid, proc_data in data["per_process"].items():
+            per_process_summary[pid] = {
+                "name": proc_data["name"],
+                "cpu": calc_stats(proc_data["cpu"]),
+                "memory": calc_stats(proc_data["memory"]),
+                "gpu_memory": calc_stats(proc_data["gpu_memory"]),
+            }
+
+        return {
+            "samples": len(self._history),
+            "duration": duration,
+            "process_count": len(self._get_all_pids()),
+            "total_cpu": calc_stats(data["total_cpu"]),
+            "total_memory": calc_stats(data["total_memory"]),
+            "total_gpu_memory": calc_stats(data["total_gpu_memory"]),
+            "per_process": per_process_summary,
+        }
+
+    def generate_html_report(self) -> str:
+        """Generate HTML report with embedded charts for multiple processes.
+
+        Returns:
+            HTML string.
+        """
+        if not self._history:
+            return "<html><body><p>No data to display</p></body></html>"
+
+        data = self._extract_data()
+        summary = self._calculate_summary()
+        all_pids = self._get_all_pids()
+
+        # Prepare chart data for Chart.js
+        chart_labels = [ts.strftime("%H:%M:%S") for ts in data["timestamps"]]
+
+        # Build datasets for stacked charts
+        cpu_datasets = []
+        memory_datasets = []
+        gpu_datasets = []
+
+        for i, pid in enumerate(all_pids):
+            color = self.PROCESS_COLORS[i % len(self.PROCESS_COLORS)]
+            proc_data = data["per_process"][pid]
+            label = f"PID {pid} ({proc_data['name']})"
+
+            cpu_datasets.append({
+                "label": label,
+                "data": proc_data["cpu"],
+                "borderColor": color,
+                "backgroundColor": color.replace(")", ", 0.3)").replace("rgb", "rgba") if color.startswith("rgb") else color + "4D",
+                "fill": True,
+                "borderWidth": 2,
+            })
+
+            memory_datasets.append({
+                "label": label,
+                "data": proc_data["memory"],
+                "borderColor": color,
+                "backgroundColor": color.replace(")", ", 0.3)").replace("rgb", "rgba") if color.startswith("rgb") else color + "4D",
+                "fill": True,
+                "borderWidth": 2,
+            })
+
+            if any(v > 0 for v in proc_data["gpu_memory"]):
+                gpu_datasets.append({
+                    "label": label,
+                    "data": proc_data["gpu_memory"],
+                    "borderColor": color,
+                    "backgroundColor": color.replace(")", ", 0.3)").replace("rgb", "rgba") if color.startswith("rgb") else color + "4D",
+                    "fill": True,
+                    "borderWidth": 2,
+                })
+
+        # Build per-process summary cards HTML
+        process_cards_html = ""
+        for i, pid in enumerate(all_pids):
+            proc_summary = summary["per_process"].get(pid, {})
+            color = self.PROCESS_COLORS[i % len(self.PROCESS_COLORS)]
+            process_cards_html += f"""
+            <div class="process-card" style="border-left: 4px solid {color};">
+                <div class="process-header">
+                    <span class="process-name">PID {pid}</span>
+                    <span class="process-label">({proc_summary.get('name', '')})</span>
+                </div>
+                <div class="process-metrics">
+                    <div class="metric">
+                        <span class="metric-label">CPU</span>
+                        <span class="metric-value">{proc_summary.get('cpu', {}).get('avg', 0):.1f}%</span>
+                        <span class="metric-range">max: {proc_summary.get('cpu', {}).get('max', 0):.1f}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Memory</span>
+                        <span class="metric-value">{proc_summary.get('memory', {}).get('avg', 0):.1f} MB</span>
+                        <span class="metric-range">max: {proc_summary.get('memory', {}).get('max', 0):.1f} MB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">VRAM</span>
+                        <span class="metric-value">{proc_summary.get('gpu_memory', {}).get('avg', 0):.1f} MB</span>
+                        <span class="metric-range">max: {proc_summary.get('gpu_memory', {}).get('max', 0):.1f} MB</span>
+                    </div>
+                </div>
+            </div>
+            """
+
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Process Monitor Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        .container {{
+            max-width: 1600px;
+            margin: 0 auto;
+        }}
+        .header {{
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }}
+        .header h1 {{
+            color: #1a1a2e;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }}
+        .header .meta {{
+            color: #666;
+            font-size: 14px;
+        }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }}
+        .summary-card {{
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }}
+        .summary-card .label {{
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .summary-card .value {{
+            font-size: 32px;
+            font-weight: bold;
+            margin: 8px 0;
+        }}
+        .summary-card .detail {{
+            color: #888;
+            font-size: 12px;
+        }}
+        .summary-card.processes .value {{ color: #673AB7; }}
+        .summary-card.cpu .value {{ color: #2196F3; }}
+        .summary-card.memory .value {{ color: #4CAF50; }}
+        .summary-card.vram .value {{ color: #E91E63; }}
+        
+        .process-section {{
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }}
+        .process-section h2 {{
+            color: #1a1a2e;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }}
+        .process-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }}
+        .process-card {{
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+        }}
+        .process-header {{
+            margin-bottom: 12px;
+        }}
+        .process-name {{
+            font-weight: bold;
+            font-size: 16px;
+            color: #1a1a2e;
+        }}
+        .process-label {{
+            color: #666;
+            font-size: 12px;
+        }}
+        .process-metrics {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }}
+        .metric {{
+            flex: 1;
+            min-width: 80px;
+        }}
+        .metric-label {{
+            display: block;
+            color: #888;
+            font-size: 10px;
+            text-transform: uppercase;
+        }}
+        .metric-value {{
+            display: block;
+            font-weight: bold;
+            font-size: 14px;
+            color: #1a1a2e;
+        }}
+        .metric-range {{
+            display: block;
+            color: #aaa;
+            font-size: 10px;
+        }}
+        
+        .charts-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }}
+        .chart-card {{
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }}
+        .chart-card h3 {{
+            color: #1a1a2e;
+            margin-bottom: 16px;
+            font-size: 16px;
+        }}
+        .chart-container {{
+            position: relative;
+            height: 350px;
+        }}
+        .footer {{
+            text-align: center;
+            color: white;
+            padding: 20px;
+            opacity: 0.8;
+        }}
+        @media (max-width: 768px) {{
+            .charts-grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Multi-Process Monitor Report</h1>
+            <div class="meta">
+                <strong>Processes:</strong> {summary.get('process_count', 0)} |
+                <strong>Duration:</strong> {summary.get('duration', 0):.1f} seconds |
+                <strong>Samples:</strong> {summary.get('samples', 0)} |
+                <strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            </div>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-card processes">
+                <div class="label">Total Processes</div>
+                <div class="value">{summary.get('process_count', 0)}</div>
+                <div class="detail">PIDs: {', '.join(str(p) for p in all_pids)}</div>
+            </div>
+            <div class="summary-card cpu">
+                <div class="label">Total CPU (Avg)</div>
+                <div class="value">{summary.get('total_cpu', {}).get('avg', 0):.1f}%</div>
+                <div class="detail">Max: {summary.get('total_cpu', {}).get('max', 0):.1f}%</div>
+            </div>
+            <div class="summary-card memory">
+                <div class="label">Total Memory (Avg)</div>
+                <div class="value">{summary.get('total_memory', {}).get('avg', 0):.1f} MB</div>
+                <div class="detail">Max: {summary.get('total_memory', {}).get('max', 0):.1f} MB</div>
+            </div>
+            <div class="summary-card vram">
+                <div class="label">Total VRAM (Avg)</div>
+                <div class="value">{summary.get('total_gpu_memory', {}).get('avg', 0):.1f} MB</div>
+                <div class="detail">Max: {summary.get('total_gpu_memory', {}).get('max', 0):.1f} MB</div>
+            </div>
+        </div>
+
+        <div class="process-section">
+            <h2>📋 Per-Process Summary</h2>
+            <div class="process-grid">
+                {process_cards_html}
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>📈 CPU Usage by Process (Stacked)</h3>
+                <div class="chart-container">
+                    <canvas id="cpuChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>💾 Memory Usage by Process (Stacked)</h3>
+                <div class="chart-container">
+                    <canvas id="memoryChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>🎮 Total CPU Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="totalCpuChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>🧠 GPU Memory by Process</h3>
+                <div class="chart-container">
+                    <canvas id="gpuChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Generated by peek.os.monitor | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        </div>
+    </div>
+
+    <script>
+        const labels = {json.dumps(chart_labels)};
+        const cpuDatasets = {json.dumps(cpu_datasets)};
+        const memoryDatasets = {json.dumps(memory_datasets)};
+        const gpuDatasets = {json.dumps(gpu_datasets)};
+        const totalCpuData = {json.dumps(data['total_cpu'])};
+        const totalMemoryData = {json.dumps(data['total_memory'])};
+
+        const stackedOptions = {{
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {{
+                legend: {{
+                    display: true,
+                    position: 'top',
+                    labels: {{ boxWidth: 12, padding: 8, font: {{ size: 10 }} }}
+                }}
+            }},
+            scales: {{
+                x: {{
+                    ticks: {{ maxTicksLimit: 10, maxRotation: 45 }}
+                }},
+                y: {{
+                    stacked: true,
+                    beginAtZero: true
+                }}
+            }},
+            elements: {{
+                point: {{ radius: 0 }},
+                line: {{ tension: 0.4 }}
+            }}
+        }};
+
+        const lineOptions = {{
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {{
+                legend: {{ display: false }}
+            }},
+            scales: {{
+                x: {{
+                    ticks: {{ maxTicksLimit: 10, maxRotation: 45 }}
+                }},
+                y: {{
+                    beginAtZero: true
+                }}
+            }},
+            elements: {{
+                point: {{ radius: 0 }},
+                line: {{ tension: 0.4 }}
+            }}
+        }};
+
+        // Stacked CPU chart
+        new Chart(document.getElementById('cpuChart'), {{
+            type: 'line',
+            data: {{ labels: labels, datasets: cpuDatasets }},
+            options: {{ ...stackedOptions, scales: {{ ...stackedOptions.scales, y: {{ ...stackedOptions.scales.y, title: {{ display: true, text: 'CPU (%)' }} }} }} }}
+        }});
+
+        // Stacked Memory chart
+        new Chart(document.getElementById('memoryChart'), {{
+            type: 'line',
+            data: {{ labels: labels, datasets: memoryDatasets }},
+            options: {{ ...stackedOptions, scales: {{ ...stackedOptions.scales, y: {{ ...stackedOptions.scales.y, title: {{ display: true, text: 'Memory (MB)' }} }} }} }}
+        }});
+
+        // Total CPU chart
+        new Chart(document.getElementById('totalCpuChart'), {{
+            type: 'line',
+            data: {{
+                labels: labels,
+                datasets: [{{
+                    data: totalCpuData,
+                    borderColor: '#673AB7',
+                    backgroundColor: 'rgba(103, 58, 183, 0.1)',
+                    fill: true,
+                    borderWidth: 2
+                }}]
+            }},
+            options: {{ ...lineOptions, scales: {{ ...lineOptions.scales, y: {{ ...lineOptions.scales.y, title: {{ display: true, text: 'Total CPU (%)' }} }} }} }}
+        }});
+
+        // GPU Memory chart
+        new Chart(document.getElementById('gpuChart'), {{
+            type: 'line',
+            data: {{ labels: labels, datasets: gpuDatasets.length > 0 ? gpuDatasets : [{{ data: [], label: 'No GPU Data' }}] }},
+            options: {{ ...stackedOptions, scales: {{ ...stackedOptions.scales, y: {{ ...stackedOptions.scales.y, title: {{ display: true, text: 'GPU Memory (MB)' }} }} }} }}
+        }});
+    </script>
+</body>
+</html>"""
+        return html
+
+    def save_html(self, output_path: str) -> str:
+        """Save HTML report to file.
+
+        Args:
+            output_path: Output file path.
+
+        Returns:
+            Path to saved file.
+        """
+        html = self.generate_html_report()
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(html, encoding="utf-8")
+        return str(path)
+
+    def save_json(self, output_path: str) -> str:
+        """Save monitoring data as JSON.
+
+        Args:
+            output_path: Output file path.
+
+        Returns:
+            Path to saved file.
+        """
+        data = {
+            "metadata": {
+                "process_count": len(self._get_all_pids()),
+                "pids": self._get_all_pids(),
                 "samples": len(self._history),
                 "generated_at": datetime.now().isoformat(),
             },

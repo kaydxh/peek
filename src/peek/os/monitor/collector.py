@@ -544,3 +544,317 @@ class ProcessMonitor:
         """Context manager exit."""
         self.stop()
         return False
+
+
+@dataclass
+class MultiProcessStats:
+    """Statistics snapshot for multiple processes.
+
+    Attributes:
+        timestamp: Timestamp of the snapshot.
+        process_stats: Dictionary mapping PID to ProcessStats.
+    """
+
+    timestamp: datetime = field(default_factory=datetime.now)
+    process_stats: Dict[int, ProcessStats] = field(default_factory=dict)
+
+    @property
+    def total_cpu_percent(self) -> float:
+        """Total CPU usage across all processes."""
+        return sum(s.cpu_percent for s in self.process_stats.values())
+
+    @property
+    def total_memory_mb(self) -> float:
+        """Total memory usage across all processes."""
+        return sum(s.memory_mb for s in self.process_stats.values())
+
+    @property
+    def total_gpu_memory_mb(self) -> float:
+        """Total GPU memory usage across all processes."""
+        return sum(s.total_gpu_memory_mb for s in self.process_stats.values())
+
+    @property
+    def avg_gpu_utilization(self) -> float:
+        """Average GPU utilization (from all processes' perspective)."""
+        gpu_utils = [s.avg_gpu_utilization for s in self.process_stats.values() if s.gpu_stats]
+        if not gpu_utils:
+            return 0.0
+        return sum(gpu_utils) / len(gpu_utils)
+
+    @property
+    def pids(self) -> List[int]:
+        """List of monitored PIDs."""
+        return list(self.process_stats.keys())
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "total_cpu_percent": self.total_cpu_percent,
+            "total_memory_mb": self.total_memory_mb,
+            "total_gpu_memory_mb": self.total_gpu_memory_mb,
+            "avg_gpu_utilization": self.avg_gpu_utilization,
+            "processes": {pid: stats.to_dict() for pid, stats in self.process_stats.items()},
+        }
+
+
+class MultiProcessMonitor:
+    """Monitor multiple processes simultaneously.
+
+    Monitors CPU, memory, GPU, and IO usage of multiple processes
+    and provides aggregated statistics.
+
+    Example:
+        >>> monitor = MultiProcessMonitor(pids=[1234, 5678, 9012])
+        >>> monitor.start()
+        >>> time.sleep(10)
+        >>> monitor.stop()
+        >>> for stats in monitor.history:
+        ...     print(f"Total CPU: {stats.total_cpu_percent}%")
+        ...     for pid, proc_stats in stats.process_stats.items():
+        ...         print(f"  PID {pid}: {proc_stats.cpu_percent}%")
+    """
+
+    def __init__(
+        self,
+        pids: List[int],
+        config: Optional[MonitorConfig] = None,
+    ):
+        """Initialize multi-process monitor.
+
+        Args:
+            pids: List of process IDs to monitor.
+            config: Monitor configuration.
+        """
+        if not pids:
+            raise ValueError("At least one PID is required")
+
+        self._pids = list(pids)
+        self._config = config or MonitorConfig()
+        self._monitors: Dict[int, ProcessMonitor] = {}
+        self._history: deque = deque(maxlen=self._config.history_size)
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+        self._lock = threading.Lock()
+        self._callbacks: List[Callable[[MultiProcessStats], None]] = []
+
+        # Initialize monitors for each PID
+        self._init_monitors()
+
+    def _init_monitors(self) -> None:
+        """Initialize ProcessMonitor for each PID."""
+        # Create a shared GPU monitor to avoid multiple NVML initializations
+        shared_gpu_monitor = None
+        if self._config.enable_gpu:
+            shared_gpu_monitor = GPUMonitor(self._config.gpu_indices)
+
+        failed_pids = []
+        for pid in self._pids:
+            try:
+                monitor = ProcessMonitor(pid=pid, config=self._config)
+                # Share GPU monitor to avoid redundant initialization
+                if shared_gpu_monitor:
+                    monitor._gpu_monitor = shared_gpu_monitor
+                self._monitors[pid] = monitor
+            except (ValueError, psutil.NoSuchProcess) as e:
+                failed_pids.append((pid, str(e)))
+
+        if failed_pids:
+            msg = ", ".join(f"PID {pid}: {err}" for pid, err in failed_pids)
+            if not self._monitors:
+                raise ValueError(f"All processes failed to initialize: {msg}")
+            print(f"⚠️  Warning: Some processes could not be monitored: {msg}")
+
+    @property
+    def pids(self) -> List[int]:
+        """Get list of monitored PIDs."""
+        return list(self._monitors.keys())
+
+    @property
+    def is_running(self) -> bool:
+        """Check if monitoring is running."""
+        return self._running
+
+    @property
+    def history(self) -> List[MultiProcessStats]:
+        """Get monitoring history."""
+        with self._lock:
+            return list(self._history)
+
+    @property
+    def gpu_available(self) -> bool:
+        """Check if GPU monitoring is available."""
+        for monitor in self._monitors.values():
+            if monitor.gpu_available:
+                return True
+        return False
+
+    def add_callback(self, callback: Callable[[MultiProcessStats], None]) -> None:
+        """Add callback to be called on each sample."""
+        self._callbacks.append(callback)
+
+    def remove_callback(self, callback: Callable[[MultiProcessStats], None]) -> None:
+        """Remove a callback."""
+        if callback in self._callbacks:
+            self._callbacks.remove(callback)
+
+    def snapshot(self) -> MultiProcessStats:
+        """Take a single snapshot of all process stats.
+
+        Returns:
+            MultiProcessStats with current metrics for all processes.
+        """
+        process_stats = {}
+        dead_pids = []
+
+        for pid, monitor in self._monitors.items():
+            try:
+                stats = monitor.snapshot()
+                process_stats[pid] = stats
+            except (psutil.NoSuchProcess, RuntimeError):
+                dead_pids.append(pid)
+
+        # Remove dead processes
+        for pid in dead_pids:
+            del self._monitors[pid]
+
+        return MultiProcessStats(
+            timestamp=datetime.now(),
+            process_stats=process_stats,
+        )
+
+    def _monitor_loop(self) -> None:
+        """Main monitoring loop."""
+        while self._running and self._monitors:
+            try:
+                stats = self.snapshot()
+
+                with self._lock:
+                    self._history.append(stats)
+
+                # Call callbacks
+                for callback in self._callbacks:
+                    try:
+                        callback(stats)
+                    except Exception:
+                        pass
+
+                time.sleep(self._config.interval)
+
+            except Exception:
+                if self._running:
+                    time.sleep(self._config.interval)
+
+    def start(self) -> None:
+        """Start background monitoring."""
+        if self._running:
+            return
+
+        self._running = True
+        self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        """Stop background monitoring."""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=2.0)
+            self._thread = None
+
+    def clear_history(self) -> None:
+        """Clear monitoring history."""
+        with self._lock:
+            self._history.clear()
+
+    def get_summary(self) -> Dict[str, Any]:
+        """Get summary statistics from history.
+
+        Returns:
+            Dictionary with aggregated stats and per-process breakdown.
+        """
+        history = self.history
+        if not history:
+            return {}
+
+        # Aggregated stats
+        total_cpu = [s.total_cpu_percent for s in history]
+        total_mem = [s.total_memory_mb for s in history]
+        total_gpu_mem = [s.total_gpu_memory_mb for s in history]
+        avg_gpu_util = [s.avg_gpu_utilization for s in history]
+
+        def calc_stats(values: List[float]) -> Dict[str, float]:
+            if not values:
+                return {"min": 0, "max": 0, "avg": 0}
+            return {
+                "min": min(values),
+                "max": max(values),
+                "avg": sum(values) / len(values),
+            }
+
+        # Per-process stats
+        per_process = {}
+        all_pids = set()
+        for stats in history:
+            all_pids.update(stats.pids)
+
+        for pid in all_pids:
+            cpu_values = []
+            mem_values = []
+            gpu_mem_values = []
+            proc_name = ""
+
+            for stats in history:
+                if pid in stats.process_stats:
+                    proc_stats = stats.process_stats[pid]
+                    cpu_values.append(proc_stats.cpu_percent)
+                    mem_values.append(proc_stats.memory_mb)
+                    gpu_mem_values.append(proc_stats.total_gpu_memory_mb)
+                    proc_name = proc_stats.name
+
+            per_process[pid] = {
+                "name": proc_name,
+                "cpu_percent": calc_stats(cpu_values),
+                "memory_mb": calc_stats(mem_values),
+                "gpu_memory_mb": calc_stats(gpu_mem_values),
+            }
+
+        return {
+            "samples": len(history),
+            "process_count": len(all_pids),
+            "duration_seconds": (
+                (history[-1].timestamp - history[0].timestamp).total_seconds()
+                if len(history) > 1
+                else 0
+            ),
+            "total": {
+                "cpu_percent": calc_stats(total_cpu),
+                "memory_mb": calc_stats(total_mem),
+                "gpu_memory_mb": calc_stats(total_gpu_mem),
+                "gpu_utilization": calc_stats(avg_gpu_util),
+            },
+            "per_process": per_process,
+        }
+
+    def get_per_process_history(self) -> Dict[int, List[ProcessStats]]:
+        """Get history organized by process.
+
+        Returns:
+            Dictionary mapping PID to list of ProcessStats.
+        """
+        result: Dict[int, List[ProcessStats]] = {}
+        for stats in self.history:
+            for pid, proc_stats in stats.process_stats.items():
+                if pid not in result:
+                    result[pid] = []
+                result[pid].append(proc_stats)
+        return result
+
+    def __enter__(self):
+        """Context manager entry."""
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.stop()
+        return False
