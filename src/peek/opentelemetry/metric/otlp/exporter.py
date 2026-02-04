@@ -24,14 +24,50 @@ from peek.opentelemetry.config import OTLPProtocol, TemporalityType
 logger = logging.getLogger(__name__)
 
 
-def _get_delta_temporality_selector(instrument_type):
-    """Delta Temporality 选择器（智研平台要求）"""
-    return AggregationTemporality.DELTA
+def _get_delta_temporality_dict():
+    """
+    获取 Delta Temporality 字典（智研平台要求）
+
+    OpenTelemetry SDK >= 1.20 使用字典而非函数
+    """
+    from opentelemetry.sdk.metrics import (
+        Counter,
+        Histogram,
+        ObservableCounter,
+        ObservableGauge,
+        ObservableUpDownCounter,
+        UpDownCounter,
+    )
+
+    return {
+        Counter: AggregationTemporality.DELTA,
+        UpDownCounter: AggregationTemporality.DELTA,
+        Histogram: AggregationTemporality.DELTA,
+        ObservableCounter: AggregationTemporality.DELTA,
+        ObservableUpDownCounter: AggregationTemporality.DELTA,
+        ObservableGauge: AggregationTemporality.DELTA,
+    }
 
 
-def _get_cumulative_temporality_selector(instrument_type):
-    """Cumulative Temporality 选择器（默认）"""
-    return AggregationTemporality.CUMULATIVE
+def _get_cumulative_temporality_dict():
+    """获取 Cumulative Temporality 字典（默认）"""
+    from opentelemetry.sdk.metrics import (
+        Counter,
+        Histogram,
+        ObservableCounter,
+        ObservableGauge,
+        ObservableUpDownCounter,
+        UpDownCounter,
+    )
+
+    return {
+        Counter: AggregationTemporality.CUMULATIVE,
+        UpDownCounter: AggregationTemporality.CUMULATIVE,
+        Histogram: AggregationTemporality.CUMULATIVE,
+        ObservableCounter: AggregationTemporality.CUMULATIVE,
+        ObservableUpDownCounter: AggregationTemporality.CUMULATIVE,
+        ObservableGauge: AggregationTemporality.CUMULATIVE,
+    }
 
 
 class OTLPMetricExporterBuilder(PushExporterBuilder):
@@ -89,11 +125,11 @@ class OTLPMetricExporterBuilder(PushExporterBuilder):
             return self._build_http_exporter()
         return self._build_grpc_exporter()
 
-    def _get_temporality_selector(self):
-        """获取 Temporality 选择器"""
+    def _get_temporality_dict(self):
+        """获取 Temporality 字典"""
         if self._temporality == TemporalityType.DELTA:
-            return _get_delta_temporality_selector
-        return _get_cumulative_temporality_selector
+            return _get_delta_temporality_dict()
+        return _get_cumulative_temporality_dict()
 
     def _build_http_exporter(self) -> MetricReader:
         """构建 HTTP 导出器"""
@@ -120,7 +156,7 @@ class OTLPMetricExporterBuilder(PushExporterBuilder):
             headers=self._headers,
             timeout=self._timeout_ms / 1000,
             compression=compression,
-            preferred_temporality=self._get_temporality_selector(),
+            preferred_temporality=self._get_temporality_dict(),
         )
 
         logger.info(
@@ -153,7 +189,7 @@ class OTLPMetricExporterBuilder(PushExporterBuilder):
             timeout=self._timeout_ms / 1000,
             insecure=self._insecure,
             compression=compression,
-            preferred_temporality=self._get_temporality_selector(),
+            preferred_temporality=self._get_temporality_dict(),
         )
 
         logger.info(

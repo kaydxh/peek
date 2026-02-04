@@ -194,9 +194,14 @@ class K8sConfig(BaseModel):
 
 class ZhiYanConfig(BaseModel):
     """智研平台配置"""
-    app_mark: str = Field(default="", description="App 级别应用标识")
-    global_app_mark: str = Field(default="", description="Global 级别应用标识")
-    env: str = Field(default="", description="环境标识")
+    app_mark: str = Field(default="", description="App 级别应用标识（业务指标）")
+    global_app_mark: str = Field(default="", description="Global 级别应用标识（基础设施指标）")
+    env: str = Field(default="", description="环境标识（prod/test/dev）")
+    instance_mark: str = Field(default="", description="实例标识")
+    expand_key: str = Field(default="no", description="是否扩展属性到维度（yes/no）")
+    data_grain: int = Field(default=0, description="数据粒度（10/30/60）")
+    data_type: str = Field(default="", description="数据类型（秒级填 second）")
+    apm_token: str = Field(default="", description="APM Token（Trace 上报）")
 
 
 class ResourceConfig(BaseModel):
@@ -491,14 +496,36 @@ class OpenTelemetryConfigBuilder:
         app_mark: str = "",
         global_app_mark: str = "",
         env: str = "",
+        instance_mark: str = "",
+        expand_key: str = "no",
+        data_grain: int = 0,
+        data_type: str = "",
+        apm_token: str = "",
     ) -> "OpenTelemetryConfigBuilder":
-        """配置智研平台属性"""
+        """
+        配置智研平台属性
+
+        Args:
+            app_mark: App 级别应用标识（业务指标）
+            global_app_mark: Global 级别应用标识（基础设施指标）
+            env: 环境标识（prod/test/dev）
+            instance_mark: 实例标识
+            expand_key: 是否扩展属性到维度（yes/no）
+            data_grain: 数据粒度（10/30/60）
+            data_type: 数据类型（秒级填 second）
+            apm_token: APM Token（Trace 上报）
+        """
         if "resource" not in self._config:
             self._config["resource"] = {}
         self._config["resource"]["zhiyan"] = {
             "app_mark": app_mark,
             "global_app_mark": global_app_mark,
             "env": env,
+            "instance_mark": instance_mark,
+            "expand_key": expand_key,
+            "data_grain": data_grain,
+            "data_type": data_type,
+            "apm_token": apm_token,
         }
         return self
 

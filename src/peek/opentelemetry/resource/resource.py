@@ -30,9 +30,21 @@ ENV_CONTAINER_NAME = "CONTAINER_NAME"
 
 # ========== 平台属性键 ==========
 APM_TOKEN_KEY = "apm.token"
-ZHIYAN_APP_MARK_KEY = "zhiyan.app_mark"
-ZHIYAN_GLOBAL_APP_MARK_KEY = "zhiyan.global_app_mark"
-ZHIYAN_ENV_KEY = "zhiyan.env"
+
+# 智研（ZhiYan）平台属性键 - 必须与平台要求完全一致
+# 注意：这些键名是智研平台的硬编码要求，不可修改
+ZHIYAN_APP_MARK_KEY = "__zhiyan_app_mark__"  # 必填：上报应用标记
+ZHIYAN_INSTANCE_MARK_KEY = "__zhiyan_instance_mark__"  # 选填：实例标识
+ZHIYAN_ENV_KEY = "__zhiyan_env__"  # 必填：环境标识（prod/test/dev）
+ZHIYAN_EXPAND_KEY = "__zhiyan_expand_tag_enable__"  # 选填：是否扩展属性到维度（yes/no）
+ZHIYAN_DATA_GRAIN_KEY = "__zhiyan_data_grain__"  # 选填：数据粒度（10/30/60）
+ZHIYAN_DATA_TYPE_KEY = "__zhiyan_data_type__"  # 选填：秒级数据填"second"
+ZHIYAN_TPS_TENANT_ID_KEY = "tps.tenant.id"  # Trace 上报必填：APM Token
+
+# 保留简化版键名用于配置文件读取
+ZHIYAN_CONFIG_APP_MARK_KEY = "zhiyan.app_mark"
+ZHIYAN_CONFIG_GLOBAL_APP_MARK_KEY = "zhiyan.global_app_mark"
+ZHIYAN_CONFIG_ENV_KEY = "zhiyan.env"
 
 
 def get_k8s_attributes() -> Dict[str, str]:
@@ -71,26 +83,71 @@ def get_zhiyan_attributes(
     app_mark: str = "",
     global_app_mark: str = "",
     env: str = "",
+    instance_mark: str = "",
+    expand_key: str = "no",
+    data_grain: int = 0,
+    data_type: str = "",
+    apm_token: str = "",
+    meter_type: str = "global",
 ) -> Dict[str, str]:
     """
     获取智研平台属性
 
+    智研平台对 Resource 属性有严格的键名要求，必须使用以下格式：
+    - __zhiyan_app_mark__: 上报应用标记（必填）
+    - __zhiyan_env__: 环境标识（必填）
+    - __zhiyan_expand_tag_enable__: 是否扩展属性到维度
+    - tps.tenant.id: APM Token（Trace 上报必填）
+
     Args:
-        app_mark: App 级别应用标识
-        global_app_mark: Global 级别应用标识
-        env: 环境标识
+        app_mark: App 级别应用标识（业务指标）
+        global_app_mark: Global 级别应用标识（基础设施指标）
+        env: 环境标识（prod/test/dev）
+        instance_mark: 实例标识
+        expand_key: 是否扩展属性到维度（yes/no）
+        data_grain: 数据粒度（10/30/60）
+        data_type: 数据类型（秒级填"second"）
+        apm_token: APM Token（Trace 上报使用）
+        meter_type: Meter 类型（global/app）
 
     Returns:
         智研属性字典
     """
     attrs: Dict[str, str] = {}
 
-    if app_mark:
-        attrs[ZHIYAN_APP_MARK_KEY] = app_mark
-    if global_app_mark:
-        attrs[ZHIYAN_GLOBAL_APP_MARK_KEY] = global_app_mark
-    if env:
-        attrs[ZHIYAN_ENV_KEY] = env
+    # 根据 meter_type 选择使用哪个 app_mark
+    selected_app_mark = ""
+    if meter_type == "app" and app_mark:
+        selected_app_mark = app_mark
+    elif meter_type == "global" and global_app_mark:
+        selected_app_mark = global_app_mark
+
+    # 只有在有 app_mark 时才添加智研属性
+    if selected_app_mark:
+        # 必填属性
+        attrs[ZHIYAN_APP_MARK_KEY] = selected_app_mark
+
+        # 环境（默认为 prod）
+        attrs[ZHIYAN_ENV_KEY] = env if env else "prod"
+
+        # 可选属性：实例标识
+        if instance_mark:
+            attrs[ZHIYAN_INSTANCE_MARK_KEY] = instance_mark
+
+        # 可选属性：是否扩展属性到维度（默认 no）
+        attrs[ZHIYAN_EXPAND_KEY] = expand_key if expand_key in ("yes", "no") else "no"
+
+        # 可选属性：数据粒度
+        if data_grain in (10, 30, 60):
+            attrs[ZHIYAN_DATA_GRAIN_KEY] = str(data_grain)
+
+        # 可选属性：数据类型
+        if data_type:
+            attrs[ZHIYAN_DATA_TYPE_KEY] = data_type
+
+    # APM Token 用于 Trace 上报（独立于 app_mark）
+    if apm_token:
+        attrs[ZHIYAN_TPS_TENANT_ID_KEY] = apm_token
 
     return attrs
 
@@ -105,6 +162,12 @@ def create_resource(
     zhiyan_app_mark: str = "",
     zhiyan_global_app_mark: str = "",
     zhiyan_env: str = "",
+    zhiyan_instance_mark: str = "",
+    zhiyan_expand_key: str = "no",
+    zhiyan_data_grain: int = 0,
+    zhiyan_data_type: str = "",
+    zhiyan_apm_token: str = "",
+    meter_type: str = "global",
     attributes: Optional[Dict[str, str]] = None,
 ) -> Resource:
     """
@@ -113,7 +176,7 @@ def create_resource(
     包含：
     - 服务基础信息
     - K8s 属性（可选）
-    - 平台属性
+    - 智研平台属性（使用平台要求的键名）
 
     Args:
         service_name: 服务名称
@@ -122,9 +185,15 @@ def create_resource(
         deployment_environment: 部署环境
         apm_token: APM Token（腾讯云）
         enable_k8s: 是否启用 K8s 属性
-        zhiyan_app_mark: 智研 App 标识
-        zhiyan_global_app_mark: 智研 Global 标识
-        zhiyan_env: 智研环境
+        zhiyan_app_mark: 智研 App 标识（业务指标）
+        zhiyan_global_app_mark: 智研 Global 标识（基础设施指标）
+        zhiyan_env: 智研环境（prod/test/dev）
+        zhiyan_instance_mark: 智研实例标识
+        zhiyan_expand_key: 是否扩展属性到维度（yes/no）
+        zhiyan_data_grain: 数据粒度（10/30/60）
+        zhiyan_data_type: 数据类型（秒级填"second"）
+        zhiyan_apm_token: 智研 APM Token（Trace 上报）
+        meter_type: Meter 类型（global/app）
         attributes: 自定义属性
 
     Returns:
@@ -132,11 +201,15 @@ def create_resource(
 
     示例:
         ```python
+        # 创建用于智研平台的 Resource
         resource = create_resource(
             service_name="my-service",
             service_version="1.0.0",
             enable_k8s=True,
-            apm_token="xxx",
+            zhiyan_global_app_mark="xxxxxx",
+            zhiyan_env="test",
+            zhiyan_apm_token="xxxx#apm-log-xxx#17044_xxx",
+            meter_type="global",
         )
         ```
     """
@@ -157,15 +230,21 @@ def create_resource(
         k8s_attrs = get_k8s_attributes()
         attrs.update(k8s_attrs)
 
-    # 3. APM Token
+    # 3. APM Token（腾讯云）
     if apm_token:
         attrs[APM_TOKEN_KEY] = apm_token
 
-    # 4. 智研属性
+    # 4. 智研平台属性（使用平台要求的键名）
     zhiyan_attrs = get_zhiyan_attributes(
         app_mark=zhiyan_app_mark,
         global_app_mark=zhiyan_global_app_mark,
         env=zhiyan_env,
+        instance_mark=zhiyan_instance_mark,
+        expand_key=zhiyan_expand_key,
+        data_grain=zhiyan_data_grain,
+        data_type=zhiyan_data_type,
+        apm_token=zhiyan_apm_token,
+        meter_type=meter_type,
     )
     attrs.update(zhiyan_attrs)
 
@@ -176,12 +255,13 @@ def create_resource(
     return Resource.create(attrs)
 
 
-def create_resource_from_config(config) -> Resource:
+def create_resource_from_config(config, meter_type: str = "global") -> Resource:
     """
     从配置对象创建 Resource
 
     Args:
         config: ResourceConfig 配置对象
+        meter_type: Meter 类型（global/app）
 
     Returns:
         OpenTelemetry Resource 实例
@@ -196,5 +276,11 @@ def create_resource_from_config(config) -> Resource:
         zhiyan_app_mark=config.zhiyan.app_mark,
         zhiyan_global_app_mark=config.zhiyan.global_app_mark,
         zhiyan_env=config.zhiyan.env,
+        zhiyan_instance_mark=getattr(config.zhiyan, "instance_mark", ""),
+        zhiyan_expand_key=getattr(config.zhiyan, "expand_key", "no"),
+        zhiyan_data_grain=getattr(config.zhiyan, "data_grain", 0),
+        zhiyan_data_type=getattr(config.zhiyan, "data_type", ""),
+        zhiyan_apm_token=getattr(config.zhiyan, "apm_token", ""),
+        meter_type=meter_type,
         attributes=config.attributes,
     )
