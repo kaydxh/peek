@@ -106,11 +106,15 @@ class OpenTelemetryService:
         config = load_config(config_dict=config_dict)
         return cls(config)
 
-    def _create_resource(self) -> Resource:
-        """创建 Resource"""
-        if self._resource is None:
-            self._resource = create_resource_from_config(self._config.resource)
-        return self._resource
+    def _create_resource(self, meter_type: str = "global") -> Resource:
+        """
+        创建 Resource
+
+        Args:
+            meter_type: Meter 类型（global/app），用于选择使用哪个 zhiyan app_mark
+        """
+        # 注意：每种 meter_type 需要独立的 Resource（因为 zhiyan app_mark 不同）
+        return create_resource_from_config(self._config.resource, meter_type=meter_type)
 
     def _create_tracer_exporter_builder(self) -> Optional[TracerExporterBuilder]:
         """创建 Tracer 导出器构建器"""
@@ -198,7 +202,8 @@ class OpenTelemetryService:
             logger.info("Tracer is disabled")
             return None
 
-        resource = self._create_resource()
+        # Tracer 使用 global resource（包含 zhiyan apm_token）
+        resource = self._create_resource(meter_type="global")
         exporter_builder = self._create_tracer_exporter_builder()
 
         self._tracer = Tracer(
@@ -220,7 +225,9 @@ class OpenTelemetryService:
 
     def install_meter(self) -> Optional[MeterProvider]:
         """
-        安装 Meter
+        安装 Meter（Global MeterProvider）
+
+        使用 zhiyan.global_app_mark 作为应用标识。
 
         Returns:
             MeterProvider 实例（如果启用）
@@ -229,7 +236,8 @@ class OpenTelemetryService:
             logger.info("Meter is disabled")
             return None
 
-        resource = self._create_resource()
+        # Global Meter 使用 global_app_mark
+        resource = self._create_resource(meter_type="global")
         push_builder = self._create_metric_push_exporter_builder()
         pull_builder = self._create_metric_pull_exporter_builder()
 
@@ -252,8 +260,9 @@ class OpenTelemetryService:
 
     def install_app_meter(self) -> Optional[MeterProvider]:
         """
-        安装 App Meter
+        安装 App Meter（业务指标）
 
+        使用 zhiyan.app_mark 作为应用标识。
         独立于全局 Meter，用于业务指标上报。
 
         Returns:
@@ -263,7 +272,8 @@ class OpenTelemetryService:
             logger.info("App Meter is disabled")
             return None
 
-        resource = self._create_resource()
+        # App Meter 使用 app_mark
+        resource = self._create_resource(meter_type="app")
         push_builder = self._create_app_meter_push_exporter_builder()
 
         self._app_meter = Meter(
