@@ -21,6 +21,10 @@ src/peek/encoding/base64/__init__.py
 src/peek/encoding/base64/base64.py
 src/peek/git/__init__.py
 src/peek/git/git_info.py
+src/peek/logs/__init__.py
+src/peek/logs/config.py
+src/peek/logs/formatter.py
+src/peek/logs/rotate.py
 src/peek/net/__init__.py
 src/peek/net/http.py
 src/peek/net/ip.py
