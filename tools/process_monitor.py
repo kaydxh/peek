@@ -344,18 +344,22 @@ def monitor_multiple_processes(args: argparse.Namespace, pids: list):
         print(f"🎮 GPU monitoring: {'Enabled' if monitor.gpu_available else 'Disabled/Unavailable'}")
         print()
 
+    # Determine display mode
+    use_realtime = args.realtime and not args.no_realtime and not args.quiet
+
     # Handle interrupt
     interrupted = False
+    chart = None
 
     def signal_handler(signum, frame):
-        nonlocal interrupted
+        nonlocal interrupted, chart
         interrupted = True
+        # 如果 chart 存在，调用 stop() 来停止循环
+        if chart is not None:
+            chart.stop()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-    # Determine display mode
-    use_realtime = args.realtime and not args.no_realtime and not args.quiet
 
     try:
         if use_realtime and args.duration == 0:
@@ -445,18 +449,22 @@ def monitor_process(args: argparse.Namespace, pid: int):
         print(f"🎮 GPU monitoring: {'Enabled' if monitor.gpu_available else 'Disabled/Unavailable'}")
         print()
 
+    # Determine display mode
+    use_realtime = args.realtime and not args.no_realtime and not args.quiet
+
     # Handle interrupt
     interrupted = False
+    chart = None
 
     def signal_handler(signum, frame):
-        nonlocal interrupted
+        nonlocal interrupted, chart
         interrupted = True
+        # 如果 chart 存在，调用 stop() 来停止循环
+        if chart is not None:
+            chart.stop()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-    # Determine display mode
-    use_realtime = args.realtime and not args.no_realtime and not args.quiet
 
     try:
         if use_realtime and args.duration == 0:
