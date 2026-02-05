@@ -193,7 +193,7 @@ class K8sConfig(BaseModel):
 
 
 class ZhiYanConfig(BaseModel):
-    """智研平台配置"""
+    """ZhiYan 平台配置"""
     app_mark: str = Field(default="", description="App 级别应用标识（业务指标）")
     global_app_mark: str = Field(default="", description="Global 级别应用标识（基础设施指标）")
     env: str = Field(default="", description="环境标识（prod/test/dev）")
@@ -212,7 +212,7 @@ class ResourceConfig(BaseModel):
     deployment_environment: str = Field(default="", description="部署环境")
     apm_token: str = Field(default="", description="APM Token（腾讯云）")
     k8s: K8sConfig = Field(default_factory=K8sConfig, description="K8s 配置")
-    zhiyan: ZhiYanConfig = Field(default_factory=ZhiYanConfig, description="智研平台配置")
+    zhiyan: ZhiYanConfig = Field(default_factory=ZhiYanConfig, description="ZhiYan 平台配置")
     attributes: Dict[str, str] = Field(default_factory=dict, description="自定义属性")
 
 
@@ -474,7 +474,7 @@ class OpenTelemetryConfigBuilder:
             protocol: 协议类型（grpc/http）
             headers: 请求头
             compression: 是否压缩
-            temporality: Temporality 类型（delta 用于智研平台）
+            temporality: Temporality 类型（delta 用于监控平台）
             collect_interval: 采集间隔
         """
         self._config["app_meter_provider"] = {
@@ -503,7 +503,7 @@ class OpenTelemetryConfigBuilder:
         apm_token: str = "",
     ) -> "OpenTelemetryConfigBuilder":
         """
-        配置智研平台属性
+        配置 ZhiYan 平台属性
 
         Args:
             app_mark: App 级别应用标识（业务指标）

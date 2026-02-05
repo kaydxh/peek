@@ -179,7 +179,7 @@ open_telemetry:
     exporter_type: "otlp"
     otlp:
       endpoint: "prometheus.tencentcloudapi.com:4317"
-      temporality: "delta"  # 智研平台
+      temporality: "delta"  # 监控平台
 
   resource:
     service_name: "my-service"
@@ -205,7 +205,7 @@ config = (
     .with_metric_prometheus(url="/metrics")
     .with_app_meter_provider(
         endpoint="prometheus.tencentcloudapi.com:4317",
-        temporality="delta",  # 智研平台
+        temporality="delta",  # 监控平台
     )
     .build()
 )

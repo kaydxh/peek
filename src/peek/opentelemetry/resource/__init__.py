@@ -5,7 +5,7 @@ OpenTelemetry Resource 模块
 提供资源属性管理，包括：
 - 服务信息（service.name、service.version 等）
 - K8s 属性（自动从环境变量读取）
-- 智研平台属性（使用平台要求的键名）
+- ZhiYan 平台属性（使用平台要求的键名）
 """
 
 from peek.opentelemetry.resource.resource import (
@@ -21,7 +21,7 @@ from peek.opentelemetry.resource.resource import (
     K8S_CONTAINER_NAME_KEY,
     # 平台属性键
     APM_TOKEN_KEY,
-    # 智研平台属性键（平台要求的格式）
+    # ZhiYan 平台属性键（平台要求的格式）
     ZHIYAN_APP_MARK_KEY,
     ZHIYAN_INSTANCE_MARK_KEY,
     ZHIYAN_ENV_KEY,
@@ -48,7 +48,7 @@ __all__ = [
     "K8S_CONTAINER_NAME_KEY",
     # 平台属性键
     "APM_TOKEN_KEY",
-    # 智研平台属性键
+    # ZhiYan 平台属性键
     "ZHIYAN_APP_MARK_KEY",
     "ZHIYAN_INSTANCE_MARK_KEY",
     "ZHIYAN_ENV_KEY",
