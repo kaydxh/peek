@@ -3,6 +3,7 @@ Peek is a programming toolkit for building microservices in python.
 It has very useful interface or service to develop application.
 
 Modules:
+- peek.logs: Logging framework with rotation support
 - peek.net.webserver: Web server framework (FastAPI-based)
 - peek.net.grpc: gRPC server and client
 - peek.opentelemetry: OpenTelemetry integration (Tracer, Metric)
