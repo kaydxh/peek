@@ -282,8 +282,25 @@ class GenericWebServer:
         return cls.from_config(config)
 
     def _install_default_middleware(self) -> None:
-        """安装默认中间件"""
-        # CORS 中间件
+        """安装默认中间件
+        
+        默认安装以下中间件（按执行顺序）：
+        1. CORS - 跨域支持
+        2. RequestID - 请求ID生成/传递
+        3. Recovery - 异常捕获恢复
+        4. Timer - 请求耗时计时
+        5. Logger - 请求/响应日志
+        
+        注意：中间件按添加顺序的逆序执行，即最后添加的最先执行
+        """
+        from peek.net.webserver.middleware import (
+            RequestIDMiddleware,
+            RecoveryMiddleware,
+            TimerMiddleware,
+            LoggerMiddleware,
+        )
+        
+        # CORS 中间件（最先执行）
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
@@ -291,6 +308,26 @@ class GenericWebServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        
+        # Logger 中间件 - 记录请求/响应日志（含请求体、响应体）
+        # 注意：Logger 要在 Timer 之后添加，这样才能获取到耗时信息
+        self.app.add_middleware(
+            LoggerMiddleware,
+            logger=logger,
+            log_request_body=True,
+            log_response_body=True,
+            max_string_length=64,  # 大字符串只打印前64字节
+            skip_paths=["/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/metrics"],
+        )
+        
+        # Timer 中间件 - 计算请求耗时
+        self.app.add_middleware(TimerMiddleware)
+        
+        # Recovery 中间件 - 异常捕获恢复
+        self.app.add_middleware(RecoveryMiddleware)
+        
+        # RequestID 中间件 - 生成/传递请求ID（最后添加，最先执行）
+        self.app.add_middleware(RequestIDMiddleware)
 
     @asynccontextmanager
     async def _lifespan(self, app: FastAPI):
