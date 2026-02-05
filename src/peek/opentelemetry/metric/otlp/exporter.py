@@ -6,7 +6,7 @@ OTLP Metric 导出器
 - HTTP 协议
 - gRPC 协议
 - gzip 压缩
-- Delta Temporality（智研平台要求）
+- Delta Temporality（监控平台要求）
 """
 
 import logging
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def _get_delta_temporality_dict():
     """
-    获取 Delta Temporality 字典（智研平台要求）
+    获取 Delta Temporality 字典（监控平台要求）
 
     OpenTelemetry SDK >= 1.20 使用字典而非函数
     """
@@ -80,7 +80,7 @@ class OTLPMetricExporterBuilder(PushExporterBuilder):
             endpoint="localhost:4317",
             protocol=OTLPProtocol.GRPC,
             compression=True,
-            temporality=TemporalityType.DELTA,  # 智研平台
+            temporality=TemporalityType.DELTA,  # 监控平台
         )
         reader = builder.build()
         ```

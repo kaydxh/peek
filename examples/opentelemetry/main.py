@@ -75,7 +75,7 @@ def example_with_otlp():
         .with_app_meter_provider(
             endpoint="prometheus.tencentcloudapi.com:4317",
             protocol="grpc",
-            temporality="delta",  # 智研平台
+            temporality="delta",  # 监控平台
             compression=True,
         )
         .build()

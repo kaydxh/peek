@@ -50,7 +50,7 @@ open_telemetry:
       compression: true
       insecure: false
       timeout: "10s"
-      temporality: "delta"  # 智研平台要求 delta
+      temporality: "delta"  # 监控平台要求 delta
 
   # ========== Resource 配置 ==========
   resource:
@@ -64,7 +64,7 @@ open_telemetry:
     k8s:
       enabled: true  # 自动从环境变量读取 K8s 属性
 
-    # 智研平台配置
+    # ZhiYan 平台配置
     zhiyan:
       app_mark: ""
       global_app_mark: ""
