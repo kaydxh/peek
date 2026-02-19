@@ -53,6 +53,11 @@ from peek.net.webserver.middleware.timeout import (
     timeout,
 )
 
+# 导出请求耗时中间件
+from peek.net.webserver.middleware.timer import (
+    HttpTimerMiddleware,
+)
+
 # 导出 OpenTelemetry 中间件
 from peek.net.webserver.middleware.opentelemetry import (
     TraceMiddleware,
@@ -93,6 +98,8 @@ __all__ = [
     "TimeoutMiddleware",
     "PathTimeoutMiddleware",
     "timeout",
+    # 请求耗时
+    "HttpTimerMiddleware",
     # OpenTelemetry
     "TraceMiddleware",
     "MetricMiddleware",
