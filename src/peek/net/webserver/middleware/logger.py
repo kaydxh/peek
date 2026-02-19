@@ -8,7 +8,6 @@
 对大字符串字段只打印前 N 个字节和总长度
 """
 
-import time
 from typing import Any, Awaitable, Callable, List, Optional
 
 from fastapi import Request, Response
@@ -178,8 +177,6 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         if request.url.path in self.skip_paths:
             return await call_next(request)
 
-        start_time = time.perf_counter()
-
         # 获取 request_id（如果存在）
         request_id = getattr(request.state, "request_id", "-")
 
@@ -212,15 +209,11 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             async for chunk in response.body_iterator:
                 response_body += chunk
 
-            # 计算耗时
-            duration = time.perf_counter() - start_time
-            duration_ms = round(duration * 1000, 2)
-
             # 记录响应
             response_body_str = self._format_response_body(response_body)
             log_msg = (
                 f"[{request_id}] <-- {request.method} {request.url.path} "
-                f"{response.status_code} {duration_ms}ms"
+                f"{response.status_code}"
             )
 
             # 记录响应头（类似 Go 版 InOutputHeaderPrinter 的 send headers）
@@ -242,14 +235,10 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         else:
             response = await call_next(request)
 
-            # 计算耗时
-            duration = time.perf_counter() - start_time
-            duration_ms = round(duration * 1000, 2)
-
             # 记录响应
             log_msg = (
                 f"[{request_id}] <-- {request.method} {request.url.path} "
-                f"{response.status_code} {duration_ms}ms"
+                f"{response.status_code}"
             )
 
             # 记录响应头
