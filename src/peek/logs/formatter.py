@@ -23,6 +23,40 @@ from typing import Optional
 _PID = os.getpid()
 
 
+def _short_filename(pathname: str) -> str:
+    """获取简短的文件路径（目录/文件名）
+    
+    将完整路径缩短为 "parent_dir/filename" 格式，
+    例如 "/a/b/c/middleware/logger.py" -> "middleware/logger.py"
+    
+    Args:
+        pathname: 完整文件路径
+        
+    Returns:
+        str: 简短的文件路径
+    """
+    parts = pathname.replace("\\", "/").rsplit("/", 2)
+    if len(parts) >= 2:
+        return os.path.join(parts[-2], parts[-1])
+    return os.path.basename(pathname)
+
+
+class ShortFilenameFilter(logging.Filter):
+    """短文件名过滤器
+    
+    将 record.filename 从 "logger.py" 替换为 "middleware/logger.py" 格式。
+    可以安装到任意 handler 或 logger 上，让使用 %(filename)s 的第三方
+    formatter（如 vLLM）也能显示带目录的文件名。
+    
+    示例：
+        handler.addFilter(ShortFilenameFilter())
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.filename = _short_filename(record.pathname)
+        return True
+
+
 class GlogFormatter(logging.Formatter):
     """Google Log 格式化器
     
@@ -30,7 +64,7 @@ class GlogFormatter(logging.Formatter):
     [LEVEL] [DATETIME] [PID/TID] [FILE:LINE](FUNC) MESSAGE key=value ...
     
     示例：
-    [INFO] [20210917 23:00:00.123456] [12345] [main.py:10](main) Hello World request_id=abc123
+    [INFO] [20210917 23:00:00.123456] [12345] [logs/formatter.py:10](main) Hello World request_id=abc123
     """
     
     # 日志级别缩写映射
@@ -151,8 +185,8 @@ class GlogFormatter(logging.Formatter):
         
         # 4. 文件:行号 和函数名
         if self.report_caller:
-            # 获取简短的文件名
-            filename = os.path.basename(record.pathname)
+            # 获取简短的文件路径（目录/文件名）
+            filename = _short_filename(record.pathname)
             lineno = record.lineno
             funcname = record.funcName
             parts.append(f"[{filename}:{lineno}]({funcname})")
@@ -173,7 +207,7 @@ class TextFormatter(logging.Formatter):
     """文本格式化器
     
     输出格式：
-    DATETIME - NAME - LEVEL - MESSAGE
+    DATETIME - NAME - LEVEL - [DIR/FILE:LINE] - MESSAGE
     """
     
     def __init__(
@@ -187,11 +221,18 @@ class TextFormatter(logging.Formatter):
             datefmt: 日期格式
             report_caller: 是否报告调用者
         """
+        self.report_caller = report_caller
         if report_caller:
             fmt = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
         else:
             fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         super().__init__(fmt=fmt, datefmt=datefmt)
+
+    def format(self, record: logging.LogRecord) -> str:
+        """格式化日志记录，将 filename 替换为 目录/文件名 格式"""
+        if self.report_caller:
+            record.filename = _short_filename(record.pathname)
+        return super().format(record)
 
 
 class JsonFormatter(logging.Formatter):
@@ -228,7 +269,7 @@ class JsonFormatter(logging.Formatter):
         }
         
         if self.report_caller:
-            log_data["file"] = record.pathname
+            log_data["file"] = _short_filename(record.pathname)
             log_data["line"] = record.lineno
             log_data["function"] = record.funcName
         

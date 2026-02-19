@@ -17,7 +17,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .formatter import GlogFormatter, JsonFormatter, TextFormatter
+from .formatter import GlogFormatter, JsonFormatter, TextFormatter, ShortFilenameFilter
 from .rotate import RotatingFileHandler
 
 
@@ -226,6 +226,8 @@ def install_logs(config: Optional[LogConfig] = None) -> None:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(level)
         console_handler.setFormatter(formatter)
+        # 添加短文件名过滤器，让 %(filename)s 显示 "目录/文件名" 格式
+        console_handler.addFilter(ShortFilenameFilter())
         root_logger.addHandler(console_handler)
     
     # 添加文件处理器
@@ -252,6 +254,8 @@ def install_logs(config: Optional[LogConfig] = None) -> None:
             level=level,
         )
         file_handler.setFormatter(formatter)
+        # 添加短文件名过滤器
+        file_handler.addFilter(ShortFilenameFilter())
         root_logger.addHandler(file_handler)
     
     # 输出安装信息

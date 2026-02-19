@@ -293,6 +293,7 @@ class GenericWebServer:
         
         注意：中间件按添加顺序的逆序执行，即最后添加的最先执行
         """
+        from peek.logs.formatter import ShortFilenameFilter
         from peek.net.webserver.middleware import (
             RequestIDMiddleware,
             RecoveryMiddleware,
@@ -300,6 +301,12 @@ class GenericWebServer:
             LoggerMiddleware,
             HttpTimerMiddleware,
         )
+
+        # 为根 logger 的所有 handler 安装短文件名过滤器，
+        # 让 %(filename)s 显示 "目录/文件名" 格式（对第三方 formatter 如 vLLM 也生效）
+        _filter = ShortFilenameFilter()
+        for handler in logging.getLogger().handlers:
+            handler.addFilter(_filter)
 
         # 中间件公共跳过路径（健康检查、指标等无需记录日志/耗时的路径）
         middleware_skip_paths = [
