@@ -298,7 +298,16 @@ class GenericWebServer:
             RecoveryMiddleware,
             TimerMiddleware,
             LoggerMiddleware,
+            HttpTimerMiddleware,
         )
+
+        # 中间件公共跳过路径（健康检查、指标等无需记录日志/耗时的路径）
+        middleware_skip_paths = [
+            "/health", "/healthz",
+            "/ready", "/readyz",
+            "/live", "/livez",
+            "/metrics",
+        ]
         
         # CORS 中间件（最先执行）
         self.app.add_middleware(
@@ -320,9 +329,16 @@ class GenericWebServer:
             log_request_headers=True,
             log_response_headers=True,
             max_string_length=64,  # 大字符串只打印前64字节
-            skip_paths=["/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/metrics"],
+            skip_paths=middleware_skip_paths,
         )
         
+        # HttpTimer 中间件 - 打印请求耗时日志（类似 Go 版 ServerInterceptorOfTimer）
+        self.app.add_middleware(
+            HttpTimerMiddleware,
+            log=logger,
+            skip_paths=middleware_skip_paths,
+        )
+
         # Timer 中间件 - 计算请求耗时
         self.app.add_middleware(TimerMiddleware)
         
