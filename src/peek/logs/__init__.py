@@ -18,7 +18,7 @@ from .config import (
     get_logger,
 )
 from .rotate import RotatingFileWriter
-from .formatter import GlogFormatter
+from .formatter import GlogFormatter, ShortFilenameFilter
 
 __all__ = [
     # 配置类
@@ -33,4 +33,6 @@ __all__ = [
     "RotatingFileWriter",
     # 格式化器
     "GlogFormatter",
+    # 短文件名过滤器
+    "ShortFilenameFilter",
 ]

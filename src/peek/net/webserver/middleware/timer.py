@@ -81,9 +81,12 @@ class HttpTimerMiddleware(BaseHTTPMiddleware):
         # 添加耗时到响应头
         response.headers[self.header_name] = f"{duration_ms}ms"
 
+        # 获取 request_id（如果存在），用于日志关联
+        request_id = getattr(request.state, "request_id", "-")
+
         # 打印耗时日志，格式类似 Go 版本:
-        # http cost POST /wx_video_scene_audit: 1234.56ms
+        # [request_id] http cost POST /wx_video_scene_audit: 1234.56ms
         callee_method = f"{request.method} {request.url.path}"
-        self.log.info("http cost %s: %sms", callee_method, duration_ms)
+        self.log.info("[%s] http cost %s: %sms", request_id, callee_method, duration_ms)
 
         return response
