@@ -349,6 +349,8 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         logger: Any = None,
         log_request_body: bool = True,
         log_response_body: bool = True,
+        log_request_headers: bool = False,
+        log_response_headers: bool = False,
         max_string_length: int = DEFAULT_MAX_STRING_LENGTH,
         skip_paths: List[str] = None,
     ):
@@ -360,6 +362,8 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             logger: 日志记录器
             log_request_body: 是否记录请求体
             log_response_body: 是否记录响应体
+            log_request_headers: 是否记录请求头（类似 Go 版 InOutputHeaderPrinter）
+            log_response_headers: 是否记录响应头（类似 Go 版 InOutputHeaderPrinter）
             max_string_length: 字符串字段的最大打印长度，超过则截断
             skip_paths: 跳过记录的路径列表（如 /health, /metrics）
         """
@@ -367,6 +371,8 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         self.logger = logger
         self.log_request_body = log_request_body
         self.log_response_body = log_response_body
+        self.log_request_headers = log_request_headers
+        self.log_response_headers = log_response_headers
         self.max_string_length = max_string_length
         self.skip_paths = skip_paths or ["/health", "/healthz", "/metrics", "/ready"]
 
@@ -496,6 +502,11 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         # 记录请求
         log_msg = f"[{request_id}] --> {request.method} {request.url.path}"
 
+        # 记录请求头（类似 Go 版 InOutputHeaderPrinter 的 recv headers）
+        if self.log_request_headers:
+            headers_dict = dict(request.headers)
+            log_msg += f" | headers: {headers_dict}"
+
         # 记录请求体
         if self.log_request_body:
             request_body = await self._get_request_body(request)
@@ -522,8 +533,15 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             response_body_str = self._format_response_body(response_body)
             log_msg = (
                 f"[{request_id}] <-- {request.method} {request.url.path} "
-                f"{response.status_code} {duration_ms}ms | body: {response_body_str}"
+                f"{response.status_code} {duration_ms}ms"
             )
+
+            # 记录响应头（类似 Go 版 InOutputHeaderPrinter 的 send headers）
+            if self.log_response_headers:
+                resp_headers_dict = dict(response.headers)
+                log_msg += f" | headers: {resp_headers_dict}"
+
+            log_msg += f" | body: {response_body_str}"
             self._log(log_msg)
 
             # 重新构建响应（因为 body_iterator 只能读取一次）
@@ -546,6 +564,12 @@ class LoggerMiddleware(BaseHTTPMiddleware):
                 f"[{request_id}] <-- {request.method} {request.url.path} "
                 f"{response.status_code} {duration_ms}ms"
             )
+
+            # 记录响应头
+            if self.log_response_headers:
+                resp_headers_dict = dict(response.headers)
+                log_msg += f" | headers: {resp_headers_dict}"
+
             self._log(log_msg)
 
             return response
@@ -591,6 +615,8 @@ def create_default_handler_chain(
     logger: Any = None,
     log_request_body: bool = True,
     log_response_body: bool = True,
+    log_request_headers: bool = False,
+    log_response_headers: bool = False,
     max_string_length: int = LoggerMiddleware.DEFAULT_MAX_STRING_LENGTH,
     skip_log_paths: List[str] = None,
 ) -> HandlerChain:
@@ -601,7 +627,7 @@ def create_default_handler_chain(
     - RequestIDMiddleware: Request ID 生成
     - RecoveryMiddleware: 异常恢复
     - TimerMiddleware: 计时器
-    - LoggerMiddleware: 日志记录
+    - LoggerMiddleware: 日志记录（支持请求/响应的 body 和 headers）
     - MaxBodySizeMiddleware: 请求体大小限制（如果设置）
 
     Args:
@@ -610,6 +636,8 @@ def create_default_handler_chain(
         logger: 日志记录器
         log_request_body: 是否记录请求体
         log_response_body: 是否记录响应体
+        log_request_headers: 是否记录请求头
+        log_response_headers: 是否记录响应头
         max_string_length: 字符串字段的最大打印长度，超过则截断
         skip_log_paths: 跳过记录的路径列表
 
@@ -625,6 +653,8 @@ def create_default_handler_chain(
         logger=logger,
         log_request_body=log_request_body,
         log_response_body=log_response_body,
+        log_request_headers=log_request_headers,
+        log_response_headers=log_response_headers,
         max_string_length=max_string_length,
         skip_paths=skip_log_paths,
     )

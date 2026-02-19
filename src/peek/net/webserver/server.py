@@ -309,13 +309,16 @@ class GenericWebServer:
             allow_headers=["*"],
         )
         
-        # Logger 中间件 - 记录请求/响应日志（含请求体、响应体）
+        # Logger 中间件 - 记录请求/响应日志（含请求体、响应体、请求头、响应头）
         # 注意：Logger 要在 Timer 之后添加，这样才能获取到耗时信息
+        # log_request_headers/log_response_headers: 类似 Go 版 InOutputHeaderPrinter
         self.app.add_middleware(
             LoggerMiddleware,
             logger=logger,
             log_request_body=True,
             log_response_body=True,
+            log_request_headers=True,
+            log_response_headers=True,
             max_string_length=64,  # 大字符串只打印前64字节
             skip_paths=["/health", "/healthz", "/ready", "/readyz", "/live", "/livez", "/metrics"],
         )
