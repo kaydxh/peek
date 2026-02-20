@@ -76,10 +76,16 @@ monitor = [
     "pynvml>=11.5.0",
     "matplotlib>=3.7.0",
 ]
+cv = [
+    "ffmpeg-python>=0.2.0",
+    "av>=10.0.0",
+    "opencv-python>=4.8.0",
+]
 all = [
     "peek[dev]",
     "peek[prod]",
     "peek[monitor]",
+    "peek[cv]",
 ]
 
 [project.urls]
@@ -144,6 +150,8 @@ markers = [
     "integration: marks tests as integration tests",
 ]
 asyncio_mode = "auto"
+log_cli = true
+log_cli_level = "INFO"
 
 # mypy 配置
 [tool.mypy]
