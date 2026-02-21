@@ -74,9 +74,20 @@ class DecoderFactory:
                 progress_callback=kwargs.get("progress_callback"),
                 cancel_callback=kwargs.get("cancel_callback"),
             )
+        elif method == "qwenvl":
+            from .qwenvl_decoder import QwenVLDecoder
+            decoder = QwenVLDecoder(
+                fps=fps,
+                max_frames=max_frames,
+                image_format=image_format,
+                image_quality=image_quality,
+                size=size,
+                min_frames=kwargs.get("min_frames", 4),
+                video_reader_backend=kwargs.get("video_reader_backend"),
+            )
         else:
             raise ValueError(
-                f"不支持的解码方式: '{method}'，可选值: decord, opencv, ffmpeg"
+                f"不支持的解码方式: '{method}'，可选值: decord, opencv, ffmpeg, qwenvl"
             )
 
         logger.info(

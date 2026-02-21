@@ -8,6 +8,7 @@
 - decord: 使用 decord 库解码（推荐，性能最好）
 - opencv: 使用 OpenCV 解码
 - ffmpeg: 使用 PyAV/FFmpeg 解码（功能最完整，支持 GPU/滤镜/Seek）
+- qwenvl: 使用 qwen-vl-utils 解码（与 Qwen3-VL 模型预处理逻辑完全一致）
 """
 
 import base64
@@ -27,6 +28,7 @@ class VideoDecodeMethod(str, Enum):
     DECORD = "decord"    # 使用 decord 库解码
     OPENCV = "opencv"    # 使用 OpenCV 解码
     FFMPEG = "ffmpeg"    # 使用 PyAV/FFmpeg 解码
+    QWENVL = "qwenvl"   # 使用 qwen-vl-utils 解码（与 Qwen3-VL 预处理完全一致）
 
 
 class VideoDecoder:
@@ -52,7 +54,7 @@ class VideoDecoder:
         """初始化视频解码器
 
         Args:
-            method: 解码方式，可选 vllm / decord / opencv / ffmpeg
+            method: 解码方式，可选 vllm / decord / opencv / ffmpeg / qwenvl
             fps: 抽帧频率（帧/秒），仅预解码模式有效
             max_frames: 最大帧数，-1 表示不限制
             image_format: 输出图片格式，JPEG 或 PNG
