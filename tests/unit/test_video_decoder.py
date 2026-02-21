@@ -71,13 +71,15 @@ class TestBaseDecoder:
         assert decoder.longest_edge == 500000
 
     def test_compute_frame_indices_basic(self):
-        """测试采样帧索引计算"""
+        """测试采样帧索引计算（与 Qwen3-VL 一致的 linspace 均匀采样）"""
         decoder = ConcreteDecoder(fps=1.0)
-        # 30fps 视频，目标 1fps，采样间隔 30
+        # 30fps 视频，目标 1fps
+        # duration=10s, nframes=round(10*1.0)=10, align(2)=10
+        # linspace(0, 299, 10) = [0, 33, 66, 100, 133, 166, 200, 233, 266, 299]
         indices = decoder._compute_frame_indices(300, 30.0)
-        assert len(indices) == 10  # 300 / 30 = 10 帧
+        assert len(indices) == 10  # round(10.0 * 1.0) = 10, align(2) = 10
         assert indices[0] == 0
-        assert indices[1] == 30
+        assert indices[-1] == 299  # linspace 的最后一帧是 total_frames - 1
 
     def test_compute_frame_indices_max_frames_limit(self):
         """测试采样帧索引的最大帧数限制"""
@@ -119,6 +121,67 @@ class TestBaseDecoder:
         indices = decoder._compute_frame_indices(300, 30.0)
         # 全帧解码产生 300 帧，但 max_frames=10 限制为 10
         assert len(indices) == 10
+
+    def test_compute_frame_indices_qwen3vl_consistency(self):
+        """验证采样逻辑与 Qwen3-VL (Qwen2_5_VLImageProcessor) 完全一致
+
+        Qwen3-VL 的采样公式:
+        1. nframes = round(duration * fps)
+        2. nframes = max(nframes, FRAME_FACTOR=2)
+        3. nframes = ceil(nframes / 2) * 2  (向上对齐到 2 的倍数)
+        4. indices = np.linspace(0, total_frames - 1, nframes)
+        """
+        import math
+        import numpy as np
+
+        # 场景1: total=125, fps=24.0, target_fps=0.5
+        # duration=125/24=5.208s, nframes=round(5.208*0.5)=round(2.604)=3
+        # align(2)=4, linspace(0,124,4)=[0,41,83,124]
+        decoder = ConcreteDecoder(fps=0.5)
+        indices = decoder._compute_frame_indices(125, 24.0)
+        assert len(indices) == 4
+        expected = np.linspace(0, 124, 4).astype(int).tolist()
+        assert indices == expected  # [0, 41, 83, 124]
+
+        # 场景2: total=503, fps=24.0, target_fps=0.5
+        # duration=503/24=20.958s, nframes=round(20.958*0.5)=round(10.479)=10
+        # align(2)=10, linspace(0,502,10)
+        indices = decoder._compute_frame_indices(503, 24.0)
+        assert len(indices) == 10
+        expected = np.linspace(0, 502, 10).astype(int).tolist()
+        assert indices == expected
+
+        # 场景3: total=997, fps=25.0, target_fps=0.5
+        # duration=997/25=39.88s, nframes=round(39.88*0.5)=round(19.94)=20
+        # align(2)=20, linspace(0,996,20)
+        indices = decoder._compute_frame_indices(997, 25.0)
+        assert len(indices) == 20
+        expected = np.linspace(0, 996, 20).astype(int).tolist()
+        assert indices == expected
+
+        # 场景4: 超短视频 total=10, fps=30.0, target_fps=0.5
+        # duration=10/30=0.333s, nframes=round(0.333*0.5)=round(0.167)=0
+        # max(0, 2)=2, align(2)=2, linspace(0,9,2)=[0,9]
+        indices = decoder._compute_frame_indices(10, 30.0)
+        assert len(indices) == 2
+        assert indices == [0, 9]
+
+        # 场景5: 奇数帧数对齐 total=300, fps=30.0, target_fps=1.0
+        # duration=10s, nframes=round(10*1.0)=10, align(2)=10
+        decoder2 = ConcreteDecoder(fps=1.0)
+        indices = decoder2._compute_frame_indices(300, 30.0)
+        assert len(indices) == 10
+        assert indices[0] == 0
+        assert indices[-1] == 299
+
+        # 场景6: nframes=3 时向上对齐到 4
+        # total=720, fps=24.0, target_fps=0.1
+        # duration=30s, nframes=round(30*0.1)=round(3)=3, align(2)=4
+        decoder3 = ConcreteDecoder(fps=0.1)
+        indices = decoder3._compute_frame_indices(720, 24.0)
+        assert len(indices) == 4
+        expected = np.linspace(0, 719, 4).astype(int).tolist()
+        assert indices == expected
 
     def test_decode_batches_default_impl(self):
         """测试 BaseDecoder.decode_batches 默认实现（将全量结果分批返回）"""

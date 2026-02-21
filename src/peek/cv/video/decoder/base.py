@@ -7,8 +7,11 @@
 import base64
 import io
 import logging
+import math
 from abc import ABC, abstractmethod
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, Generator, List, Optional
+
+import numpy as np
 
 from peek.cv.video.resize import smart_resize_image
 
@@ -141,8 +144,18 @@ class BaseDecoder(ABC):
         for i in range(0, len(all_frames), batch_size):
             yield all_frames[i : i + batch_size]
 
+    # Qwen3-VL / Qwen2.5-VL 的帧对齐因子
+    # 视频帧数必须是此值的整数倍，与模型 ViT 的 temporal patch 机制对齐
+    FRAME_FACTOR = 2
+
     def _compute_frame_indices(self, total_frames: int, video_fps: float) -> List[int]:
         """根据 fps 配置计算采样帧索引
+
+        采样逻辑与 Qwen3-VL (Qwen2_5_VLImageProcessor) 保持一致：
+        1. nframes = round(duration * fps)
+        2. nframes = max(nframes, FRAME_FACTOR)  — 最少 FRAME_FACTOR 帧
+        3. nframes = ceil(nframes / FRAME_FACTOR) * FRAME_FACTOR  — 向上对齐
+        4. indices = np.linspace(0, total_frames - 1, nframes)  — 均匀分布采样
 
         Args:
             total_frames: 视频总帧数
@@ -157,19 +170,29 @@ class BaseDecoder(ABC):
         if video_fps <= 0:
             video_fps = 30.0  # 默认帧率
 
-        # fps <= 0 表示全帧解码（不采样），采样间隔为 1
         if self._fps <= 0:
-            sample_interval = 1
+            # fps <= 0 表示全帧解码（不采样）
+            nframes = total_frames
         else:
-            # 根据目标 fps 计算采样间隔
-            sample_interval = max(1, int(video_fps / self._fps))
-        indices = list(range(0, total_frames, sample_interval))
+            # 与 Qwen3-VL 一致：通过 duration 和目标 fps 计算采样帧数
+            duration = total_frames / video_fps
+            nframes = round(duration * self._fps)
+
+        # 确保最少 FRAME_FACTOR 帧（与 Qwen3-VL 一致）
+        nframes = max(nframes, self.FRAME_FACTOR)
+
+        # 向上对齐到 FRAME_FACTOR 的整数倍（与 Qwen3-VL 一致）
+        nframes = math.ceil(nframes / self.FRAME_FACTOR) * self.FRAME_FACTOR
+
+        # 不超过总帧数
+        nframes = min(nframes, total_frames)
 
         # 限制最大帧数
-        if self._max_frames > 0 and len(indices) > self._max_frames:
-            # 均匀采样
-            step = len(indices) / self._max_frames
-            indices = [indices[int(i * step)] for i in range(self._max_frames)]
+        if self._max_frames > 0 and nframes > self._max_frames:
+            nframes = self._max_frames
+
+        # 均匀分布采样（np.linspace，与 Qwen3-VL 一致）
+        indices = np.linspace(0, total_frames - 1, nframes).astype(int).tolist()
 
         return indices
 
