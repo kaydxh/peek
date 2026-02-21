@@ -11,6 +11,7 @@
 """
 
 import base64
+import io
 import logging
 from enum import Enum
 from typing import Dict, List, Optional
@@ -169,3 +170,152 @@ class VideoDecoder:
 
         video_bytes = base64.b64decode(base64_video)
         return self._decoder.decode_to_bytes(video_bytes)
+
+    def decode_to_video(
+        self,
+        base64_video: str,
+        target_fps: float = 0.5,
+        crf: str = "0",
+        preset: str = "ultrafast",
+    ) -> Optional[str]:
+        """解码视频为帧后重新编码为 mp4 视频的 base64 字符串
+
+        先使用配置的解码器（decord/opencv/ffmpeg）预解码为帧，
+        再将帧重新编码为 mp4 视频。适用于需要预解码控制帧采样，
+        但最终仍以视频形式传入模型的场景（保持 temporal position embedding）。
+
+        Args:
+            base64_video: base64 编码的视频数据
+            target_fps: 目标采样 fps，用于计算帧间隔使得重新采样时恰好取到所有帧
+            crf: H.264 编码质量参数，"0" 为无损
+            preset: H.264 编码速度预设
+
+        Returns:
+            - None: 当解码方式为 vllm 时，不预解码
+            - str: 重新编码后的 mp4 视频 base64 字符串
+        """
+        if self._method == VideoDecodeMethod.VLLM:
+            logger.debug("解码方式为 vllm，跳过预解码")
+            return None
+
+        # 先预解码为帧
+        frames_b64 = self.decode(base64_video)
+        if not frames_b64:
+            return None
+
+        logger.info(
+            f"预解码为 {len(frames_b64)} 帧，将重新编码为 mp4 视频"
+        )
+
+        # 重新编码为 mp4 视频
+        return self.encode_frames_to_video(
+            frames_b64=frames_b64,
+            target_fps=target_fps,
+            crf=crf,
+            preset=preset,
+        )
+
+    @staticmethod
+    def encode_frames_to_video(
+        frames_b64: List[str],
+        target_fps: float = 0.5,
+        crf: str = "0",
+        preset: str = "ultrafast",
+    ) -> str:
+        """将帧图片重新编码为 mp4 视频的 base64 字符串（静态方法，可独立使用）
+
+        使用 PyAV 将帧图片编码为 H.264 mp4 视频。
+        通过控制帧的时间戳（PTS），确保下游以 target_fps 重新采样时，
+        恰好能取到所有帧。
+
+        原理：
+        - 假设输入 N 帧，目标采样 fps 为 F（如 0.5）
+        - 需要视频总时长 T 满足 round(T * F) = N，即 T = N / F
+        - 每帧间隔 = T / N = 1 / F 秒（如 fps=0.5 时每帧间隔 2 秒）
+        - 使用固定帧率编码，通过 PTS 控制帧的时间位置
+
+        Args:
+            frames_b64: 帧图片的 base64 字符串列表
+            target_fps: 目标采样 fps，用于计算帧间隔
+            crf: H.264 编码质量参数，"0" 为无损
+            preset: H.264 编码速度预设
+
+        Returns:
+            str: mp4 视频的 base64 字符串
+
+        Raises:
+            ValueError: 当输入帧列表为空时
+            ImportError: 当 PyAV 未安装时
+        """
+        try:
+            import av
+        except ImportError:
+            raise ImportError(
+                "encode_frames_to_video 需要安装 PyAV 库：\n"
+                "  pip install av\n"
+                "详见：https://pyav.org/"
+            )
+        from PIL import Image
+
+        # 解码所有帧图片
+        images = []
+        for frame_b64 in frames_b64:
+            img_bytes = base64.b64decode(frame_b64)
+            img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            images.append(img)
+
+        if not images:
+            raise ValueError("没有可编码的帧图片")
+
+        # 计算帧间隔（秒），确保下游以 target_fps 采样时恰好取到所有帧
+        # 帧间隔 = 1 / target_fps，如 fps=0.5 时帧间隔为 2 秒
+        frame_interval = 1.0 / target_fps if target_fps > 0 else 2.0
+
+        # 使用 PyAV 编码为 mp4 视频
+        output_buffer = io.BytesIO()
+
+        # 使用较高的编码帧率（time_base 精度），实际帧间隔通过 PTS 控制
+        codec_fps = 30  # 编码器内部帧率（仅影响 time_base 精度）
+
+        container = av.open(output_buffer, mode="w", format="mp4")
+        stream = container.add_stream("libx264", rate=codec_fps)
+        stream.width = images[0].width
+        stream.height = images[0].height
+        stream.pix_fmt = "yuv420p"
+        stream.options = {"crf": crf, "preset": preset}
+
+        for i, img in enumerate(images):
+            # 确保所有帧尺寸一致（以第一帧为准）
+            if img.size != (stream.width, stream.height):
+                img = img.resize((stream.width, stream.height))
+
+            frame = av.VideoFrame.from_image(img)
+            frame = frame.reformat(format="yuv420p")
+
+            # 通过 PTS 控制帧的时间位置
+            # PTS = 帧索引 * 帧间隔 * time_base_denominator
+            frame.pts = int(i * frame_interval * codec_fps)
+
+            for packet in stream.encode(frame):
+                container.mux(packet)
+
+        # 刷新编码器
+        for packet in stream.encode():
+            container.mux(packet)
+
+        container.close()
+
+        video_bytes = output_buffer.getvalue()
+        video_b64 = base64.b64encode(video_bytes).decode("utf-8")
+
+        total_duration = len(images) * frame_interval
+        logger.info(
+            f"帧重新编码为 mp4: frames={len(images)}, "
+            f"size={images[0].width}x{images[0].height}, "
+            f"frame_interval={frame_interval:.1f}s, "
+            f"total_duration={total_duration:.1f}s, "
+            f"target_fps={target_fps}, "
+            f"video_size={len(video_bytes)} bytes"
+        )
+
+        return video_b64

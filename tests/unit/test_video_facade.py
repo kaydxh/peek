@@ -113,6 +113,124 @@ class TestVideoDecoder:
         vd = VideoDecoder(method="VLLM")
         assert vd.method == VideoDecodeMethod.VLLM
 
+    def test_vllm_decode_to_video_returns_none(self):
+        """vllm 模式 decode_to_video 返回 None"""
+        vd = VideoDecoder(method="vllm")
+        result = vd.decode_to_video("dGVzdA==")
+        assert result is None
+
+
+class TestEncodeFramesToVideo:
+    """测试 VideoDecoder.encode_frames_to_video 静态方法"""
+
+    def _make_frame_b64(self, width=100, height=80, color=(255, 0, 0)):
+        """创建一个纯色帧图片的 base64 字符串"""
+        import base64
+        import io
+        from PIL import Image
+        img = Image.new("RGB", (width, height), color)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=95)
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    def test_basic_encode(self):
+        """测试基本编码功能"""
+        frames = [
+            self._make_frame_b64(color=(255, 0, 0)),
+            self._make_frame_b64(color=(0, 255, 0)),
+            self._make_frame_b64(color=(0, 0, 255)),
+            self._make_frame_b64(color=(255, 255, 0)),
+        ]
+        video_b64 = VideoDecoder.encode_frames_to_video(
+            frames_b64=frames,
+            target_fps=0.5,
+        )
+        assert isinstance(video_b64, str)
+        assert len(video_b64) > 0
+
+        # 验证是有效的 base64
+        import base64
+        video_bytes = base64.b64decode(video_b64)
+        assert len(video_bytes) > 0
+
+    def test_encode_single_frame(self):
+        """测试单帧编码"""
+        frames = [self._make_frame_b64()]
+        video_b64 = VideoDecoder.encode_frames_to_video(
+            frames_b64=frames,
+            target_fps=0.5,
+        )
+        assert isinstance(video_b64, str)
+        assert len(video_b64) > 0
+
+    def test_encode_empty_raises(self):
+        """测试空帧列表抛出异常"""
+        with pytest.raises(ValueError, match="没有可编码的帧图片"):
+            VideoDecoder.encode_frames_to_video(frames_b64=[])
+
+    def test_encode_with_custom_params(self):
+        """测试自定义编码参数"""
+        frames = [
+            self._make_frame_b64(),
+            self._make_frame_b64(color=(0, 255, 0)),
+        ]
+        video_b64 = VideoDecoder.encode_frames_to_video(
+            frames_b64=frames,
+            target_fps=1.0,
+            crf="18",
+            preset="medium",
+        )
+        assert isinstance(video_b64, str)
+        assert len(video_b64) > 0
+
+    def test_encode_different_frame_sizes(self):
+        """测试不同尺寸帧（应自动 resize 到第一帧尺寸）"""
+        frames = [
+            self._make_frame_b64(width=100, height=80),
+            self._make_frame_b64(width=200, height=160),
+        ]
+        video_b64 = VideoDecoder.encode_frames_to_video(
+            frames_b64=frames,
+            target_fps=0.5,
+        )
+        assert isinstance(video_b64, str)
+        assert len(video_b64) > 0
+
+    def test_encoded_video_decodable(self):
+        """验证编码后的视频可以被 PyAV 正确解码"""
+        import av
+        import base64
+        import io
+
+        frames = [
+            self._make_frame_b64(color=(255, 0, 0)),
+            self._make_frame_b64(color=(0, 255, 0)),
+            self._make_frame_b64(color=(0, 0, 255)),
+            self._make_frame_b64(color=(255, 255, 0)),
+        ]
+        video_b64 = VideoDecoder.encode_frames_to_video(
+            frames_b64=frames,
+            target_fps=0.5,
+        )
+
+        # 使用 PyAV 解码验证
+        video_bytes = base64.b64decode(video_b64)
+        container = av.open(io.BytesIO(video_bytes))
+        video_stream = None
+        for stream in container.streams:
+            if stream.type == "video":
+                video_stream = stream
+                break
+
+        assert video_stream is not None
+        assert video_stream.width == 100
+        assert video_stream.height == 80
+
+        # 解码帧数应为 4
+        decoded_frames = list(container.decode(video_stream))
+        assert len(decoded_frames) == 4
+        container.close()
+
 
 # =================== 集成测试（真实视频） ===================
 
@@ -185,3 +303,27 @@ class TestVideoDecoderFacadeReal:
         assert len(frames) > 0
         for fb in frames:
             assert isinstance(fb, bytes)
+
+    @skip_no_av
+    def test_decode_to_video_facade(self, video_base64):
+        """门面类 decode_to_video：预解码后重新编码为 mp4"""
+        vd = VideoDecoder(method="ffmpeg", fps=0.5)
+        video_b64 = vd.decode_to_video(video_base64, target_fps=0.5)
+
+        assert video_b64 is not None
+        assert isinstance(video_b64, str)
+        assert len(video_b64) > 0
+
+        # 验证编码后的视频可以被解码
+        import av
+        import base64
+        import io
+        video_bytes = base64.b64decode(video_b64)
+        container = av.open(io.BytesIO(video_bytes))
+        decoded_frames = list(container.decode(video=0))
+        assert len(decoded_frames) > 0
+        container.close()
+        logger.info(
+            f"门面 decode_to_video: 原始视频 -> {len(decoded_frames)} 帧 mp4, "
+            f"size={len(video_bytes)} bytes"
+        )
