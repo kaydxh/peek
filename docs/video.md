@@ -40,6 +40,7 @@ graph TB
         DD["DecordDecoder<br/>decord 实现"]
         OD["OpenCVDecoder<br/>opencv 实现"]
         FD["FFmpegDecoder<br/>PyAV 实现"]
+        QD["QwenVLDecoder<br/>qwen-vl-utils 实现"]
         DF["DecoderFactory<br/>工厂方法"]
     end
 
@@ -66,9 +67,11 @@ graph TB
     DF --> DD
     DF --> OD
     DF --> FD
+    DF --> QD
     DD --> BD
     OD --> BD
     FD --> BD
+    QD --> BD
     BD --> RESIZE
 
     VF --> SF
@@ -91,6 +94,7 @@ peek/cv/video/
 │   ├── decord_decoder.py    # DecordDecoder（推荐，性能最好）
 │   ├── opencv_decoder.py    # OpenCVDecoder（兼容性好）
 │   ├── ffmpeg_decoder.py    # FFmpegDecoder（功能最完整）
+│   ├── qwenvl_decoder.py   # QwenVLDecoder（与 Qwen3-VL 预处理完全一致）
 │   └── factory.py           # DecoderFactory 工厂方法
 └── filter/                  # 滤镜子包
     ├── __init__.py           # 导出所有滤镜
@@ -110,7 +114,7 @@ peek/cv/video/
 | **方案 B ✅** | 按功能分文件，仅解码器用子文件夹 | 符合 YAGNI 原则，导入简洁 | 未来多实现时需重构（但成本低） |
 
 **最终选择方案 B**，理由：
-- 解码器确实有 decord / opencv / ffmpeg 三种实现 → 单独建子文件夹 + 策略模式
+- 解码器确实有 decord / opencv / ffmpeg / qwenvl 四种实现 → 单独建子文件夹 + 策略模式
 - 滤镜、截取、信息探测目前只需要一种最佳实现（ffmpeg）→ 直接放文件
 - 对外接口简洁：`from peek.cv.video import VideoDecoder` 而非 `from peek.cv.video.decoder.decord_decoder import DecordDecoder`
 
@@ -194,9 +198,19 @@ classDiagram
         +decode_to_bytes(base64_video) List~bytes~?
     }
 
+    class QwenVLDecoder {
+        +min_frames: int
+        +video_reader_backend: str?
+        +decode(video_bytes)
+        +decode_to_bytes(video_bytes)
+        -_build_fetch_video_ele(video_path) dict
+        -_decode_frames(video_bytes, as_bytes)
+    }
+
     BaseDecoder <|-- DecordDecoder
     BaseDecoder <|-- OpenCVDecoder
     BaseDecoder <|-- FFmpegDecoder
+    BaseDecoder <|-- QwenVLDecoder
     FFmpegDecoder --> DecodeConfig : 使用
     DecoderFactory ..> BaseDecoder : creates
     VideoDecoder o-- BaseDecoder : delegates
@@ -204,20 +218,23 @@ classDiagram
     BaseDecoder ..> smart_resize_image : uses
 ```
 
-#### 三种解码器对比
+#### 五种解码器对比
 
-| 特性 | DecordDecoder | OpenCVDecoder | FFmpegDecoder |
-|------|:---:|:---:|:---:|
-| 性能 | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| 格式兼容性 | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| GPU 硬件加速 | ❌ | ❌ | ✅ |
-| 精确 Seek | ❌ | ❌ | ✅ |
-| 视频滤镜 | ❌ | ❌ | ✅ |
-| 时间段截取 | ❌ | ❌ | ✅ |
-| 流式批量读帧 | ✅ | ✅ | ✅（真正流式） |
-| 进度回调/取消 | ❌ | ❌ | ✅ |
-| 内存直接读取 | ✅ | ❌ | ✅ |
-| 依赖库 | decord | opencv-python | av (PyAV) |
+| 特性 | DecordDecoder | OpenCVDecoder | FFmpegDecoder | QwenVLDecoder |
+|------|:---:|:---:|:---:|:---:|
+| 性能 | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| 格式兼容性 | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| 与 Qwen3-VL 预处理一致性 | ⭐⭐（对齐） | ⭐⭐（对齐） | ⭐⭐（对齐） | ⭐⭐⭐（100% 一致） |
+| GPU 硬件加速 | ❌ | ❌ | ✅ | ❌ |
+| 精确 Seek | ❌ | ❌ | ✅ | ❌ |
+| 视频滤镜 | ❌ | ❌ | ✅ | ❌ |
+| 时间段截取 | ❌ | ❌ | ✅ | ❌ |
+| 流式批量读帧 | ✅ | ✅ | ✅（真正流式） | ✅（全量分批） |
+| 进度回调/取消 | ❌ | ❌ | ✅ | ❌ |
+| 内存直接读取 | ✅ | ❌ | ✅ | ❌（需临时文件） |
+| resize 方式 | LANCZOS | LANCZOS | LANCZOS | BICUBIC（torchvision） |
+| 帧采样逻辑 | peek 自实现（对齐 Qwen3-VL） | peek 自实现（对齐 Qwen3-VL） | peek 自实现（对齐 Qwen3-VL） | 官方 smart_nframes |
+| 依赖库 | decord | opencv-python | av (PyAV) | torch, torchvision, qwen-vl-utils |
 
 #### kingfisher → FFmpegDecoder 功能映射
 
@@ -320,11 +337,35 @@ graph LR
 
 ### 3.5 智能缩放（resize.py）
 
-提供 `smart_resize()` 和 `smart_resize_image()` 函数，实现与 Qwen2-VL 视觉预处理器一致的分辨率控制逻辑：
+提供 `smart_resize()` 和 `smart_resize_image()` 函数，实现与 Qwen2-VL/Qwen3-VL 视觉预处理器一致的分辨率控制逻辑：
 
 1. 如果像素总数超过 `max_pixels`（longest_edge），按比例缩小
 2. 如果像素总数低于 `min_pixels`（shortest_edge），按比例放大
 3. 宽高对齐到 `patch_size`（28）的倍数
+
+### 3.6 帧重新编码为视频（VideoDecoder.encode_frames_to_video）
+
+提供静态方法 `encode_frames_to_video()` 和实例方法 `decode_to_video()`，将预解码的帧图片重新编码为 H.264 mp4 视频。
+
+**设计背景**：当使用预解码模式（decord/opencv/ffmpeg/qwenvl）时，如果以多个 `image_url` 方式传入 vLLM，Qwen3-VL 模型会将其当作**独立图片**处理（没有 temporal position embedding）。而以 `video_url` 方式传入时，模型能正确理解帧间的时序关系。因此需要将预解码帧重新编码为 mp4 视频。
+
+**关键设计**：
+- 通过 PTS（Presentation Timestamp）精确控制帧的时间位置
+- 帧间隔 = `1 / target_fps`，确保下游以 `target_fps` 重新采样时恰好取到所有帧
+- 使用 CRF=0 无损编码 + ultrafast preset，减少画质损失
+- 编码器内部帧率设为 30fps（仅影响 time_base 精度），实际帧间隔通过 PTS 控制
+
+```python
+# 静态方法 — 可独立使用
+video_b64 = VideoDecoder.encode_frames_to_video(
+    frames_b64=frames,
+    target_fps=0.5,  # vLLM 的采样 fps
+)
+
+# 实例方法 — decode + encode 组合
+vd = VideoDecoder(method="decord", fps=0.5)
+video_b64 = vd.decode_to_video(base64_video, target_fps=0.5)
+```
 
 ---
 
@@ -338,6 +379,9 @@ graph LR
 | `av` (PyAV) | ≥10.0.0 | FFmpegDecoder 底层解码（FFmpeg C API 绑定） | `pip install peek[cv]` |
 | `opencv-python` | ≥4.8.0 | OpenCVDecoder、opencv 信息探测后端 | `pip install peek[cv]` |
 | `decord` | — | DecordDecoder（高性能解码） | `pip install decord` |
+| `qwen-vl-utils` | — | QwenVLDecoder（Qwen3-VL 预处理） | `pip install qwen-vl-utils` |
+| `torch` | — | QwenVLDecoder 依赖 | `pip install torch` |
+| `torchvision` | — | QwenVLDecoder 依赖 | `pip install torchvision` |
 | `Pillow` | — | 图片格式转换、缩放 | 核心依赖 |
 
 ### 4.2 系统依赖
@@ -352,7 +396,7 @@ graph LR
 
 | 优先级 | 功能 | 状态 | 说明 |
 |:------:|------|:----:|------|
-| P0 | 视频解码（抽帧） | ✅ 已完成 | 支持 decord / opencv / ffmpeg 三种后端 |
+| P0 | 视频解码（抽帧） | ✅ 已完成 | 支持 decord / opencv / ffmpeg / qwenvl 四种后端 |
 | P0 | 智能缩放 | ✅ 已完成 | Qwen2-VL 兼容的 smart_resize |
 | P0 | 视频信息获取 | ✅ 已完成 | 时长、帧率、分辨率、编码格式等 |
 | P0 | 视频截取/分割 | ✅ 已完成 | 按时间段裁剪、固定时长分割 |
@@ -400,6 +444,18 @@ from peek.cv.video import DecodeConfig
 config = DecodeConfig(start_time=10.0, end_time=30.0, gpu_id=0)
 vd = VideoDecoder(method="ffmpeg", fps=1.0, decode_config=config)
 frames = vd.decode(base64_video)
+
+# 方式4: qwenvl 模式（与 Qwen3-VL 预处理 100% 一致）
+vd = VideoDecoder(method="qwenvl", fps=0.5)
+frames = vd.decode(base64_video)  # 使用 qwen-vl-utils 的 smart_nframes + smart_resize
+
+# 方式5: 预解码后重新编码为 mp4 视频（保持 temporal position embedding）
+vd = VideoDecoder(method="decord", fps=0.5)
+video_b64 = vd.decode_to_video(base64_video, target_fps=0.5)  # 返回 mp4 视频 base64
+
+# 方式6: 将帧列表重新编码为 mp4 视频（静态方法，可独立使用）
+frames = vd.decode(base64_video)
+video_b64 = VideoDecoder.encode_frames_to_video(frames, target_fps=0.5)
 
 # 带智能缩放
 size = {"shortest_edge": 196608, "longest_edge": 524288}
@@ -547,13 +603,13 @@ for batch in OpenCVDecoder(fps=1.0).decode_batches(video_bytes, batch_size=5):
 
 ## 7. 单元测试
 
-测试文件位于 `tests/unit/` 目录下，共 **6 个测试文件**、**174 个测试用例**（168 passed + 6 skipped）。
+测试文件位于 `tests/unit/` 目录下，共 **6 个测试文件**、**177+ 个测试用例**（177 passed + 6 skipped）。
 
 | 测试文件 | 测试模块 | 用例数 | 覆盖内容 |
 |---------|---------|:------:|--------|
 | `test_video_resize.py` | `resize.py` | 13 | smart_resize 尺寸计算、smart_resize_image 图片缩放、边界情况 + 真实帧缩放 |
-| `test_video_decoder.py` | `decoder/*` | 62 | BaseDecoder 属性/帧索引/图片转换/批量读帧默认实现、DecoderFactory 创建、DecodeConfig + 真实视频解码（decord/opencv/ffmpeg）+ 流式批量读帧 + 解码器一致性对比 |
-| `test_video_facade.py` | `video_decoder.py` | 18 | VideoDecodeMethod 枚举、vllm 模式、属性 + 真实视频门面类测试 |
+| `test_video_decoder.py` | `decoder/*` | 62+ | BaseDecoder 属性/帧索引/图片转换/批量读帧默认实现、Qwen3-VL 采样一致性验证、DecoderFactory 创建、DecodeConfig + 真实视频解码（decord/opencv/ffmpeg）+ 流式批量读帧 + 解码器一致性对比 |
+| `test_video_facade.py` | `video_decoder.py` | 30+ | VideoDecodeMethod 枚举、vllm 模式、属性 + TestEncodeFramesToVideo（7 个用例：基本编码/单帧/空帧异常/自定义参数/不同尺寸/可解码验证）+ decode_to_video 集成测试 + 真实视频门面类测试 |
 | `test_video_info.py` | `info.py` | 32 | 工具函数、StreamInfo/VideoInfo 数据类、流解析、probe 入口 + 真实视频 ffprobe/opencv 探测及一致性对比 |
 | `test_video_clip.py` | `clip.py` | 9 | VideoClip.cut 参数校验 + 真实视频截取/分割 |
 | `test_video_filter.py` | `filter/*` | 38 | ScaleFilter/CropFilter/TransformFilter 构建、VideoFilter 链式调用 + 真实视频滤镜（缩放/裁剪/旋转/链式组合） |
@@ -611,6 +667,31 @@ for batch in OpenCVDecoder(fps=1.0).decode_batches(video_bytes, batch_size=5):
 - 保持对外接口向后兼容（tide 项目中 `from peek.cv.video import VideoDecoder` 无需修改）
 - 统一 base64 编解码的封装（外部传入 base64，内部转为 bytes 后调用具体解码器）
 - 支持 `vllm` 模式（不预解码，返回 None）
+
+### 8.4 新增 QwenVLDecoder（基于 qwen-vl-utils）
+
+**决策**：新增 `QwenVLDecoder`，直接调用 Qwen3-VL 官方 `qwen-vl-utils` 库的 `fetch_video()` 实现视频解码。
+
+**原因**：
+- 即使 peek 已对齐 Qwen3-VL 的帧采样算法（round + FRAME_FACTOR 对齐 + linspace），resize 环节仍有差异：peek 使用 PIL 的 LANCZOS，而 Qwen3-VL 官方使用 torchvision 的 BICUBIC
+- 对于追求**与 Qwen3-VL 100% 一致**的场景，直接使用官方库是最可靠的方式
+- QwenVLDecoder 可作为基准（baseline），用于验证其他解码器的对齐程度
+
+**权衡**：QwenVLDecoder 需要额外安装 `torch`、`torchvision`、`qwen-vl-utils` 依赖，不如 decord/ffmpeg 轻量
+
+### 8.5 预解码帧重新编码为 mp4 视频（input_mode=video）
+
+**决策**：当 `input_mode=video` 时，将预解码帧通过 PyAV 重新编码为 H.264 mp4 视频，以 `video_url`（data URI）方式传入 vLLM。
+
+**原因**：
+- Qwen3-VL 使用 **3D RoPE**（旋转位置编码），以 `video_url` 传入时帧之间有 **temporal position embedding**（时间维度编码），模型能理解帧间的运动、变化和因果关系
+- 以多个 `image_url` 传入时，模型将其视为独立图片，没有时序信息，影响视频理解效果
+- vLLM 的 OpenAI 兼容 API 不支持 `type: video` 格式，只能通过 `video_url` 传入视频
+
+**关键设计**：
+- 使用 CRF=0 无损编码 + ultrafast preset，最小化画质损失
+- 通过 PTS 精确控制帧间隔（`1/target_fps`），确保 vLLM 重新采样时恰好取到所有帧
+- 编码器内部帧率设为 30fps（仅影响 time_base 精度），实际帧间隔由 PTS 控制
 
 ---
 
@@ -690,7 +771,54 @@ for batch in OpenCVDecoder(fps=1.0).decode_batches(video_bytes, batch_size=5):
 | **原因** | `_compute_frame_indices` 方法中 `sample_interval = max(1, int(video_fps / self._fps))`，当 `fps=0` 时会触发 `ZeroDivisionError`，没有提供"不采样、全帧解码"的语义 |
 | **解决** | 在 `BaseDecoder._compute_frame_indices` 中增加判断：当 `fps <= 0` 时，采样间隔固定为 1（即解码所有帧）。同时更新 `fps` 参数文档说明为"0 或负数表示不采样（解码所有帧）"。该修改对所有三种解码器（Decord/OpenCV/FFmpeg）统一生效 |
 
-### 9.10 支持流式批量读帧（decode_batches）
+### 9.10 帧采样逻辑与 Qwen3-VL 不一致导致帧数差异
+
+| 项目 | 内容 |
+|------|------|
+| **问题** | ffmpeg/decord 预解码模式和 vLLM 自行解码模式推理出来的结果不一样，首先排查发现帧数不一致：ffmpeg 预解码 3 帧，而 Qwen3-VL 采样 4 帧 |
+| **原因** | peek 的 `_compute_frame_indices` 使用 `int(video_fps / fps)` 固定间隔采样，而 Qwen3-VL 使用 `round(duration * fps)` + `FRAME_FACTOR=2` 对齐 + `np.linspace` 均匀分布采样。以 `total_frames=125, video_fps=24.0, fps=0.5` 为例：peek 计算 `sample_interval=48, range(0,125,48)=[0,48,96]` → 3 帧；Qwen3-VL 计算 `nframes=round(5.21*0.5)=3, align(2)=4, linspace(0,124,4)=[0,41,83,124]` → 4 帧 |
+| **解决** | 修改 `BaseDecoder._compute_frame_indices` 方法，采用与 Qwen3-VL 完全一致的采样逻辑：`round()` + `max(nframes, FRAME_FACTOR)` + `ceil(nframes/FRAME_FACTOR)*FRAME_FACTOR` 向上对齐 + `np.linspace` 均匀分布采样。新增类常量 `FRAME_FACTOR = 2`，新增 `import math` 和 `import numpy as np`。同时新增 `test_compute_frame_indices_qwen3vl_consistency` 测试用例，覆盖 6 个典型场景逐一验证与 Qwen3-VL 公式一致 |
+
+### 9.11 预解码帧以 image_url 传入导致推理结果与 vLLM 模式不一致
+
+| 项目 | 内容 |
+|------|------|
+| **问题** | 修复帧采样逻辑后，预解码模式（decord/ffmpeg）与 vLLM 自行解码模式的推理结果仍然不一致。即使使用 PNG 无损编码、不做预 resize，结果依然不同 |
+| **原因** | 根本原因是**传入方式不同**导致模型的理解方式不同。预解码模式以多个独立 `image_url` 传入 → Qwen3-VL 将其当作 **N 张独立图片**处理（没有 temporal position embedding）；vLLM 自行解码模式以一个 `video_url` 传入 → 模型当作**一段视频**处理（有 temporal position embedding，基于 3D RoPE 的时间维度编码）。这导致模型对相同画面的理解完全不同 |
+| **解决** | 分两步解决：① 在 `video_decode` 配置中新增 `input_mode` 配置项（`image` / `video`），控制预解码帧传入 vLLM 的方式；② 当 `input_mode=video` 时，将预解码帧通过 PyAV 重新编码为 H.264 mp4 视频（CRF=0 无损），通过 PTS 控制帧间隔（`1/vllm_fps`），确保 vLLM 重新采样时恰好取到所有帧，最终以 `video_url` 方式传入。这样 vLLM 会将其作为视频处理，保持 temporal position embedding 与 vLLM 自行解码一致 |
+
+### 9.12 Temporal Position Embedding 概念说明
+
+| 项目 | 内容 |
+|------|------|
+| **概念** | **Temporal = 帧的时间位置信息**。Qwen3-VL 使用 **3D RoPE**（旋转位置编码），在 temporal（时间）、height（高度）、width（宽度）三个维度上编码位置。当以 `video_url` 传入时，帧之间有连续的时间位置编码；以多个 `image_url` 传入时，每张图片各自编码，互相没有时序关系 |
+| **影响** | 有 temporal 信息时，模型能更好地理解：运动（人走进来）、变化（门打开了）、因果（先拿手机再扫码）、时序（先在店外再到店内）。没有 temporal 信息时，模型只能独立看每一帧，靠自己"猜"帧间关系。这就是 `input_mode=video` 理论上比 `input_mode=image` 效果更好的原因 |
+
+### 9.13 新增 QwenVL 解码方式（qwen-vl-utils）
+
+| 项目 | 内容 |
+|------|------|
+| **问题** | 已有的 decord/opencv/ffmpeg 解码器都是 peek 自己实现的采样和 resize 逻辑，虽然已经对齐了 Qwen3-VL 的采样公式，但 resize 方法仍有差异（LANCZOS vs BICUBIC），可能影响推理效果 |
+| **原因** | Qwen3-VL 官方 [qwen-vl-utils](https://github.com/QwenLM/Qwen3-VL/tree/main/qwen-vl-utils) 库内部使用 torchvision 的 BICUBIC 插值进行 resize，而 peek 使用 PIL 的 LANCZOS。两种插值算法产生的像素值略有不同 |
+| **解决** | 新增 `QwenVLDecoder`，基于 `qwen-vl-utils` 的 `fetch_video()` 函数实现，**与 Qwen3-VL 的预处理逻辑 100% 一致**。实现细节：将视频写入临时文件 → 调用 `fetch_video()` 获取 tensor（包含 smart_nframes 采样 + smart_resize）→ tensor 转换为 PIL Image 列表 → 输出 base64/bytes。在 `DecoderFactory` 中注册 `qwenvl` 类型，`VideoDecodeMethod` 枚举新增 `QWENVL` |
+
+### 9.14 qwenvl 解码方式以 type=video 传入 vLLM 报错
+
+| 项目 | 内容 |
+|------|------|
+| **问题** | 当 `input_mode=video` 且 `method=qwenvl` 时，尝试以 Qwen2-VL 官方示例中的 `{"type": "video", "video": [帧列表]}` 格式传入 vLLM，报错 `Unknown part type: video` |
+| **原因** | vLLM 的 OpenAI 兼容 API 不支持 `type: video` 这种消息格式。vLLM 的 chat_utils.py 只支持 `text`、`image_url` 等标准 OpenAI 类型，`video` 不是 OpenAI Chat Completion API 的标准 part type |
+| **解决** | 放弃使用 `type: video` 格式。对于 `input_mode=video`，统一将预解码帧重新编码为 mp4 视频后以 `video_url`（data URI）方式传入。qwenvl 解码方式也遵循同样的逻辑：qwenvl 解码 → 获得帧 → 重新编码为 mp4 → 以 `video_url` 传入 vLLM |
+
+### 9.15 Dockerfile 中需要安装 qwen-vl-utils 依赖
+
+| 项目 | 内容 |
+|------|------|
+| **问题** | 新增 QwenVLDecoder 后，线上部署的 Docker 镜像中没有 `qwen-vl-utils` 库，导致使用 `method=qwenvl` 时报 ImportError |
+| **原因** | `qwen-vl-utils` 不在原有的依赖列表中，需要在 Dockerfile 中显式安装 |
+| **解决** | 在 `docker/base/Dockerfile.vllm-base` 的 pip install 步骤中添加 `qwen-vl-utils`。该库会自动安装 `decord` 作为视频解码后端。如果 GPU 环境中已有 `torch` 和 `torchvision`，则无需额外安装 |
+
+### 9.16 支持流式批量读帧（decode_batches）
 
 | 项目 | 内容 |
 |------|------|
@@ -717,3 +845,8 @@ for batch in OpenCVDecoder(fps=1.0).decode_batches(video_bytes, batch_size=5):
 | pytest 日志 | 配置 pyproject.toml 启用 log_cli，测试文件注释补充 --log-cli-level=INFO 命令 |
 | fps=0 全帧解码 | BaseDecoder 支持 fps<=0 表示全帧解码（不采样），新增对应单元测试和集成测试 |
 | 流式批量读帧 | 新增 decode_batches()/decode_batches_to_bytes() 迭代器方法，对应 kingfisher read_frames(batch_size) 循环模式，三种解码器均支持真正的流式实现 |
+| 帧采样逻辑对齐 Qwen3-VL | 修改 BaseDecoder._compute_frame_indices 方法，采用 round() + FRAME_FACTOR=2 对齐 + np.linspace 均匀分布采样，与 Qwen3-VL 完全一致 |
+| input_mode 配置 | video_decode 新增 input_mode 配置（image/video），video 模式将帧重新编码为 mp4 后以 video_url 传入，保持 temporal position embedding |
+| 帧重新编码为视频 | 新增 VideoDecoder.encode_frames_to_video 静态方法和 decode_to_video 实例方法，从 tide 的 _frames_to_mp4_base64 重构而来 |
+| QwenVL 解码器 | 新增 QwenVLDecoder，基于 qwen-vl-utils 的 fetch_video 实现，与 Qwen3-VL 预处理逻辑 100% 一致 |
+| 测试用例更新 | 新增 Qwen3-VL 采样一致性测试（6 个场景）、TestEncodeFramesToVideo（7 个测试）、decode_to_video 集成测试 |
