@@ -627,6 +627,67 @@ python tools/process_monitor.py \
 6. **子进程退出**: 如果子进程意外退出，MonitorService 的 `_ensure_monitor` 会在下次调用时自动重新发现存活的进程
 7. **GPU 争用**: pynvml 只是读取 GPU 状态（nvidia-smi 级别），不会影响 GPU 推理性能
 
+## `history_size` 内存消耗估算
+
+历史记录存储在 `deque(maxlen=history_size)` 中。当 `include_children: true` 时，使用 `MultiProcessMonitor`，每条记录是一个 `MultiProcessStats` 对象。
+
+### 每条记录的数据结构
+
+| 层级 | 数据结构 | 字段内容 | 估算大小 |
+|------|---------|---------|---------|
+| `MultiProcessStats` | dataclass | `timestamp`(datetime) + `process_stats`(dict) | ~200 bytes 基础开销 |
+| └─ `ProcessStats`（每个进程） | dataclass | 13 个标量字段 + `gpu_stats` 列表 | ~400 bytes |
+| └─ `GPUStats`（每张 GPU 卡） | dataclass | 8 个标量字段 | ~200 bytes |
+
+### 分场景内存估算
+
+以下以 `history_size: 36000`（5 秒间隔 × 36000 条 = 50 小时）为例：
+
+**场景 1：仅主进程，GPU 关闭**
+
+每条记录 ≈ ~600 bytes（`MultiProcessStats` + 1 个 `ProcessStats`）
+
+```
+36000 条 × 600 bytes ≈ 21.6 MB
+```
+
+**场景 2：主进程 + 1 个 vLLM 子进程，GPU 关闭**（典型配置）
+
+每条记录 ≈ ~1000 bytes（`MultiProcessStats` + 2 个 `ProcessStats`）
+
+```
+36000 条 × 1000 bytes ≈ 36 MB
+```
+
+**场景 3：主进程 + 1 个 vLLM 子进程，GPU 开启（1 张卡）**
+
+每条记录 ≈ ~1400 bytes（每个 `ProcessStats` 多一个 `GPUStats` 约 200 bytes）
+
+```
+36000 条 × 1400 bytes ≈ 50.4 MB
+```
+
+### 不同 `history_size` 的内存对照表
+
+以「主进程 + 1 个 vLLM 子进程，GPU 关闭」为基准（每条 ~1000 bytes）：
+
+| `history_size` | 覆盖时长（5s 间隔） | 估算内存 |
+|----------------|---------------------|---------|
+| 3600（默认值） | 5 小时 | **~3.5 MB** |
+| 7200 | 10 小时 | **~7 MB** |
+| 36000 | 50 小时 | **~36 MB** |
+
+### 完整场景对照表
+
+| 场景 | history_size=3600 | history_size=36000 |
+|------|-------------------|-------------------|
+| 仅主进程，GPU 关闭 | ~2 MB | ~20-25 MB |
+| 主进程 + vLLM 子进程，GPU 关闭 | ~3.5 MB | ~35-40 MB |
+| 主进程 + vLLM 子进程，GPU 开启（1 卡） | ~5 MB | ~50 MB |
+| 主进程 + vLLM 子进程，GPU 开启（4 卡） | ~7 MB | ~70-80 MB |
+
+> **说明**：以上估算已包含 Python 对象的额外开销（对象头、引用计数、字典等），实际内存可能比纯数据量大 2-3 倍。对于模型推理服务来说，36000 条记录的内存占用（35-40 MB）影响很小。
+
 ## 文件清单
 
 ### peek 层
