@@ -35,6 +35,11 @@ from peek.os.monitor.visualizer import (
     MultiProcessVisualizer,
     MultiProcessRealtimeChart,
 )
+from peek.os.monitor.service import (
+    MonitorService,
+    MonitorServiceConfig,
+    register_monitor_routes,
+)
 
 __all__ = [
     "ProcessMonitor",
@@ -47,4 +52,7 @@ __all__ = [
     "MultiProcessStats",
     "MultiProcessVisualizer",
     "MultiProcessRealtimeChart",
+    "MonitorService",
+    "MonitorServiceConfig",
+    "register_monitor_routes",
 ]
