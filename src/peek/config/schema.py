@@ -185,3 +185,34 @@ class MonitorConfig(BaseModel):
     enable_gpu: bool = Field(default=True, description="是否启用 GPU 监控")
     include_children: bool = Field(default=True, description="是否监控子进程")
     history_size: int = Field(default=3600, ge=0, description="历史记录最大条数")
+
+
+class DatabaseConfig(BaseModel):
+    """
+    数据库配置
+
+    对应 Go 版本 database 配置，聚合 MySQL 和 Redis 配置。
+    """
+
+    mysql: "MySQLConfig" = Field(default=None, description="MySQL 配置")
+    redis: "RedisConfig" = Field(default=None, description="Redis 配置")
+
+    @field_validator("mysql", mode="before")
+    @classmethod
+    def parse_mysql(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            from peek.database.mysql.config import MySQLConfig
+            return MySQLConfig.model_validate(v)
+        return v
+
+    @field_validator("redis", mode="before")
+    @classmethod
+    def parse_redis(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            from peek.database.redis.config import RedisConfig
+            return RedisConfig.model_validate(v)
+        return v
