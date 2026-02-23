@@ -24,6 +24,12 @@ from peek.errors.errors import (
     RateLimitError,
     ErrorCode,
 )
+from peek.errors.handler import (
+    install_error_handlers,
+    format_validation_error,
+    format_validation_errors,
+    build_validation_response,
+)
 
 __all__ = [
     "AppError",
@@ -37,4 +43,8 @@ __all__ = [
     "AppTimeoutError",
     "RateLimitError",
     "ErrorCode",
+    "install_error_handlers",
+    "format_validation_error",
+    "format_validation_errors",
+    "build_validation_response",
 ]

@@ -8,6 +8,7 @@ Modules:
 - peek.context: Request context propagation (RequestContext, contextvars)
 - peek.database: Database connectors (MySQL, Redis) with health check
 - peek.errors: Unified error handling (AppError, HTTP/gRPC auto-mapping)
+- peek.validation: Request parameter validation (rules, decorators, gRPC interceptor)
 - peek.logs: Logging framework with rotation support
 - peek.net.webserver: Web server framework (FastAPI-based)
 - peek.net.grpc: gRPC server and client

@@ -231,20 +231,28 @@ class RequestIDInterceptor(UnaryServerInterceptor):
         method_name: str,
         handler: Callable[[Any, grpc.ServicerContext], Any],
     ) -> Any:
+        # ===== 参考 golang HandleReuestId 拦截器 =====
+        # 优先级：请求 body > metadata > trace_id > UUID
+
         # 尝试从 metadata 获取 request_id
         metadata = dict(context.invocation_metadata() or [])
         request_id = metadata.get(self.REQUEST_ID_METADATA_KEY)
 
         # 如果请求对象有 request_id 字段，优先使用
-        if hasattr(request, "request_id") and request.request_id:
+        # （与 golang reflect_.RetrieveId(req, ...) 对应）
+        request_body_has_id = (
+            hasattr(request, "request_id") and request.request_id
+        )
+        if request_body_has_id:
             request_id = request.request_id
         elif not request_id:
-            # 生成新的 request_id
+            # 生成新的 request_id（兜底）
             request_id = str(uuid.uuid4())
 
         # 设置到 context variable（使用 peek.context）
         token = request_id_var.set(request_id)
         trace_token = None
+        trace_id = ""
 
         # 尝试从 OTel 获取 trace_id
         if OTEL_AVAILABLE:
@@ -262,12 +270,23 @@ class RequestIDInterceptor(UnaryServerInterceptor):
                 (self.REQUEST_ID_METADATA_KEY, request_id)
             ])
 
+            # 如果请求 body 没有 request_id，反写到 request（与 golang TrySetId 对应）
+            if not request_body_has_id and hasattr(request, "request_id"):
+                try:
+                    request.request_id = request_id
+                except AttributeError:
+                    pass
+
             response = handler(request, context)
 
-            # 如果响应对象有 request_id 字段，设置它
+            # 自动将 request_id 设置到 response（与 golang TrySetId(resp, ...) 对应）
+            # 如果 response 中 request_id 为空，优先使用 trace_id 填充
             if hasattr(response, "request_id"):
                 try:
-                    response.request_id = request_id
+                    if not response.request_id:
+                        # 优先 trace_id，兜底 request_id
+                        response.request_id = trace_id if trace_id else request_id
+                    # 如果 response 已有值（业务层设置），保持不变
                 except AttributeError:
                     pass  # 只读字段
 

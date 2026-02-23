@@ -14,6 +14,9 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from peek.context import get_request_id as _ctx_get_request_id
+from peek.context import get_trace_id as _ctx_get_trace_id
+
 
 class LoggerMiddleware(BaseHTTPMiddleware):
     """
@@ -178,13 +181,23 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # 获取 request_id（如果存在）
-        request_id = getattr(request.state, "request_id", "-")
+        # 优先从 request.state 获取，备选从 contextvars 获取
+        request_id = getattr(request.state, "request_id", "") or _ctx_get_request_id() or "-"
+
+        # 获取 trace_id（如果存在），用于日志关联
+        trace_id = _ctx_get_trace_id()
+
+        # 格式化日志前缀，与 gRPC 拦截器保持一致
+        if trace_id:
+            prefix = f"[{request_id}] [trace_id={trace_id}]"
+        else:
+            prefix = f"[{request_id}]"
 
         # 获取客户端 IP
         client_ip = request.client.host if request.client else "-"
 
         # 记录请求
-        log_msg = f"[{request_id}] --> {request.method} {request.url.path} from {client_ip}"
+        log_msg = f"{prefix} --> {request.method} {request.url.path} from {client_ip}"
 
         # 记录请求头（类似 Go 版 InOutputHeaderPrinter 的 recv headers）
         if self.log_request_headers:
@@ -212,7 +225,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             # 记录响应
             response_body_str = self._format_response_body(response_body)
             log_msg = (
-                f"[{request_id}] <-- {request.method} {request.url.path} "
+                f"{prefix} <-- {request.method} {request.url.path} "
                 f"{response.status_code}"
             )
 
@@ -237,7 +250,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
 
             # 记录响应
             log_msg = (
-                f"[{request_id}] <-- {request.method} {request.url.path} "
+                f"{prefix} <-- {request.method} {request.url.path} "
                 f"{response.status_code}"
             )
 
