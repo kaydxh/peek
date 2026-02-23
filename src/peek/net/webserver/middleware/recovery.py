@@ -16,6 +16,8 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from peek.errors.errors import AppError
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +43,18 @@ class RecoveryMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         try:
             return await call_next(request)
+        except AppError as e:
+            # AppError 有明确的 HTTP 状态码，直接转换
+            request_id = getattr(request.state, "request_id", "-")
+            logger.warning(
+                "[%s] AppError: code=%d, message=%s",
+                request_id, e.code, e.message,
+            )
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=e.http_status,
+                content=e.to_dict(),
+            )
         except Exception as e:
             # 获取 request_id
             request_id = getattr(request.state, "request_id", "-")
@@ -61,6 +75,7 @@ class RecoveryMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=500,
                 content={
+                    "code": 500,
                     "error": error_detail,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },

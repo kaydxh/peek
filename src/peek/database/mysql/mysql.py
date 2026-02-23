@@ -54,6 +54,8 @@ async def create_mysql_engine(
         pool_size=config.max_idle_connections,
         max_overflow=max(config.max_connections - config.max_idle_connections, 0),
         pool_recycle=int(config.max_life_time) if config.max_life_time > 0 else -1,
+        pool_pre_ping=config.pool_pre_ping,
+        pool_timeout=config.pool_timeout if config.pool_timeout > 0 else 30,
         echo=False,
     )
 
@@ -91,3 +93,58 @@ async def close_mysql_engine(engine: Any) -> None:
     if engine is not None:
         await engine.dispose()
         logger.info("MySQL 连接已关闭")
+
+
+async def check_mysql_health(engine: Any) -> Optional[Exception]:
+    """
+    检查 MySQL 连接健康状态
+
+    可用于注册到 HealthzController 的 readyz_checkers。
+
+    Args:
+        engine: SQLAlchemy AsyncEngine 实例
+
+    Returns:
+        None 表示健康，Exception 表示不健康
+    """
+    if engine is None:
+        return Exception("MySQL engine is None")
+
+    try:
+        import sqlalchemy
+        async with engine.connect() as conn:
+            await conn.execute(sqlalchemy.text("SELECT 1"))
+        return None
+    except Exception as e:
+        return Exception(f"MySQL health check failed: {e}")
+
+
+def get_mysql_pool_stats(engine: Any) -> Dict:
+    """
+    获取 MySQL 连接池统计信息
+
+    Args:
+        engine: SQLAlchemy AsyncEngine 实例
+
+    Returns:
+        连接池统计字典，包含：
+        - pool_size: 连接池大小
+        - checked_in: 空闲连接数
+        - checked_out: 使用中的连接数
+        - overflow: 溢出连接数
+        - invalid: 无效连接数
+    """
+    if engine is None:
+        return {}
+
+    try:
+        pool = engine.pool
+        return {
+            "pool_size": pool.size(),
+            "checked_in": pool.checkedin(),
+            "checked_out": pool.checkedout(),
+            "overflow": pool.overflow(),
+            "invalid": pool.invalidated if hasattr(pool, 'invalidated') else 0,
+        }
+    except Exception:
+        return {}

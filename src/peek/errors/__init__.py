@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+统一错误处理模块
+
+提供应用级统一错误体系，对应 Go 版本的 errors 包。
+
+子模块：
+- peek.errors.errors: 应用级错误类定义
+- peek.errors.handler: HTTP/gRPC 错误处理器
+"""
+
+from peek.errors.errors import (
+    AppError,
+    NotFoundError,
+    ValidationError,
+    PermissionDeniedError,
+    UnauthenticatedError,
+    ConflictError,
+    InternalError,
+    ServiceUnavailableError,
+    TimeoutError as AppTimeoutError,
+    RateLimitError,
+    ErrorCode,
+)
+
+__all__ = [
+    "AppError",
+    "NotFoundError",
+    "ValidationError",
+    "PermissionDeniedError",
+    "UnauthenticatedError",
+    "ConflictError",
+    "InternalError",
+    "ServiceUnavailableError",
+    "AppTimeoutError",
+    "RateLimitError",
+    "ErrorCode",
+]

@@ -4,8 +4,10 @@ It has very useful interface or service to develop application.
 
 Modules:
 - peek.app: Application core (BaseApp, Command, Plugin, HookManager, Provider)
-- peek.config: Configuration loader (YAML + env + Pydantic)
-- peek.database: Database connectors (MySQL, Redis)
+- peek.config: Configuration loader (YAML + env + Pydantic + Hot Reload)
+- peek.context: Request context propagation (RequestContext, contextvars)
+- peek.database: Database connectors (MySQL, Redis) with health check
+- peek.errors: Unified error handling (AppError, HTTP/gRPC auto-mapping)
 - peek.logs: Logging framework with rotation support
 - peek.net.webserver: Web server framework (FastAPI-based)
 - peek.net.grpc: gRPC server and client

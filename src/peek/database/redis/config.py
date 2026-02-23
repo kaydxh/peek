@@ -35,6 +35,7 @@ class RedisConfig(BaseModel):
     fail_after_duration: float = Field(default=300.0, ge=0, description="超过此时间后放弃连接（秒）")
     master_name: str = Field(default="mymaster", description="Sentinel 模式的 master 名称")
     ssl: bool = Field(default=False, description="是否启用 SSL")
+    health_check_interval: int = Field(default=30, ge=0, description="连接池健康检查间隔（秒），0 表示禁用")
 
     @field_validator(
         "dial_timeout", "read_timeout", "write_timeout",
