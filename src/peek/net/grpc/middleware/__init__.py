@@ -20,6 +20,12 @@ from peek.net.grpc.middleware.opentelemetry import (
     MetricInterceptor,
 )
 
+# 参数校验拦截器（延迟导入避免循环依赖）
+try:
+    from peek.validation.grpc_interceptor import ValidationInterceptor
+except ImportError:
+    ValidationInterceptor = None
+
 __all__ = [
     # 限流
     "QPSLimitInterceptor",
@@ -28,4 +34,6 @@ __all__ = [
     # OpenTelemetry
     "TraceInterceptor",
     "MetricInterceptor",
+    # 参数校验
+    "ValidationInterceptor",
 ]

@@ -355,6 +355,14 @@ class GenericWebServer:
         # RequestID 中间件 - 生成/传递请求ID（最后添加，最先执行）
         self.app.add_middleware(RequestIDMiddleware)
 
+        # 安装统一错误处理器（处理 AppError、Pydantic ValidationError 等）
+        try:
+            from peek.errors.handler import install_error_handlers
+            install_error_handlers(self.app)
+            logger.debug("Installed unified error handlers (AppError, ValidationError)")
+        except ImportError:
+            pass
+
     @asynccontextmanager
     async def _lifespan(self, app: FastAPI):
         """

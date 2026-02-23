@@ -18,6 +18,9 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from peek.context import get_request_id as _ctx_get_request_id
+from peek.context import get_trace_id as _ctx_get_trace_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,11 +85,21 @@ class HttpTimerMiddleware(BaseHTTPMiddleware):
         response.headers[self.header_name] = f"{duration_ms}ms"
 
         # 获取 request_id（如果存在），用于日志关联
-        request_id = getattr(request.state, "request_id", "-")
+        # 优先从 request.state 获取，备选从 contextvars 获取
+        request_id = getattr(request.state, "request_id", "") or _ctx_get_request_id() or "-"
+
+        # 获取 trace_id（如果存在），用于日志关联
+        trace_id = _ctx_get_trace_id()
+
+        # 格式化日志前缀，与 gRPC 拦截器保持一致
+        if trace_id:
+            prefix = f"[{request_id}] [trace_id={trace_id}]"
+        else:
+            prefix = f"[{request_id}]"
 
         # 打印耗时日志，格式类似 Go 版本:
-        # [request_id] http cost POST /wx_video_scene_audit: 1234.56ms
+        # [request_id] [trace_id=xxx] http cost POST /wx_video_scene_audit: 1234.56ms
         callee_method = f"{request.method} {request.url.path}"
-        self.log.info("[%s] http cost %s: %sms", request_id, callee_method, duration_ms)
+        self.log.info("%s http cost %s: %sms", prefix, callee_method, duration_ms)
 
         return response
