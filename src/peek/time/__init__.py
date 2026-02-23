@@ -25,6 +25,7 @@ from peek.time.backoff import (
     retry_with_backoff_sync,
 )
 from peek.time.func_duration_controller import FunctionDurationController
+from peek.time.parse import parse_duration
 from peek.time.wait import (
     # 异常类
     ConditionNotMetError,
@@ -60,6 +61,8 @@ from peek.time.wait import (
 )
 
 __all__ = [
+    # ===== parse 模块 =====
+    "parse_duration",
     # ===== backoff 模块 =====
     # 类
     "ExponentialBackOff",
