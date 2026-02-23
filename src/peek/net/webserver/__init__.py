@@ -49,6 +49,11 @@ from peek.net.webserver.healthz import (
     FuncHealthChecker,
     CompositeHealthChecker,
 )
+from peek.net.webserver.factory import (
+    create_web_server,
+    install_grpc_interceptors,
+    install_qps_limit_middleware,
+)
 
 __all__ = [
     # Server
@@ -86,4 +91,8 @@ __all__ = [
     "TCPHealthChecker",
     "FuncHealthChecker",
     "CompositeHealthChecker",
+    # Factory
+    "create_web_server",
+    "install_grpc_interceptors",
+    "install_qps_limit_middleware",
 ]
