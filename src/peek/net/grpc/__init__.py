@@ -27,6 +27,7 @@ from peek.net.grpc.interceptor import (
     create_default_interceptor_chain,
     get_request_id,
     get_start_time,
+    get_trace_id,
 )
 from peek.net.grpc.config import (
     GRPCConfig,

@@ -17,6 +17,14 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import grpc
 
+# 尝试导入 OpenTelemetry
+try:
+    from opentelemetry import trace as otel_trace
+    OTEL_AVAILABLE = True
+except ImportError:
+    OTEL_AVAILABLE = False
+    otel_trace = None
+
 logger = logging.getLogger(__name__)
 
 # Context variables for request-scoped data
@@ -32,6 +40,23 @@ def get_request_id() -> Optional[str]:
 def get_start_time() -> Optional[float]:
     """获取当前请求的开始时间"""
     return start_time_var.get()
+
+
+def get_trace_id() -> str:
+    """获取当前 OpenTelemetry Span 的 trace_id
+
+    Returns:
+        trace_id 十六进制字符串，如果不可用则返回空字符串
+    """
+    if not OTEL_AVAILABLE:
+        return ""
+    try:
+        span = otel_trace.get_current_span()
+        if span and span.get_span_context().trace_id:
+            return format(span.get_span_context().trace_id, "032x")
+    except Exception:
+        pass
+    return ""
 
 
 class UnaryServerInterceptor(grpc.ServerInterceptor, ABC):
@@ -298,6 +323,13 @@ class LoggingInterceptor(UnaryServerInterceptor):
             return text[:self.max_log_length] + "..."
         return text
 
+    def _format_prefix(self, request_id: str) -> str:
+        """格式化日志前缀，包含 request_id 和 trace_id"""
+        trace_id = get_trace_id()
+        if trace_id:
+            return f"[{request_id}] [trace_id={trace_id}]"
+        return f"[{request_id}]"
+
     def intercept_unary(
         self,
         request: Any,
@@ -306,16 +338,17 @@ class LoggingInterceptor(UnaryServerInterceptor):
         handler: Callable[[Any, grpc.ServicerContext], Any],
     ) -> Any:
         request_id = get_request_id() or "unknown"
+        prefix = self._format_prefix(request_id)
 
         if self.log_request:
             request_str = self._truncate(str(request))
-            logger.info(f"[{request_id}] gRPC Request {method_name}: {request_str}")
+            logger.info(f"{prefix} gRPC Request {method_name}: {request_str}")
 
         response = handler(request, context)
 
         if self.log_response:
             response_str = self._truncate(str(response))
-            logger.info(f"[{request_id}] gRPC Response {method_name}: {response_str}")
+            logger.info(f"{prefix} gRPC Response {method_name}: {response_str}")
 
         return response
 
@@ -329,13 +362,13 @@ class TimerInterceptor(UnaryServerInterceptor):
     def __init__(
         self,
         slow_threshold_ms: float = 1000,
-        log_all: bool = False,
+        log_all: bool = True,
     ):
         """初始化
 
         Args:
             slow_threshold_ms: 慢请求阈值（毫秒），超过则记录警告
-            log_all: 是否记录所有请求的耗时
+            log_all: 是否记录所有请求的耗时（默认为 True）
         """
         self.slow_threshold_ms = slow_threshold_ms
         self.log_all = log_all
@@ -355,14 +388,19 @@ class TimerInterceptor(UnaryServerInterceptor):
 
             elapsed_ms = (time.time() - start_time) * 1000
             request_id = get_request_id() or "unknown"
+            trace_id = get_trace_id()
+            if trace_id:
+                prefix = f"[{request_id}] [trace_id={trace_id}]"
+            else:
+                prefix = f"[{request_id}]"
 
             if elapsed_ms > self.slow_threshold_ms:
                 logger.warning(
-                    f"[{request_id}] Slow gRPC request {method_name}: {elapsed_ms:.2f}ms"
+                    f"{prefix} Slow gRPC request {method_name}: {elapsed_ms:.2f}ms"
                 )
             elif self.log_all:
                 logger.info(
-                    f"[{request_id}] gRPC request {method_name}: {elapsed_ms:.2f}ms"
+                    f"{prefix} gRPC request {method_name}: {elapsed_ms:.2f}ms"
                 )
 
             return response
@@ -552,9 +590,11 @@ def create_default_interceptor_chain(
     enable_recovery: bool = True,
     enable_logging: bool = True,
     enable_timer: bool = True,
+    enable_trace: bool = True,
     log_request: bool = True,
     log_response: bool = False,
     slow_threshold_ms: float = 1000,
+    timer_log_all: bool = True,
 ) -> List[grpc.ServerInterceptor]:
     """创建默认拦截器链
 
@@ -563,9 +603,11 @@ def create_default_interceptor_chain(
         enable_recovery: 是否启用异常恢复拦截器
         enable_logging: 是否启用日志拦截器
         enable_timer: 是否启用计时拦截器
+        enable_trace: 是否启用 OpenTelemetry Trace 拦截器
         log_request: 是否记录请求内容
         log_response: 是否记录响应内容
         slow_threshold_ms: 慢请求阈值
+        timer_log_all: 是否记录所有请求的耗时（默认为 True）
 
     Returns:
         拦截器列表
@@ -575,11 +617,20 @@ def create_default_interceptor_chain(
     if enable_request_id:
         chain.add(RequestIDInterceptor())
 
+    # TraceInterceptor 放在 RequestID 之后，这样 span 中能关联 request_id
+    # 同时放在 Logging/Timer 之前，这样日志中能打印 trace_id
+    if enable_trace:
+        try:
+            from peek.net.grpc.middleware.opentelemetry import TraceInterceptor
+            chain.add(TraceInterceptor())
+        except ImportError:
+            pass
+
     if enable_recovery:
         chain.add(RecoveryInterceptor())
 
     if enable_timer:
-        chain.add(TimerInterceptor(slow_threshold_ms=slow_threshold_ms))
+        chain.add(TimerInterceptor(slow_threshold_ms=slow_threshold_ms, log_all=timer_log_all))
 
     if enable_logging:
         chain.add(LoggingInterceptor(
