@@ -1,7 +1,7 @@
 __title__ = "peek"
 __description__ = "Python userful lib."
 __url__ = "https://github.com/kaydxh/peek.git"
-__version__ = "0.0.1"
+__version__ = "0.0.5"
 __author__ = "kaydxh"
 __author_email__ = "xiao_hua_ding@sina.cn"
 __license__ = "Apache 2.0"
