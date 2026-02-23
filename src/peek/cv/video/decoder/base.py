@@ -196,16 +196,17 @@ class BaseDecoder(ABC):
 
         return indices
 
-    def _resize_frame(self, img):
+    def _resize_frame(self, img, frame_index: int = -1):
         """对帧图片进行智能缩放
 
         Args:
             img: PIL Image 对象
+            frame_index: 帧号，用于日志输出，-1 表示不打印帧号
 
         Returns:
             PIL Image: 缩放后的图片
         """
-        return smart_resize_image(img, self._shortest_edge, self._longest_edge)
+        return smart_resize_image(img, self._shortest_edge, self._longest_edge, frame_index=frame_index)
 
     def _image_to_bytes(self, img) -> bytes:
         """将 PIL Image 转换为字节数据

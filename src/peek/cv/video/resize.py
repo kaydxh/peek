@@ -65,6 +65,7 @@ def smart_resize_image(
     shortest_edge: int = 0,
     longest_edge: int = 0,
     patch_size: int = 28,
+    frame_index: int = -1,
 ):
     """对帧图片进行智能分辨率缩放
 
@@ -78,6 +79,7 @@ def smart_resize_image(
         shortest_edge: 最短边像素总数下限，0 表示不限制
         longest_edge: 最长边像素总数上限，0 表示不限制
         patch_size: ViT patch 大小，默认 28
+        frame_index: 帧号，用于日志输出，-1 表示不打印帧号
 
     Returns:
         PIL Image: 缩放后的图片（如果未设置 edge 参数则返回原图）
@@ -93,8 +95,9 @@ def smart_resize_image(
     if new_width != width or new_height != height:
         from PIL import Image as PILImage
         img = img.resize((new_width, new_height), PILImage.LANCZOS)
+        frame_info = f"frame_index={frame_index}, " if frame_index >= 0 else ""
         logger.debug(
-            f"帧图片缩放: ({width}x{height}) -> ({new_width}x{new_height}), "
+            f"帧图片缩放: {frame_info}({width}x{height}) -> ({new_width}x{new_height}), "
             f"pixels: {width * height} -> {new_width * new_height}"
         )
 

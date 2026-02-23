@@ -180,7 +180,7 @@ class FFmpegDecoder(BaseDecoder):
 
             logger.debug(
                 f"采样计划: effective_total={effective_total}, "
-                f"sample_frames={len(frame_indices)}"
+                f"sample_frames={len(frame_indices)}, frame_indices={frame_indices}"
             )
 
             # 可选 seek 到起始位置（对应 kingfisher InputFile::seek）
@@ -624,7 +624,7 @@ class FFmpegDecoder(BaseDecoder):
 
                 # 转换为 PIL Image（对应 kingfisher Frame 中 AVFrame -> cv::Mat 的转换）
                 img = frame.to_image()  # 自动转换为 RGB PIL Image
-                img = self._resize_frame(img)
+                img = self._resize_frame(img, frame_index=effective_idx)
 
                 if as_bytes:
                     frames.append(self._image_to_bytes(img))
@@ -808,7 +808,7 @@ class FFmpegDecoder(BaseDecoder):
 
                     # 转换为 PIL Image
                     img = frame.to_image()
-                    img = self._resize_frame(img)
+                    img = self._resize_frame(img, frame_index=effective_idx)
 
                     if as_bytes:
                         batch.append(self._image_to_bytes(img))
@@ -960,7 +960,7 @@ class FFmpegDecoder(BaseDecoder):
 
                 if frame_count in target_set:
                     img = frame.to_image()
-                    img = self._resize_frame(img)
+                    img = self._resize_frame(img, frame_index=frame_count)
                     if as_bytes:
                         frames.append(self._image_to_bytes(img))
                     else:
