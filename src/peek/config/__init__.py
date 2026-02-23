@@ -28,6 +28,7 @@ from peek.config.schema import (
     LogConfig,
     OpenTelemetryConfig,
     MonitorConfig,
+    DatabaseConfig,
 )
 
 __all__ = [
@@ -47,4 +48,5 @@ __all__ = [
     "LogConfig",
     "OpenTelemetryConfig",
     "MonitorConfig",
+    "DatabaseConfig",
 ]
