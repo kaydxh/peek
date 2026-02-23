@@ -66,7 +66,7 @@ async def create_redis_client(
             db=config.db,
         )
     else:
-        # 单节点模式，对应 Go 版本 redis.NewClient
+    # 单节点模式，对应 Go 版本 redis.NewClient
         connect_kwargs = dict(
             host=config.host,
             port=config.port,
@@ -75,6 +75,7 @@ async def create_redis_client(
             max_connections=config.max_connections,
             socket_connect_timeout=config.dial_timeout if config.dial_timeout > 0 else None,
             socket_timeout=config.read_timeout if config.read_timeout > 0 else None,
+            health_check_interval=config.health_check_interval if config.health_check_interval > 0 else 0,
         )
         if config.ssl:
             connect_kwargs["ssl"] = True
@@ -115,3 +116,56 @@ async def close_redis_client(client: Any) -> None:
     if client is not None:
         await client.close()
         logger.info("Redis 连接已关闭")
+
+
+async def check_redis_health(client: Any) -> Optional[Exception]:
+    """
+    检查 Redis 连接健康状态
+
+    可用于注册到 HealthzController 的 readyz_checkers。
+
+    Args:
+        client: redis.asyncio.Redis 实例
+
+    Returns:
+        None 表示健康，Exception 表示不健康
+    """
+    if client is None:
+        return Exception("Redis client is None")
+
+    try:
+        result = await client.ping()
+        if result:
+            return None
+        return Exception("Redis PING returned False")
+    except Exception as e:
+        return Exception(f"Redis health check failed: {e}")
+
+
+def get_redis_pool_stats(client: Any) -> Dict:
+    """
+    获取 Redis 连接池统计信息
+
+    Args:
+        client: redis.asyncio.Redis 实例
+
+    Returns:
+        连接池统计字典，包含：
+        - max_connections: 最大连接数
+        - current_connections: 当前连接数（使用中 + 空闲）
+        - available_connections: 可用连接数
+        - in_use_connections: 使用中的连接数
+    """
+    if client is None:
+        return {}
+
+    try:
+        pool = client.connection_pool
+        return {
+            "max_connections": pool.max_connections,
+            "current_connections": len(pool._created_connections) if hasattr(pool, '_created_connections') else 0,
+            "available_connections": len(pool._available_connections) if hasattr(pool, '_available_connections') else 0,
+            "in_use_connections": len(pool._in_use_connections) if hasattr(pool, '_in_use_connections') else 0,
+        }
+    except Exception:
+        return {}

@@ -25,16 +25,24 @@ except ImportError:
     OTEL_AVAILABLE = False
     otel_trace = None
 
+# 导入请求上下文
+from peek.context import RequestContext
+from peek.context.context import (
+    _request_id_var,
+    _trace_id_var,
+)
+
 logger = logging.getLogger(__name__)
 
 # Context variables for request-scoped data
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+# 复用 peek.context 的变量（保持向后兼容）
+request_id_var = _request_id_var
 start_time_var: ContextVar[Optional[float]] = ContextVar("start_time", default=None)
 
 
 def get_request_id() -> Optional[str]:
-    """获取当前请求的 Request ID"""
-    return request_id_var.get()
+    """获取当前请求的 Request ID（兼容接口，实际委托给 peek.context）"""
+    return RequestContext.get_request_id() or request_id_var.get()
 
 
 def get_start_time() -> Optional[float]:
@@ -45,9 +53,16 @@ def get_start_time() -> Optional[float]:
 def get_trace_id() -> str:
     """获取当前 OpenTelemetry Span 的 trace_id
 
+    优先从 peek.context 获取，其次从 OTel SDK 获取。
+
     Returns:
         trace_id 十六进制字符串，如果不可用则返回空字符串
     """
+    # 先从 RequestContext 获取
+    tid = RequestContext.get_trace_id()
+    if tid:
+        return tid
+
     if not OTEL_AVAILABLE:
         return ""
     try:
@@ -227,8 +242,19 @@ class RequestIDInterceptor(UnaryServerInterceptor):
             # 生成新的 request_id
             request_id = str(uuid.uuid4())
 
-        # 设置到 context variable
+        # 设置到 context variable（使用 peek.context）
         token = request_id_var.set(request_id)
+        trace_token = None
+
+        # 尝试从 OTel 获取 trace_id
+        if OTEL_AVAILABLE:
+            try:
+                span = otel_trace.get_current_span()
+                if span and span.get_span_context().trace_id:
+                    trace_id = format(span.get_span_context().trace_id, "032x")
+                    trace_token = _trace_id_var.set(trace_id)
+            except Exception:
+                pass
 
         try:
             # 设置响应 metadata
@@ -248,6 +274,8 @@ class RequestIDInterceptor(UnaryServerInterceptor):
             return response
         finally:
             request_id_var.reset(token)
+            if trace_token is not None:
+                _trace_id_var.reset(trace_token)
 
 
 class RecoveryInterceptor(UnaryServerInterceptor):
@@ -277,6 +305,27 @@ class RecoveryInterceptor(UnaryServerInterceptor):
             # gRPC 错误直接抛出
             raise
         except Exception as e:
+            # 检查是否是 AppError
+            try:
+                from peek.errors.errors import AppError
+                if isinstance(e, AppError):
+                    request_id = get_request_id() or "unknown"
+                    logger.warning(
+                        f"[{request_id}] AppError in {method_name}: "
+                        f"code={e.code}, message={e.message}"
+                    )
+                    grpc_code = e.grpc_status_code
+                    if grpc_code is not None:
+                        context.abort(grpc_code, e.message)
+                    else:
+                        context.abort(
+                            grpc.StatusCode.INTERNAL,
+                            f"Internal server error: {e.message}",
+                        )
+                    return  # abort 会抛出异常
+            except ImportError:
+                pass
+
             request_id = get_request_id() or "unknown"
 
             if self.log_stacktrace:

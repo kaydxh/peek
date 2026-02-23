@@ -30,12 +30,15 @@ from peek.config.schema import (
     MonitorConfig,
     DatabaseConfig,
 )
+from peek.config.watcher import ConfigWatcher
 
 __all__ = [
     # Loader
     "ConfigLoader",
     "load_config",
     "load_config_from_file",
+    # Watcher
+    "ConfigWatcher",
     # Config Models
     "NetConfig",
     "GrpcConfig",

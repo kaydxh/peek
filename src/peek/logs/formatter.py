@@ -195,7 +195,16 @@ class GlogFormatter(logging.Formatter):
         message = record.getMessage()
         parts.append(message)
         
-        # 6. 额外字段（如果有）
+        # 6. 请求上下文字段（自动从 RequestContext 提取）
+        try:
+            from peek.context import RequestContext
+            ctx_fields = RequestContext.log_fields()
+            for key, value in ctx_fields.items():
+                parts.append(f"{key}={value}")
+        except ImportError:
+            pass
+        
+        # 7. 额外字段（如果有）
         if hasattr(record, "extra_fields") and record.extra_fields:
             for key, value in record.extra_fields.items():
                 parts.append(f"{key}={value}")

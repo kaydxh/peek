@@ -9,9 +9,11 @@ MySQL 模块
 """
 
 from peek.database.mysql.config import MySQLConfig
-from peek.database.mysql.mysql import create_mysql_engine
+from peek.database.mysql.mysql import create_mysql_engine, check_mysql_health, get_mysql_pool_stats
 
 __all__ = [
     "MySQLConfig",
     "create_mysql_engine",
+    "check_mysql_health",
+    "get_mysql_pool_stats",
 ]

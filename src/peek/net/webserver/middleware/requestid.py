@@ -14,6 +14,8 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from peek.context import RequestContext
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """
@@ -43,10 +45,22 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # 存储到 request.state
         request.state.request_id = request_id
 
-        # 调用下一个处理器
-        response = await call_next(request)
+        # 设置到 contextvars（跨层传播）
+        with RequestContext.scope(request_id=request_id):
+            # 尝试从 OTel 获取 trace_id 并设置到上下文
+            try:
+                from opentelemetry import trace as otel_trace
+                span = otel_trace.get_current_span()
+                if span and span.get_span_context().trace_id:
+                    trace_id = format(span.get_span_context().trace_id, "032x")
+                    RequestContext.set_trace_id(trace_id)
+            except (ImportError, Exception):
+                pass
 
-        # 添加到响应头
-        response.headers[self.header_name] = request_id
+            # 调用下一个处理器
+            response = await call_next(request)
 
-        return response
+            # 添加到响应头
+            response.headers[self.header_name] = request_id
+
+            return response
