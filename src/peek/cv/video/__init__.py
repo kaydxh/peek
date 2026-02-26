@@ -22,7 +22,7 @@
 - TransformFilter / TransformConfig: 视频旋转/翻转
 
 智能缩放:
-- smart_resize / smart_resize_image: 与 Qwen2-VL 一致的智能缩放
+- smart_resize / smart_resize_image: 与 Qwen3-VL 一致的智能缩放
 """
 
 from .clip import VideoClip

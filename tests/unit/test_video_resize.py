@@ -33,47 +33,47 @@ class TestSmartResize:
 
     def test_no_change_within_bounds(self):
         """像素总数在范围内时不缩放"""
-        w, h = smart_resize(100, 100, min_pixels=5000, max_pixels=20000, patch_size=28)
+        w, h = smart_resize(100, 100, min_pixels=5000, max_pixels=20000, patch_size=32)
         assert w > 0 and h > 0
 
     def test_scale_down_when_exceeds_max(self):
         """像素总数超过上限时缩小"""
-        w, h = smart_resize(1920, 1080, min_pixels=0, max_pixels=100000, patch_size=28)
-        assert w * h <= 100000 + 28 * 28  # 允许 patch 对齐带来的少量误差
+        w, h = smart_resize(1920, 1080, min_pixels=0, max_pixels=100000, patch_size=32)
+        assert w * h <= 100000 + 32 * 32  # 允许 patch 对齐带来的少量误差
 
     def test_scale_up_when_below_min(self):
         """像素总数低于下限时放大"""
-        w, h = smart_resize(100, 100, min_pixels=50000, max_pixels=0, patch_size=28)
-        assert w * h >= 50000 - 28 * 28  # 允许 patch 对齐带来的少量误差
+        w, h = smart_resize(100, 100, min_pixels=50000, max_pixels=0, patch_size=32)
+        assert w * h >= 50000 - 32 * 32  # 允许 patch 对齐带来的少量误差
 
     def test_align_to_patch_size(self):
         """结果对齐到 patch_size 的倍数"""
-        w, h = smart_resize(123, 456, min_pixels=0, max_pixels=0, patch_size=28)
-        assert w % 28 == 0
-        assert h % 28 == 0
+        w, h = smart_resize(123, 456, min_pixels=0, max_pixels=0, patch_size=32)
+        assert w % 32 == 0
+        assert h % 32 == 0
 
     def test_zero_dimensions(self):
         """零尺寸输入不崩溃"""
-        w, h = smart_resize(0, 0, min_pixels=100, max_pixels=1000, patch_size=28)
+        w, h = smart_resize(0, 0, min_pixels=100, max_pixels=1000, patch_size=32)
         assert w == 0 and h == 0
 
     def test_negative_dimensions(self):
         """负尺寸输入不崩溃"""
-        w, h = smart_resize(-1, -1, min_pixels=100, max_pixels=1000, patch_size=28)
+        w, h = smart_resize(-1, -1, min_pixels=100, max_pixels=1000, patch_size=32)
         assert w == -1 and h == -1
 
     def test_no_limits(self):
         """不设置上下限时只做 patch 对齐"""
-        w, h = smart_resize(200, 300, min_pixels=0, max_pixels=0, patch_size=28)
-        assert w % 28 == 0
-        assert h % 28 == 0
+        w, h = smart_resize(200, 300, min_pixels=0, max_pixels=0, patch_size=32)
+        assert w % 32 == 0
+        assert h % 32 == 0
 
     def test_min_equals_max(self):
         """上下限相等时的边界情况"""
-        w, h = smart_resize(100, 100, min_pixels=10000, max_pixels=10000, patch_size=28)
+        w, h = smart_resize(100, 100, min_pixels=10000, max_pixels=10000, patch_size=32)
         assert w > 0 and h > 0
-        assert w % 28 == 0
-        assert h % 28 == 0
+        assert w % 32 == 0
+        assert h % 32 == 0
 
 
 class TestSmartResizeImage:
@@ -89,13 +89,13 @@ class TestSmartResizeImage:
         """超过上限时缩小"""
         img = Image.new("RGB", (1920, 1080))
         result = smart_resize_image(img, shortest_edge=0, longest_edge=100000)
-        assert result.size[0] * result.size[1] <= 100000 + 28 * 28
+        assert result.size[0] * result.size[1] <= 100000 + 32 * 32
 
     def test_resize_when_below_limit(self):
         """低于下限时放大"""
         img = Image.new("RGB", (50, 50))
         result = smart_resize_image(img, shortest_edge=50000, longest_edge=0)
-        assert result.size[0] * result.size[1] >= 50000 - 28 * 28
+        assert result.size[0] * result.size[1] >= 50000 - 32 * 32
 
     def test_returns_pil_image(self):
         """始终返回 PIL Image"""
@@ -137,6 +137,6 @@ class TestSmartResizeWithRealFrames:
         new_w, new_h = resized.size
         logger.info(f"缩放后: {new_w}x{new_h}, pixels={new_w * new_h}")
 
-        assert new_w * new_h <= 100000 + 28 * 28 * 4
-        assert new_w % 28 == 0
-        assert new_h % 28 == 0
+        assert new_w * new_h <= 100000 + 32 * 32 * 4
+        assert new_w % 32 == 0
+        assert new_h % 32 == 0

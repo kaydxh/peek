@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Video Resize - 视频帧智能缩放工具
 
-提供与 Qwen2-VL 视觉预处理器一致的智能缩放逻辑，
+提供与 Qwen3-VL 视觉预处理器一致的智能缩放逻辑，
 可独立用于各模块的帧图片分辨率控制。
 """
 
@@ -17,21 +17,21 @@ def smart_resize(
     height: int,
     min_pixels: int,
     max_pixels: int,
-    patch_size: int = 28,
+    patch_size: int = 32,
 ) -> Tuple[int, int]:
     """计算智能缩放后的目标尺寸
 
-    与 Qwen2-VL 视觉预处理器的 smart_resize 逻辑一致：
+    与 Qwen3-VL 视觉预处理器的 smart_resize 逻辑一致：
     1. 如果像素总数超过 max_pixels，按比例缩小
     2. 如果像素总数低于 min_pixels，按比例放大
-    3. 宽高对齐到 patch_size 的倍数
+    3. 宽高对齐到 patch_size 的倍数（32 的倍数）
 
     Args:
         width: 原始宽度
         height: 原始高度
         min_pixels: 最小像素总数（对应 shortest_edge）
         max_pixels: 最大像素总数（对应 longest_edge）
-        patch_size: ViT patch 大小，默认 28
+        patch_size: ViT patch 大小，默认 32
 
     Returns:
         Tuple[int, int]: (new_width, new_height)
@@ -64,21 +64,21 @@ def smart_resize_image(
     img,
     shortest_edge: int = 0,
     longest_edge: int = 0,
-    patch_size: int = 28,
+    patch_size: int = 32,
     frame_index: int = -1,
 ):
     """对帧图片进行智能分辨率缩放
 
-    模拟 Qwen2-VL 视觉预处理器的 smart resize 逻辑：
+    模拟 Qwen3-VL 视觉预处理器的 smart resize 逻辑：
     - 如果像素总数低于 shortest_edge，则放大
     - 如果像素总数高于 longest_edge，则缩小
-    - 最终宽高对齐到 patch_size(28) 的倍数
+    - 最终宽高对齐到 patch_size(32) 的倍数
 
     Args:
         img: PIL Image 对象
         shortest_edge: 最短边像素总数下限，0 表示不限制
         longest_edge: 最长边像素总数上限，0 表示不限制
-        patch_size: ViT patch 大小，默认 28
+        patch_size: ViT patch 大小，默认 32
         frame_index: 帧号，用于日志输出，-1 表示不打印帧号
 
     Returns:
