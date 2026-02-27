@@ -713,6 +713,8 @@ class GenericWebServer:
 
     async def run_async(self) -> None:
         """异步运行服务器（HTTP + gRPC）"""
+        self.prepare_run()
+
         # 启动 gRPC 服务器（如果配置了）
         if self.grpc_port is not None and HAS_GRPC and self._grpc_service_handlers:
             self._grpc_thread = threading.Thread(
