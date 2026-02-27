@@ -172,6 +172,7 @@ class BaseCompletedOptions(ABC):
     3. create_web_server（公共）
     4. install_business（子类实现：vLLM / MySQL / Redis 等）
     5. install_opentelemetry（公共）
+    5.5. install_healthz（公共，子类可覆写添加自定义检查器）
     6. install_web_handler（子类实现）
     7. install_monitor（公共）
     8. run server（公共）
@@ -206,6 +207,9 @@ class BaseCompletedOptions(ABC):
 
         # 5. 安装 OpenTelemetry（公共）
         await self._install_opentelemetry(web_server)
+
+        # 5.5 安装健康检查控制器（公共，子类可覆写添加自定义检查器）
+        self._install_healthz(web_server)
 
         # 6. 安装 Web 处理器（子类实现）
         self._install_web_handler(web_server)
@@ -247,6 +251,18 @@ class BaseCompletedOptions(ABC):
         from peek.plugins.monitor import install_monitor
 
         await install_monitor(self._options.monitor_config, web_server)
+
+    def _install_healthz(self, web_server):
+        """安装健康检查控制器（公共）。
+
+        默认安装基础的 HealthzController（提供 /healthz, /livez, /readyz）。
+        子类可覆写此方法添加额外的 readyz/livez 检查器。
+        """
+        from peek.net.webserver.healthz import HealthzController
+
+        controller = HealthzController()
+        web_server.install_healthz_controller(controller)
+        logger.info("健康检查控制器已安装 (/healthz, /livez, /readyz)")
 
     # ---- 子类必须实现的抽象方法 ----
 
