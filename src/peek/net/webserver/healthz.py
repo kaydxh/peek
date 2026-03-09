@@ -120,6 +120,74 @@ class HTTPHealthChecker(HealthChecker):
             return e
 
 
+class VLLMInferenceHealthChecker(HealthChecker):
+    """
+    vLLM 推理级别健康检查器
+
+    通过发送一个轻量级的 chat completion 请求来检查 vLLM 推理引擎是否正常工作。
+    解决 vLLM server 进程存活但推理引擎卡死（如 GPU OOM / Scheduler 死锁）的检测盲区。
+
+    与 HTTPHealthChecker（仅检查 /health 端点）不同，本检查器能检测到：
+    - 推理引擎 hang 住（健康端点正常但推理无响应）
+    - KV Cache 耗尽导致的调度器死锁
+    - GPU 异常导致的推理卡死
+    """
+
+    def __init__(
+        self,
+        checker_name: str,
+        api_url: str,
+        model_name: str,
+        timeout: float = 10.0,
+    ):
+        """
+        Args:
+            checker_name: 检查器名称
+            api_url: vLLM API 地址（如 http://localhost:8001/v1）
+            model_name: 模型名称
+            timeout: 推理请求超时时间（秒），默认 10s，应远小于业务超时
+        """
+        self._name = checker_name
+        self.api_url = api_url
+        self.model_name = model_name
+        self.timeout = timeout
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    async def check(self) -> Optional[Exception]:
+        """
+        发送轻量级推理请求检查引擎是否正常
+
+        使用极短的 prompt 和 max_tokens=1 来最小化开销
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.api_url}/chat/completions",
+                    json={
+                        "model": self.model_name,
+                        "messages": [{"role": "user", "content": "hi"}],
+                        "max_tokens": 1,
+                        "temperature": 0.0,
+                    },
+                )
+                if response.status_code == 200:
+                    return None
+                else:
+                    return Exception(
+                        f"vLLM 推理检查返回异常状态码: {response.status_code}, "
+                        f"body: {response.text[:200]}"
+                    )
+        except httpx.TimeoutException:
+            return Exception(
+                f"vLLM 推理探活超时（{self.timeout}s），推理引擎可能已卡死"
+            )
+        except Exception as e:
+            return Exception(f"vLLM 推理探活失败: {type(e).__name__}: {e}")
+
+
 class TCPHealthChecker(HealthChecker):
     """
     TCP 连接健康检查器
