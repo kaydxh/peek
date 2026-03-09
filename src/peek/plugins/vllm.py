@@ -61,7 +61,7 @@ class VLLMConfig:
     max_num_batched_tokens: int = 8192
     max_model_len: int = 4096
     dtype: str = "auto"
-    startup_timeout: int = 600
+    startup_timeout: int = 600  # vLLM server 启动超时时间（单位：秒），默认 600s（10 分钟）
     enable_prefix_caching: bool = True
     enable_chunked_prefill: bool = True
 
@@ -78,6 +78,17 @@ class VLLMConfig:
 
     # 视频解码配置
     video_decode: Optional[Dict[str, Any]] = None
+
+    # 自动重启配置（仅当 auto_start=True 时有效）
+    auto_restart: bool = True              # 是否启用进程看门狗自动重启
+    watchdog_interval: int = 10            # 看门狗检查间隔（秒）
+    max_restart_attempts: int = 3          # 最大连续重启次数
+    restart_cooldown: int = 60             # 两次重启之间的冷却时间（秒）
+
+    # 推理探活配置（检测 vLLM 推理引擎是否卡死）
+    inference_probe_enabled: bool = True   # 是否启用推理级别探活
+    inference_probe_timeout: int = 30      # 推理探活超时时间（单位：秒），超时视为引擎卡死
+    inference_probe_max_failures: int = 3  # 连续探活失败次数达到此值后触发重启
 
 
 def parse_vllm_config(
@@ -123,6 +134,13 @@ def parse_vllm_config(
         "scene_cls_threshold": 0.1,
         "max_concurrent_requests": 4,
         "video_decode": None,
+        "auto_restart": True,
+        "watchdog_interval": 10,
+        "max_restart_attempts": 3,
+        "restart_cooldown": 60,
+        "inference_probe_enabled": True,
+        "inference_probe_timeout": 30,
+        "inference_probe_max_failures": 3,
     }
     if defaults:
         defs.update(defaults)
@@ -164,6 +182,13 @@ def parse_vllm_config(
         scene_cls_threshold=data.get("scene_cls_threshold", defs["scene_cls_threshold"]),
         max_concurrent_requests=data.get("max_concurrent_requests", defs["max_concurrent_requests"]),
         video_decode=data.get("video_decode", defs["video_decode"]),
+        auto_restart=data.get("auto_restart", defs["auto_restart"]),
+        watchdog_interval=data.get("watchdog_interval", defs["watchdog_interval"]),
+        max_restart_attempts=data.get("max_restart_attempts", defs["max_restart_attempts"]),
+        restart_cooldown=data.get("restart_cooldown", defs["restart_cooldown"]),
+        inference_probe_enabled=data.get("inference_probe_enabled", defs["inference_probe_enabled"]),
+        inference_probe_timeout=data.get("inference_probe_timeout", defs["inference_probe_timeout"]),
+        inference_probe_max_failures=data.get("inference_probe_max_failures", defs["inference_probe_max_failures"]),
     )
 
 
@@ -178,6 +203,15 @@ class VLLMServerManager:
         self.process: Optional[subprocess.Popen] = None
         self.log_task: Optional[asyncio.Task] = None
         self._api_url = f"http://{config.host}:{config.port}/v1"
+
+        # 看门狗相关状态
+        self._watchdog_task: Optional[asyncio.Task] = None
+        self._watchdog_enabled: bool = False
+        self._ready: bool = False  # vLLM 是否已完成启动并就绪
+        self._restart_count: int = 0
+        self._last_restart_time: float = 0
+        self._restarting: bool = False  # 防止重启过程中重复触发
+        self._inference_probe_failures: int = 0  # 推理探活连续失败计数
 
         # 注册退出清理
         atexit.register(self._cleanup_on_exit)
@@ -385,10 +419,250 @@ class VLLMServerManager:
             logger.warning(f"vLLM 进程已终止，退出码: {self.process.returncode}")
             return False
 
+        # 如果进程为 None 且 auto_start 为 True，也视为不健康
+        if self.process is None and self.config.auto_start:
+            logger.warning("vLLM 进程不存在，auto_start 已启用")
+            return False
+
         return await self._check_server_ready()
+
+    async def inference_probe(self, timeout: Optional[float] = None) -> bool:
+        """推理级别探活：发送轻量推理请求检测引擎是否正常工作
+
+        解决 vLLM server 进程存活、/health 正常，但推理引擎卡死的问题。
+        例如：GPU OOM、KV Cache 耗尽、Scheduler 死锁等场景。
+
+        Args:
+            timeout: 推理请求超时时间（秒），默认使用配置的 inference_probe_timeout
+
+        Returns:
+            True 表示推理引擎正常，False 表示引擎异常（超时或错误）
+        """
+        if timeout is None:
+            timeout = self.config.inference_probe_timeout
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(
+                    f"{self._api_url}/chat/completions",
+                    json={
+                        "model": self.config.model_name,
+                        "messages": [{"role": "user", "content": "hi"}],
+                        "max_tokens": 1,
+                        "temperature": 0.0,
+                    },
+                )
+                if response.status_code == 200:
+                    return True
+                else:
+                    logger.warning(
+                        f"[InferenceProbe] 推理探活返回异常状态码: {response.status_code}"
+                    )
+                    return False
+        except httpx.TimeoutException:
+            logger.warning(
+                f"[InferenceProbe] 推理探活超时（{timeout}s），引擎可能已卡死"
+            )
+            return False
+        except Exception as e:
+            logger.warning(
+                f"[InferenceProbe] 推理探活异常: {type(e).__name__}: {e}"
+            )
+            return False
+
+    # -----------------------------------------------------------------------
+    # Watchdog（看门狗）：定期检查 vLLM 进程状态，挂掉后自动重启
+    # 仅在 auto_start=True 且 auto_restart=True 时启用
+    # -----------------------------------------------------------------------
+
+    async def start_watchdog(self, mark_ready: bool = False) -> None:
+        """启动看门狗后台任务
+
+        Args:
+            mark_ready: 是否立即标记 vLLM 已就绪。
+                       若为 True，看门狗将立即开始监控；
+                       若为 False，看门狗会等待 mark_as_ready() 被调用后才开始检查，
+                       避免在 vLLM 启动/模型加载阶段（可能需要数分钟）误触发重启。
+        """
+        if not self.config.auto_start:
+            logger.info("auto_start 未启用，跳过看门狗")
+            return
+        if not self.config.auto_restart:
+            logger.info("auto_restart 未启用，跳过看门狗")
+            return
+        if self._watchdog_task is not None:
+            logger.warning("看门狗已在运行中")
+            return
+
+        if mark_ready:
+            self._ready = True
+
+        self._watchdog_enabled = True
+        self._watchdog_task = asyncio.create_task(self._watchdog_loop())
+        logger.info(
+            f"vLLM 看门狗已启动（检查间隔: {self.config.watchdog_interval}s，"
+            f"最大重启次数: {self.config.max_restart_attempts}，"
+            f"冷却时间: {self.config.restart_cooldown}s，"
+            f"已就绪: {self._ready}）"
+        )
+
+    def mark_as_ready(self) -> None:
+        """标记 vLLM 已完成启动并就绪，看门狗将开始监控进程状态"""
+        self._ready = True
+        logger.info("[Watchdog] vLLM 已标记为就绪，看门狗将开始监控")
+
+    async def stop_watchdog(self) -> None:
+        """停止看门狗后台任务"""
+        self._watchdog_enabled = False
+        if self._watchdog_task is not None:
+            self._watchdog_task.cancel()
+            try:
+                await self._watchdog_task
+            except asyncio.CancelledError:
+                pass
+            self._watchdog_task = None
+            logger.info("vLLM 看门狗已停止")
+
+    async def _watchdog_loop(self) -> None:
+        """看门狗主循环：定期检查 vLLM 进程和推理引擎，异常则自动重启
+
+        检查两个层面：
+        1. 进程级别：检查 vLLM 进程是否存活（process.poll()）
+        2. 推理级别：发送轻量推理请求检测引擎是否卡死（inference_probe）
+           - 解决 "进程活着但推理引擎 hang 住" 的问题
+           - 连续 N 次探活失败后触发 kill + 重启
+
+        注意：vLLM 启动阶段（模型加载）可能需要数分钟，
+        此期间看门狗不应检查，避免误判进程异常而触发重启。
+        通过 _ready 标志控制：只有 _ready=True 后才开始检查。
+        """
+        # 等待 vLLM 首次就绪后再开始检查
+        while self._watchdog_enabled and not self._ready:
+            await asyncio.sleep(self.config.watchdog_interval)
+            logger.debug("[Watchdog] vLLM 尚未就绪，跳过检查（启动阶段）")
+
+        logger.info("[Watchdog] vLLM 已就绪，开始进程监控")
+        self._inference_probe_failures = 0
+
+        while self._watchdog_enabled:
+            try:
+                await asyncio.sleep(self.config.watchdog_interval)
+
+                # 正在重启中（包括模型加载阶段），跳过本次检查
+                if self._restarting:
+                    logger.debug("[Watchdog] 重启进行中，跳过检查")
+                    continue
+
+                # ---- 第 1 层：进程级别检查 ----
+                if self.process is None:
+                    logger.warning("[Watchdog] vLLM 进程为 None，尝试自动重启...")
+                    await self._try_restart()
+                    continue
+
+                if self.process.poll() is not None:
+                    exit_code = self.process.returncode
+                    logger.error(
+                        f"[Watchdog] vLLM 进程已终止！退出码: {exit_code}，"
+                        f"尝试自动重启..."
+                    )
+                    await self._try_restart()
+                    continue
+
+                # ---- 第 2 层：推理级别探活 ----
+                if self.config.inference_probe_enabled:
+                    probe_ok = await self.inference_probe()
+                    if probe_ok:
+                        # 探活成功，重置失败计数
+                        if self._inference_probe_failures > 0:
+                            logger.info(
+                                f"[Watchdog] 推理探活恢复正常，"
+                                f"之前连续失败 {self._inference_probe_failures} 次"
+                            )
+                        self._inference_probe_failures = 0
+                    else:
+                        self._inference_probe_failures += 1
+                        logger.warning(
+                            f"[Watchdog] 推理探活失败（连续第 {self._inference_probe_failures}/"
+                            f"{self.config.inference_probe_max_failures} 次）"
+                        )
+                        if self._inference_probe_failures >= self.config.inference_probe_max_failures:
+                            logger.error(
+                                f"[Watchdog] 推理探活连续失败 {self._inference_probe_failures} 次，"
+                                f"推理引擎可能已卡死，强制重启 vLLM server..."
+                            )
+                            self._inference_probe_failures = 0
+                            await self._try_restart()
+                            continue
+
+            except asyncio.CancelledError:
+                logger.info("[Watchdog] 看门狗任务已取消")
+                break
+            except Exception as e:
+                logger.error(f"[Watchdog] 看门狗检查异常: {e}", exc_info=True)
+
+    async def _try_restart(self) -> None:
+        """尝试重启 vLLM server（带频率限制和最大重启次数保护）"""
+        now = time.time()
+
+        # 冷却检查：距离上次重启不足冷却时间则跳过
+        if now - self._last_restart_time < self.config.restart_cooldown:
+            remaining = self.config.restart_cooldown - (now - self._last_restart_time)
+            logger.warning(
+                f"[Watchdog] 重启冷却中，{remaining:.0f}s 后可再次尝试"
+            )
+            return
+
+        # 连续重启次数检查
+        if self._restart_count >= self.config.max_restart_attempts:
+            logger.error(
+                f"[Watchdog] 连续重启已达上限（{self.config.max_restart_attempts} 次），"
+                f"停止自动重启，请人工排查！"
+            )
+            self._watchdog_enabled = False
+            return
+
+        # 标记正在重启
+        self._restarting = True
+        self._restart_count += 1
+        self._last_restart_time = now
+
+        logger.info(
+            f"[Watchdog] 第 {self._restart_count}/{self.config.max_restart_attempts} 次重启 vLLM server..."
+        )
+
+        try:
+            # 先清理旧进程
+            if self.process is not None:
+                try:
+                    os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+                    self.process.wait(timeout=5)
+                except Exception:
+                    pass
+                self.process = None
+
+            if self.log_task:
+                self.log_task.cancel()
+                self.log_task = None
+
+            # 重新启动（重启阶段 _restarting=True，看门狗不会检查）
+            await self.start()
+            await self.wait_for_ready()
+
+            # 重启成功，重置连续重启计数，标记为就绪
+            self._ready = True
+            self._restart_count = 0
+            logger.info("[Watchdog] vLLM server 重启成功 ✅")
+
+        except Exception as e:
+            logger.error(f"[Watchdog] 重启失败: {e}", exc_info=True)
+        finally:
+            self._restarting = False
 
     async def stop(self) -> None:
         """停止 vLLM server 进程"""
+        # 先停止看门狗，避免停止进程后被自动重启
+        await self.stop_watchdog()
+
         if self.process is None:
             return
 
@@ -460,6 +734,10 @@ async def install_vllm(
             await _vllm_server_manager.start()
             await _vllm_server_manager.wait_for_ready()
 
+            # vLLM 已就绪，启动看门狗并标记为 ready
+            # mark_ready=True 表示启动阶段已完成，看门狗可立即开始监控
+            await _vllm_server_manager.start_watchdog(mark_ready=True)
+
         # 由 cmd 端提供的回调完成 client 创建 + provider 注册
         if register_client is not None:
             await register_client(config, _vllm_server_manager)
@@ -476,7 +754,7 @@ async def install_vllm(
 
 
 async def uninstall_vllm():
-    """卸载 vLLM（停止 server 进程）"""
+    """卸载 vLLM（停止看门狗和 server 进程）"""
     global _vllm_server_manager
 
     if _vllm_server_manager:
