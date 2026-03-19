@@ -79,6 +79,13 @@ class VLLMConfig:
     # 视频解码配置
     video_decode: Optional[Dict[str, Any]] = None
 
+    # nsys 性能分析配置（仅当 auto_start=True 时有效）
+    nsys_enabled: bool = False             # 是否启用 nsys profile 包裹 vLLM 进程
+    nsys_output: str = "/app/log/vllm_nsys_report"  # nsys 报告输出路径
+    nsys_trace: str = "cuda,nvtx"          # nsys 追踪类型
+    nsys_delay: int = 30                   # 延迟采集秒数（跳过模型加载阶段）
+    nsys_duration: int = 60                # 采集持续秒数
+
     # 自动重启配置（仅当 auto_start=True 时有效）
     auto_restart: bool = True              # 是否启用进程看门狗自动重启
     watchdog_interval: int = 10            # 看门狗检查间隔（秒）
@@ -134,6 +141,11 @@ def parse_vllm_config(
         "scene_cls_threshold": 0.1,
         "max_concurrent_requests": 4,
         "video_decode": None,
+        "nsys_enabled": False,
+        "nsys_output": "/app/log/vllm_nsys_report",
+        "nsys_trace": "cuda,nvtx",
+        "nsys_delay": 30,
+        "nsys_duration": 60,
         "auto_restart": True,
         "watchdog_interval": 10,
         "max_restart_attempts": 3,
@@ -189,6 +201,11 @@ def parse_vllm_config(
         inference_probe_enabled=data.get("inference_probe_enabled", defs["inference_probe_enabled"]),
         inference_probe_timeout=data.get("inference_probe_timeout", defs["inference_probe_timeout"]),
         inference_probe_max_failures=data.get("inference_probe_max_failures", defs["inference_probe_max_failures"]),
+        nsys_enabled=data.get("nsys_enabled", defs["nsys_enabled"]),
+        nsys_output=data.get("nsys_output", defs["nsys_output"]),
+        nsys_trace=data.get("nsys_trace", defs["nsys_trace"]),
+        nsys_delay=data.get("nsys_delay", defs["nsys_delay"]),
+        nsys_duration=data.get("nsys_duration", defs["nsys_duration"]),
     )
 
 
@@ -267,8 +284,34 @@ class VLLMServerManager:
             raise RuntimeError(f"vLLM server 启动失败: {e}")
 
     def _build_vllm_command(self) -> list:
-        """构建 vLLM 启动命令"""
-        cmd = [
+        """构建 vLLM 启动命令
+
+        当 nsys_enabled=True 时，使用 nsys profile 包裹 vLLM 命令，
+        直接对 vLLM server 进程进行 GPU 性能分析，无需外层 nsys。
+        """
+        cmd = []
+
+        # nsys 性能分析包裹
+        if self.config.nsys_enabled:
+            logger.info(
+                f"[nsys] 启用 nsys profile 包裹 vLLM 进程: "
+                f"trace={self.config.nsys_trace}, "
+                f"delay={self.config.nsys_delay}s, "
+                f"duration={self.config.nsys_duration}s, "
+                f"output={self.config.nsys_output}"
+            )
+            cmd += [
+                "nsys", "profile",
+                f"--trace={self.config.nsys_trace}",
+                "--sample=none",
+                "--cpuctxsw=none",
+                f"--output={self.config.nsys_output}",
+                "--force-overwrite=true",
+                f"--delay={self.config.nsys_delay}",
+                f"--duration={self.config.nsys_duration}",
+            ]
+
+        cmd += [
             "vllm",
             "serve",
             self.config.model_path,
