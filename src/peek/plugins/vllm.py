@@ -164,6 +164,15 @@ def parse_vllm_config(
         f"port={data.get('port', '未设置')}, "
         f"auto_start={data.get('auto_start', '未设置')}"
     )
+    # nsys 配置调试日志
+    logger.info(
+        f"解析 vLLM nsys 配置: nsys_enabled={data.get('nsys_enabled', '未设置')} "
+        f"(type={type(data.get('nsys_enabled')).__name__}), "
+        f"nsys_output={data.get('nsys_output', '未设置')}, "
+        f"nsys_trace={data.get('nsys_trace', '未设置')}, "
+        f"nsys_delay={data.get('nsys_delay', '未设置')}, "
+        f"nsys_duration={data.get('nsys_duration', '未设置')}"
+    )
 
     return VLLMConfig(
         enabled=data.get("enabled", defs["enabled"]),
@@ -230,6 +239,10 @@ class VLLMServerManager:
         self._restarting: bool = False  # 防止重启过程中重复触发
         self._inference_probe_failures: int = 0  # 推理探活连续失败计数
 
+        # nsys 相关状态
+        self._nsys_start_time: float = 0  # nsys 启动时间戳
+        self._nsys_collection_done: bool = False  # nsys 采集是否已完成
+
         # 注册退出清理
         atexit.register(self._cleanup_on_exit)
 
@@ -254,6 +267,16 @@ class VLLMServerManager:
 
         try:
             env = os.environ.copy()
+
+            # 记录 nsys 启动时间，用于看门狗判断 nsys 采集是否结束
+            if self.config.nsys_enabled:
+                self._nsys_start_time = time.time()
+                self._nsys_collection_done = False
+                nsys_total = self.config.nsys_delay + self.config.nsys_duration
+                logger.info(
+                    f"[nsys] 预计采集完成时间: {nsys_total}s 后 "
+                    f"(delay={self.config.nsys_delay}s + duration={self.config.nsys_duration}s)"
+                )
 
             self.process = subprocess.Popen(
                 cmd,
@@ -604,6 +627,59 @@ class VLLMServerManager:
 
                 if self.process.poll() is not None:
                     exit_code = self.process.returncode
+
+                    # nsys 模式特殊处理：nsys duration 到期后会终止进程，
+                    # 这是正常行为而非崩溃，需要等待 nsys 写完报告后再重启
+                    if self.config.nsys_enabled and not self._nsys_collection_done:
+                        elapsed = time.time() - self._nsys_start_time
+                        nsys_total = self.config.nsys_delay + self.config.nsys_duration
+                        if elapsed >= nsys_total:
+                            self._nsys_collection_done = True
+                            # 等待 nsys 写完报告文件（通常几秒到十几秒）
+                            nsys_report_path = f"{self.config.nsys_output}.nsys-rep"
+                            logger.info(
+                                f"[Watchdog][nsys] nsys 采集已结束（{elapsed:.0f}s），"
+                                f"等待报告文件写入: {nsys_report_path}"
+                            )
+                            await asyncio.sleep(15)  # 给 nsys 足够时间写报告
+
+                            if os.path.exists(nsys_report_path):
+                                file_size = os.path.getsize(nsys_report_path)
+                                logger.info(
+                                    f"[Watchdog][nsys] ✅ nsys 报告已生成: "
+                                    f"{nsys_report_path} ({file_size / 1024 / 1024:.1f} MB)"
+                                )
+                            else:
+                                logger.warning(
+                                    f"[Watchdog][nsys] ⚠ nsys 报告未找到: {nsys_report_path}，"
+                                    f"请检查 nsys 是否正确安装、输出路径是否有写入权限"
+                                )
+
+                            # nsys 完成后重启 vLLM（不带 nsys，恢复正常运行）
+                            logger.info(
+                                "[Watchdog][nsys] nsys 采集完成，重新启动 vLLM server（不带 nsys 包裹）..."
+                            )
+                            # 临时关闭 nsys，让重启后的 vLLM 正常运行
+                            self.config.nsys_enabled = False
+                            self.process = None
+                            if self.log_task:
+                                self.log_task.cancel()
+                                self.log_task = None
+                            await self.start()
+                            await self.wait_for_ready()
+                            self._ready = True
+                            self._restart_count = 0
+                            logger.info(
+                                "[Watchdog][nsys] ✅ vLLM server 已重新启动（正常模式，无 nsys 包裹）"
+                            )
+                            continue
+                        else:
+                            # nsys 还没到预期结束时间就挂了，说明确实是异常
+                            logger.warning(
+                                f"[Watchdog][nsys] vLLM 进程在 nsys 采集期间意外终止 "
+                                f"（已运行 {elapsed:.0f}s / 预期 {nsys_total}s），退出码: {exit_code}"
+                            )
+
                     logger.error(
                         f"[Watchdog] vLLM 进程已终止！退出码: {exit_code}，"
                         f"尝试自动重启..."
