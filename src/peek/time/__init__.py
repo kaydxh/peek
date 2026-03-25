@@ -30,7 +30,8 @@ from peek.time.wait import (
     # 异常类
     ConditionNotMetError,
     MaxRetriesExceededError,
-    TimeoutError,
+    WaitTimeoutError,
+    TimeoutError,  # 向后兼容别名，建议使用 WaitTimeoutError
     WaitCancelledError,
     WaitResult,
     # 带超时调用
@@ -84,7 +85,8 @@ __all__ = [
     "DEFAULT_MAX_ELAPSED_COUNT",
     # ===== wait 模块 =====
     # 异常类
-    "TimeoutError",
+    "WaitTimeoutError",
+    "TimeoutError",  # 向后兼容别名
     "ConditionNotMetError",
     "MaxRetriesExceededError",
     "WaitCancelledError",

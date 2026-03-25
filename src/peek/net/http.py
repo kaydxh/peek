@@ -12,9 +12,8 @@ def raise_for_http_exception(response):
     :param response:
     :return:
     """
-    if response.status_code != 200:
+    if not response.ok:
         response.raise_for_status()
-        err_msg = "HTTP Error: %s" % response.status_code
 
 @retry(wait_fixed=100, stop_max_attempt_number=3)
 def get(url, params=None, headers=None, **kwargs):

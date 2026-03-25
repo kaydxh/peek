@@ -287,8 +287,11 @@ class ServiceUnavailableError(AppError):
         )
 
 
-class TimeoutError(AppError):
-    """超时错误（HTTP 504 / gRPC DEADLINE_EXCEEDED）"""
+class AppTimeoutError(AppError):
+    """超时错误（HTTP 504 / gRPC DEADLINE_EXCEEDED）
+
+    注意：命名为 AppTimeoutError 而非 TimeoutError，避免遮蔽 Python 内置的 builtins.TimeoutError。
+    """
 
     def __init__(
         self,

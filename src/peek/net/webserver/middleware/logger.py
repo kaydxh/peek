@@ -60,7 +60,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         self.log_request_headers = log_request_headers
         self.log_response_headers = log_response_headers
         self.max_string_length = max_string_length
-        self.skip_paths = skip_paths or ["/health", "/healthz", "/metrics", "/ready"]
+        self.skip_paths = skip_paths or ["/healthz", "/readyz", "/livez", "/metrics"]
 
     def _log(self, msg: str, level: str = "info") -> None:
         """统一日志输出"""

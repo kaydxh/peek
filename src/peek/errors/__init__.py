@@ -20,7 +20,7 @@ from peek.errors.errors import (
     ConflictError,
     InternalError,
     ServiceUnavailableError,
-    TimeoutError as AppTimeoutError,
+    AppTimeoutError,
     RateLimitError,
     ErrorCode,
 )
