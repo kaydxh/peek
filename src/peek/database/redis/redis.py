@@ -47,7 +47,7 @@ async def create_redis_client(
     try:
         import redis.asyncio as aioredis
     except ImportError:
-        logger.warning("redis[asyncio] 未安装，跳过 Redis")
+        logger.warning("redis[asyncio] not installed, skipping Redis")
         return None
 
     # 构建连接参数
@@ -99,10 +99,10 @@ async def create_redis_client(
                 raise RuntimeError(
                     f"Redis 连接失败，已超过 {fail_after}s: {e}"
                 ) from e
-            logger.warning(f"Redis 连接失败，{elapsed:.1f}s 后重试: {e}")
+            logger.warning("Redis connection failed, retrying in %.1fs: %s", elapsed, e)
             await asyncio.sleep(min(wait_interval, max(fail_after - elapsed, 0.1)))
 
-    logger.info(f"Redis 连接成功: {config.host}:{config.port}/{config.db}")
+    logger.info("Redis connected: %s:%s/%s", config.host, config.port, config.db)
     return client
 
 
@@ -115,7 +115,7 @@ async def close_redis_client(client: Any) -> None:
     """
     if client is not None:
         await client.close()
-        logger.info("Redis 连接已关闭")
+        logger.info("Redis connection closed")
 
 
 async def check_redis_health(client: Any) -> Optional[Exception]:

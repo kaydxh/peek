@@ -47,7 +47,7 @@ def install_logs(config):
 
     except ImportError:
         # 如果 peek.logs 内部模块不可用，使用内置的简单实现
-        logger.warning("peek.logs 库不可用，使用内置日志实现")
+        logger.warning("peek.logs library not available, using built-in logging")
         _install_logs_fallback(config)
 
 
@@ -118,4 +118,4 @@ def _install_logs_fallback(config):
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
-    logger.info(f"日志初始化完成，级别: {config.level}, 格式: {config.formatter}, 输出: {config.redirect}")
+    logger.info("Logging initialized, level: %s, formatter: %s, output: %s", config.level, config.formatter, config.redirect)

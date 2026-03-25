@@ -146,12 +146,12 @@ class VideoDecoder:
             - List[str]: 帧图片的 base64 字符串列表
         """
         if self._method == VideoDecodeMethod.VLLM:
-            logger.debug("解码方式为 vllm，跳过预解码")
+            logger.debug("Decode method is vllm, skipping pre-decode")
             return None
 
         video_bytes = base64.b64decode(base64_video)
         frames = self._decoder.decode(video_bytes)
-        logger.info(f"视频解码完成: method={self._method.value}, frames={len(frames)}")
+        logger.info(f"Video decode completed: method={self._method.value}, frames={len(frames)}")
         return frames
 
     def decode_to_bytes(self, base64_video: str) -> Optional[List[bytes]]:
@@ -197,7 +197,7 @@ class VideoDecoder:
             - str: 重新编码后的 mp4 视频 base64 字符串
         """
         if self._method == VideoDecodeMethod.VLLM:
-            logger.debug("解码方式为 vllm，跳过预解码")
+            logger.debug("Decode method is vllm, skipping pre-decode")
             return None
 
         # 先预解码为帧

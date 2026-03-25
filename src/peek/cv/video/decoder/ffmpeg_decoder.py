@@ -213,7 +213,7 @@ class FFmpegDecoder(BaseDecoder):
                 as_bytes=as_bytes,
             )
 
-            logger.info(f"ffmpeg 解码完成: frames={len(frames)}")
+            logger.info(f"ffmpeg decode completed: frames={len(frames)}")
             return frames
 
         finally:
@@ -248,9 +248,9 @@ class FFmpegDecoder(BaseDecoder):
             return container, tmp_file
         except av.error.InvalidDataError:
             # 某些格式可能不支持从内存流打开，回退到临时文件
-            logger.debug("从内存打开失败，回退到临时文件")
+            logger.debug("Failed to open from memory, falling back to temp file")
         except Exception as e:
-            logger.debug(f"从内存打开失败: {e}，回退到临时文件")
+            logger.debug(f"Failed to open from memory: {e}, falling back to temp file")
 
         # 回退方案：写入临时文件
         tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
@@ -343,10 +343,10 @@ class FFmpegDecoder(BaseDecoder):
                     )
                     return
             except Exception as e:
-                logger.warning(f"GPU 硬件解码器 {hw_codec_name} 不可用: {e}")
+                logger.warning(f"GPU hardware decoder {hw_codec_name} not available: {e}")
 
         if self._config.auto_switch_to_soft_codec:
-            logger.info(f"回退到软件解码: {codec_name}")
+            logger.info(f"Falling back to software decoder: {codec_name}")
         else:
             raise RuntimeError(
                 f"GPU 硬件解码器不可用且未启用自动回退: {codec_name}"
@@ -597,7 +597,7 @@ class FFmpegDecoder(BaseDecoder):
         for frame in container.decode(video_stream):
             # 取消检查（对应 kingfisher is_cancelled）
             if self._cancel_callback and self._cancel_callback():
-                logger.info("解码操作已取消")
+                logger.info("Decode operation cancelled")
                 break
 
             decoded_count += 1
@@ -783,7 +783,7 @@ class FFmpegDecoder(BaseDecoder):
             for frame in container.decode(video_stream):
                 # 取消检查
                 if self._cancel_callback and self._cancel_callback():
-                    logger.info("批量解码操作已取消")
+                    logger.info("Batch decode operation cancelled")
                     break
 
                 decoded_count += 1

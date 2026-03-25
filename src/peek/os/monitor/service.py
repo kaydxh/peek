@@ -130,9 +130,9 @@ class MonitorService:
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
             except ImportError:
-                logger.warning("psutil 未安装，无法监控子进程")
+                logger.warning("psutil not installed, cannot monitor child processes")
             except Exception as e:
-                logger.warning(f"获取子进程列表失败: {e}")
+                logger.warning(f"Failed to get child process list: {e}")
 
         return pids
 
@@ -166,9 +166,9 @@ class MonitorService:
                         pids=self._pids,
                         config=self._monitor_config,
                     )
-                    logger.debug(f"多进程监控器已创建: pids={self._pids}")
+                    logger.debug(f"Multi-process monitor created: pids={self._pids}")
                 except Exception as e:
-                    logger.error(f"创建多进程监控器失败: {e}")
+                    logger.error(f"Failed to create multi-process monitor: {e}")
                     # 退回到单进程监控
                     self._monitor = ProcessMonitor(
                         pid=os.getpid(),
@@ -239,7 +239,7 @@ class MonitorService:
             return result
 
         except Exception as e:
-            logger.error(f"获取资源快照失败: {e}")
+            logger.error(f"Failed to get resource snapshot: {e}")
             return {
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
@@ -278,7 +278,7 @@ class MonitorService:
                     "interval": self.config.interval,
                 }
             except Exception as e:
-                logger.error(f"启动持续采集失败: {e}")
+                logger.error(f"Failed to start continuous collection: {e}")
                 return {
                     "status": "error",
                     "message": f"启动失败: {e}",
@@ -303,14 +303,14 @@ class MonitorService:
 
                 # 返回摘要
                 summary = self._monitor.get_summary()
-                logger.info("持续采集已停止")
+                logger.info("Continuous collection stopped")
                 return {
                     "status": "stopped",
                     "message": "持续采集已停止",
                     "summary": summary,
                 }
             except Exception as e:
-                logger.error(f"停止持续采集失败: {e}")
+                logger.error(f"Failed to stop continuous collection: {e}")
                 self._is_collecting = False
                 return {
                     "status": "error",
@@ -345,7 +345,7 @@ class MonitorService:
                 "summary": summary,
             }
         except Exception as e:
-            logger.error(f"获取统计摘要失败: {e}")
+            logger.error(f"Failed to get statistics summary: {e}")
             return {
                 "status": "error",
                 "message": str(e),
@@ -392,7 +392,7 @@ class MonitorService:
                 return visualizer.generate_html_report()
 
         except Exception as e:
-            logger.error(f"生成报告失败: {e}")
+            logger.error(f"Failed to generate report: {e}")
             return None
 
     def shutdown(self) -> None:
@@ -405,7 +405,7 @@ class MonitorService:
             self._is_collecting = False
 
         self._monitor = None
-        logger.info("监控服务已关闭")
+        logger.info("Monitor service shut down")
 
 
 def register_monitor_routes(app, service: MonitorService) -> None:

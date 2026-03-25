@@ -105,4 +105,4 @@ async def uninstall_mysql() -> None:
             logger.error(f"Failed to uninstall MySQL: {e}")
         finally:
             _mysql_engine = None
-            logger.info("MySQL 连接已关闭")
+            logger.info("MySQL connection closed")

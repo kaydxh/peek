@@ -84,7 +84,7 @@ class DecordDecoder(BaseDecoder):
             else:
                 frames.append(self._image_to_base64(img))
 
-        logger.info(f"decord 解码完成: frames={len(frames)}")
+        logger.info(f"decord decode completed: frames={len(frames)}")
         return frames
 
     def decode_batches(

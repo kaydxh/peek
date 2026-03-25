@@ -73,10 +73,10 @@ async def create_mysql_engine(
                 raise RuntimeError(
                     f"MySQL 连接失败，已超过 {fail_after}s: {e}"
                 ) from e
-            logger.warning(f"MySQL 连接失败，{elapsed:.1f}s 后重试: {e}")
+            logger.warning("MySQL connection failed, retrying in %.1fs: %s", elapsed, e)
             await asyncio.sleep(min(wait_interval, max(fail_after - elapsed, 0.1)))
 
-    logger.info(f"MySQL 连接成功: {config.address}/{config.db_name}")
+    logger.info("MySQL connected: %s/%s", config.address, config.db_name)
     return engine
 
 
@@ -89,7 +89,7 @@ async def close_mysql_engine(engine: Any) -> None:
     """
     if engine is not None:
         await engine.dispose()
-        logger.info("MySQL 连接已关闭")
+        logger.info("MySQL connection closed")
 
 
 async def check_mysql_health(engine: Any) -> Optional[Exception]:
