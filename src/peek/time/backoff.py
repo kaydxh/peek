@@ -90,6 +90,18 @@ class BackOffOptions:
     # 重试失败后的回调函数
     on_failure: Optional[Callable[[Exception, int], None]] = None
 
+    def __repr__(self) -> str:
+        return (
+            f"BackOffOptions("
+            f"initial_interval={self.initial_interval}, "
+            f"multiplier={self.multiplier}, "
+            f"max_interval={self.max_interval}, "
+            f"min_interval={self.min_interval}, "
+            f"max_elapsed_time={self.max_elapsed_time}, "
+            f"max_elapsed_count={self.max_elapsed_count}, "
+            f"randomization_factor={self.randomization_factor})"
+        )
+
 
 class ExponentialBackOff:
     """
@@ -182,6 +194,18 @@ class ExponentialBackOff:
         self._current_interval: float = initial_interval
         self._start_time: float = time.monotonic()
         self._elapsed_count: int = 0
+
+    def __repr__(self) -> str:
+        return (
+            f"ExponentialBackOff("
+            f"initial_interval={self.opts.initial_interval}, "
+            f"multiplier={self.opts.multiplier}, "
+            f"max_interval={self.opts.max_interval}, "
+            f"max_elapsed_time={self.opts.max_elapsed_time}, "
+            f"max_elapsed_count={self.opts.max_elapsed_count}, "
+            f"current_interval={self._current_interval:.3f}, "
+            f"elapsed_count={self._elapsed_count})"
+        )
 
     def reset(self) -> None:
         """重置退避状态，恢复到初始状态"""
@@ -365,8 +389,8 @@ class ExponentialBackOff:
 
                 if not should_continue:
                     logger.warning(
-                        f"重试失败，已达到限制: elapsed_count={self._elapsed_count}, "
-                        f"elapsed_time={self.elapsed_time:.2f}s, error={e}"
+                    f"Retry exhausted, limit reached: elapsed_count={self._elapsed_count}, "
+                    f"elapsed_time={self.elapsed_time:.2f}s, error={e}"
                     )
                     if self.opts.on_failure:
                         self.opts.on_failure(e, self._elapsed_count)
@@ -377,7 +401,7 @@ class ExponentialBackOff:
                     self.opts.on_retry(e, self._elapsed_count, wait_time)
 
                 logger.debug(
-                    f"重试中: attempt={self._elapsed_count}, "
+                    f"Retrying: attempt={self._elapsed_count}, "
                     f"wait={wait_time:.3f}s, error={e}"
                 )
 
@@ -428,8 +452,8 @@ class ExponentialBackOff:
 
                 if not should_continue:
                     logger.warning(
-                        f"重试失败，已达到限制: elapsed_count={self._elapsed_count}, "
-                        f"elapsed_time={self.elapsed_time:.2f}s, error={e}"
+                    f"Retry exhausted, limit reached: elapsed_count={self._elapsed_count}, "
+                    f"elapsed_time={self.elapsed_time:.2f}s, error={e}"
                     )
                     if self.opts.on_failure:
                         self.opts.on_failure(e, self._elapsed_count)
@@ -440,7 +464,7 @@ class ExponentialBackOff:
                     self.opts.on_retry(e, self._elapsed_count, wait_time)
 
                 logger.debug(
-                    f"重试中: attempt={self._elapsed_count}, "
+                    f"Retrying: attempt={self._elapsed_count}, "
                     f"wait={wait_time:.3f}s, error={e}"
                 )
 
