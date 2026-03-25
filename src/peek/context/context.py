@@ -99,19 +99,22 @@ def get_extra(key: str = None) -> Any:
     return extra
 
 
-def set_extra(key: str, value: Any) -> None:
+def set_extra(key: str, value: Any) -> contextvars.Token:
     """
     设置当前请求的额外上下文信息
 
     Args:
         key: 键名
         value: 值
+
+    Returns:
+        contextvars.Token，可用于 _extra_var.reset(token) 恢复原值
     """
     extra = _extra_var.get()
     # 创建新字典以避免影响父上下文
     new_extra = dict(extra)
     new_extra[key] = value
-    _extra_var.set(new_extra)
+    return _extra_var.set(new_extra)
 
 
 # ============ RequestContext 类 ============
@@ -168,8 +171,13 @@ class RequestContext:
         return get_extra(key)
 
     @staticmethod
-    def set_extra(key: str, value: Any) -> None:
-        set_extra(key, value)
+    def set_extra(key: str, value: Any) -> contextvars.Token:
+        return set_extra(key, value)
+
+    @staticmethod
+    def reset_extra(token: contextvars.Token) -> None:
+        """恢复 extra 上下文变量到之前的值"""
+        _extra_var.reset(token)
 
     # ---- 上下文管理器 ----
     @staticmethod
