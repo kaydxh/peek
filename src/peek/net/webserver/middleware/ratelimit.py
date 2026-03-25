@@ -774,12 +774,21 @@ class QPSRateLimitMiddleware(BaseHTTPMiddleware):
     提供 QPS 和并发数限制
     """
 
+    # 默认跳过限流的路径（健康检查、指标等基础设施路径）
+    DEFAULT_SKIP_PATHS = [
+        "/healthz",
+        "/readyz",
+        "/livez",
+        "/metrics",
+    ]
+
     def __init__(
         self,
         app: ASGIApp,
         config: Optional[QPSLimitConfig] = None,
         limiter: Optional[QPSLimiter] = None,
         wait_timeout: float = 0,
+        skip_paths: Optional[List[str]] = None,
     ):
         """
         初始化限流中间件
@@ -789,6 +798,7 @@ class QPSRateLimitMiddleware(BaseHTTPMiddleware):
             config: 限流配置
             limiter: 限流器实例（优先使用）
             wait_timeout: 等待超时时间（0 表示不等待，直接拒绝）
+            skip_paths: 跳过限流的路径列表（健康检查等），None 使用默认列表
         """
         super().__init__(app)
         if limiter:
@@ -798,6 +808,24 @@ class QPSRateLimitMiddleware(BaseHTTPMiddleware):
         else:
             self.limiter = QPSLimiter(QPSLimitConfig())
         self.wait_timeout = wait_timeout
+        self.skip_paths = skip_paths if skip_paths is not None else self.DEFAULT_SKIP_PATHS
+
+    def _should_skip(self, path: str) -> bool:
+        """
+        判断路径是否跳过限流
+
+        健康检查等基础设施路径不应被限流，以保证 K8s 探针等始终可达。
+
+        Args:
+            path: 请求路径
+
+        Returns:
+            是否跳过限流
+        """
+        for skip_path in self.skip_paths:
+            if path == skip_path or path.startswith(skip_path + "/"):
+                return True
+        return False
 
     async def dispatch(
         self,
@@ -806,6 +834,10 @@ class QPSRateLimitMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         method = request.method
         path = request.url.path
+
+        # 健康检查等基础设施路径跳过限流
+        if self._should_skip(path):
+            return await call_next(request)
 
         # 检查 QPS 限制
         if self.wait_timeout > 0:
@@ -855,10 +887,19 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
     仅限制最大并发数
     """
 
+    # 默认跳过限流的路径（健康检查、指标等基础设施路径）
+    DEFAULT_SKIP_PATHS = [
+        "/healthz",
+        "/readyz",
+        "/livez",
+        "/metrics",
+    ]
+
     def __init__(
         self,
         app: ASGIApp,
         max_concurrency: int,
+        skip_paths: Optional[List[str]] = None,
     ):
         """
         初始化并发限制中间件
@@ -866,18 +907,32 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
         Args:
             app: ASGI 应用
             max_concurrency: 最大并发数
+            skip_paths: 跳过限流的路径列表（健康检查等），None 使用默认列表
         """
         super().__init__(app)
         self.max_concurrency = max_concurrency
         self._semaphore = asyncio.Semaphore(max_concurrency)
         self._current = 0
         self._lock = Lock()
+        self.skip_paths = skip_paths if skip_paths is not None else self.DEFAULT_SKIP_PATHS
+
+    def _should_skip(self, path: str) -> bool:
+        """判断路径是否跳过限流"""
+        for skip_path in self.skip_paths:
+            if path == skip_path or path.startswith(skip_path + "/"):
+                return True
+        return False
 
     async def dispatch(
         self,
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
+        # 健康检查等基础设施路径跳过限流
+        path = request.url.path
+        if self._should_skip(path):
+            return await call_next(request)
+
         # 尝试获取信号量（非阻塞）
         acquired = self._semaphore.locked() is False
 

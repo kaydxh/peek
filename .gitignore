@@ -36,6 +36,23 @@
 
 # Python files.
 *.pyc
+*.pyo
+__pycache__/
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+*.whl
+htmlcov/
+.coverage
+.coverage.*
 
 # Debug (e.g. gdb).
 .gdb_history

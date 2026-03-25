@@ -55,8 +55,8 @@ class HttpTimerMiddleware(BaseHTTPMiddleware):
         self.log = log or logger
         self.header_name = header_name
         self.skip_paths = skip_paths or [
-            "/health", "/healthz", "/ready", "/readyz",
-            "/live", "/livez", "/metrics",
+            "/healthz", "/readyz",
+            "/livez", "/metrics",
         ]
 
     async def dispatch(

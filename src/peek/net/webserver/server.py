@@ -310,9 +310,9 @@ class GenericWebServer:
 
         # 中间件公共跳过路径（健康检查、指标等无需记录日志/耗时的路径）
         middleware_skip_paths = [
-            "/health", "/healthz",
-            "/ready", "/readyz",
-            "/live", "/livez",
+            "/healthz",
+            "/readyz",
+            "/livez",
             "/metrics",
         ]
         

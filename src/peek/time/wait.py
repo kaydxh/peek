@@ -47,10 +47,18 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-class TimeoutError(Exception):
-    """超时错误"""
+class WaitTimeoutError(Exception):
+    """
+    等待超时错误
+
+    注意：命名为 WaitTimeoutError 而非 TimeoutError，避免遮蔽 Python 内置的 builtins.TimeoutError。
+    """
 
     pass
+
+
+# 向后兼容别名（已废弃，建议使用 WaitTimeoutError）
+TimeoutError = WaitTimeoutError
 
 
 class ConditionNotMetError(Exception):
@@ -133,7 +141,7 @@ async def call_with_timeout(
     except asyncio.TimeoutError:
         elapsed = time.monotonic() - start_time
         logger.warning(f"call_with_timeout: 执行超时, timeout={timeout}s, elapsed={elapsed:.3f}s")
-        raise TimeoutError(f"执行超时: timeout={timeout}s")
+        raise WaitTimeoutError(f"执行超时: timeout={timeout}s")
 
 
 def call_with_timeout_sync(
@@ -182,7 +190,7 @@ def call_with_timeout_sync(
         except concurrent.futures.TimeoutError:
             elapsed = time.monotonic() - start_time
             logger.warning(f"call_with_timeout_sync: 执行超时, timeout={timeout}s, elapsed={elapsed:.3f}s")
-            raise TimeoutError(f"执行超时: timeout={timeout}s")
+            raise WaitTimeoutError(f"执行超时: timeout={timeout}s")
 
 
 # ============================================================================
@@ -464,7 +472,7 @@ async def poll_immediate(
         # 检查是否超时
         elapsed = time.monotonic() - start_time
         if timeout > 0 and elapsed >= timeout:
-            raise TimeoutError(f"等待条件超时: timeout={timeout}s, elapsed={elapsed:.2f}s")
+            raise WaitTimeoutError(f"等待条件超时: timeout={timeout}s, elapsed={elapsed:.2f}s")
 
         # 首次检查或等待间隔
         if first_check and immediate:
@@ -647,9 +655,9 @@ async def wait_for_condition(
 
     try:
         await poll_immediate(wrapper, interval=interval, timeout=timeout)
-    except TimeoutError:
+    except WaitTimeoutError:
         if message:
-            raise TimeoutError(message)
+            raise WaitTimeoutError(message)
         raise
 
 
@@ -677,8 +685,8 @@ def wait_for_condition_sync(
         elapsed = time.monotonic() - start_time
         if timeout > 0 and elapsed >= timeout:
             if message:
-                raise TimeoutError(message)
-            raise TimeoutError(f"等待条件超时: timeout={timeout}s, elapsed={elapsed:.2f}s")
+                raise WaitTimeoutError(message)
+            raise WaitTimeoutError(f"等待条件超时: timeout={timeout}s, elapsed={elapsed:.2f}s")
 
         if condition():
             return
@@ -785,7 +793,7 @@ class TimeoutSync:
             import signal
 
             def handler(signum, frame):
-                raise TimeoutError(f"执行超时: timeout={self.timeout}s")
+                raise WaitTimeoutError(f"执行超时: timeout={self.timeout}s")
 
             self._old_handler = signal.signal(signal.SIGALRM, handler)
             signal.alarm(int(self.timeout))
