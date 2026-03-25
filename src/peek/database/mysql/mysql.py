@@ -12,6 +12,9 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional, Union
 
+import sqlalchemy
+from sqlalchemy.ext.asyncio import create_async_engine
+
 from peek.database.mysql.config import MySQLConfig
 
 logger = logging.getLogger(__name__)
@@ -43,12 +46,6 @@ async def create_mysql_engine(
         logger.debug("MySQL is disabled, skipping")
         return None
 
-    try:
-        from sqlalchemy.ext.asyncio import create_async_engine
-    except ImportError:
-        logger.warning("SQLAlchemy 或 aiomysql 未安装，跳过 MySQL")
-        return None
-
     engine = create_async_engine(
         config.dsn,
         pool_size=config.max_idle_connections,
@@ -67,7 +64,7 @@ async def create_mysql_engine(
     while True:
         try:
             async with engine.connect() as conn:
-                await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
+                await conn.execute(sqlalchemy.text("SELECT 1"))
             break
         except Exception as e:
             elapsed = asyncio.get_event_loop().time() - start_time
@@ -111,7 +108,6 @@ async def check_mysql_health(engine: Any) -> Optional[Exception]:
         return Exception("MySQL engine is None")
 
     try:
-        import sqlalchemy
         async with engine.connect() as conn:
             await conn.execute(sqlalchemy.text("SELECT 1"))
         return None
