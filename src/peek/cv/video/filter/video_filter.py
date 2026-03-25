@@ -220,8 +220,8 @@ class VideoFilter:
 
         out = ffmpeg.input(self._source).output(output_path, **output_kwargs)
 
-        logger.info(f"执行滤镜链: {self._source} -> {output_path}")
-        logger.info(f"滤镜: {filter_chain}")
+        logger.info(f"Executing filter chain: {self._source} -> {output_path}")
+        logger.info(f"Filters: {filter_chain}")
 
         try:
             out.run(overwrite_output=overwrite, quiet=True)
@@ -232,5 +232,5 @@ class VideoFilter:
                 f"滤镜执行失败:\n" + "\n".join(error_lines)
             )
 
-        logger.info(f"滤镜链执行完成: {output_path}")
+        logger.info(f"Filter chain completed: {output_path}")
         return output_path

@@ -124,7 +124,7 @@ class ScaleFilter:
 
         out = ffmpeg.output(video, audio, output)
 
-        logger.info(f"视频缩放: {source} -> {output}, params={filter_kwargs}")
+        logger.info(f"Video scale: {source} -> {output}, params={filter_kwargs}")
 
         try:
             out.run(overwrite_output=overwrite, quiet=True)
@@ -135,7 +135,7 @@ class ScaleFilter:
                 f"视频缩放失败:\n" + "\n".join(error_lines)
             )
 
-        logger.info(f"视频缩放完成: {output}")
+        logger.info(f"Video scale completed: {output}")
         return output
 
     @staticmethod

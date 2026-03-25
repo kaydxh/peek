@@ -103,7 +103,7 @@ class OpenCVDecoder(BaseDecoder):
 
                     frame_idx += 1
 
-                logger.info(f"opencv 解码完成: frames={len(frames)}")
+                logger.info(f"opencv decode completed: frames={len(frames)}")
                 return frames
             finally:
                 cap.release()

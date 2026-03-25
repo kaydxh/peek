@@ -47,7 +47,7 @@ async def install_monitor(
     global _monitor_service
 
     if config is None or not config.enabled:
-        logger.info("监控插件未启用")
+        logger.info("Monitor plugin is not enabled")
         return None
 
     try:
@@ -102,9 +102,9 @@ async def install_monitor(
 
         # 如果配置了自动启动，则开始持续采集
         if config.auto_start:
-            logger.info("monitor.auto_start=true，正在启动持续采集...")
+            logger.info("monitor.auto_start=true, starting continuous collection...")
             result = service.start_collecting()
-            logger.info(f"持续采集启动结果: {result}")
+            logger.info("Continuous collection start result: %s", result)
 
         logger.info(
             f"监控插件已安装: interval={config.interval}s, "
@@ -116,7 +116,7 @@ async def install_monitor(
         return service
 
     except Exception as e:
-        logger.error(f"安装监控插件失败: {e}", exc_info=True)
+        logger.error("Failed to install monitor plugin: %s", e, exc_info=True)
         raise
 
 
@@ -127,4 +127,4 @@ async def uninstall_monitor() -> None:
     if _monitor_service is not None:
         _monitor_service.shutdown()
         _monitor_service = None
-        logger.info("监控插件已卸载")
+        logger.info("Monitor plugin uninstalled")

@@ -138,7 +138,7 @@ class BaseServerRunOptions:
             # 加载业务特有配置（子类实现）
             self._load_business_config()
         else:
-            logger.warning(f"配置文件未找到: {config_path}")
+            logger.warning("Config file not found: %s", config_path)
             self.web_config = WebConfig(
                 bind_address={"port": self.default_port}
             )
@@ -191,7 +191,7 @@ class BaseCompletedOptions(ABC):
 
     async def run(self):
         """运行服务器（模板方法）。"""
-        logger.info(f"正在启动 {self._service_name}")
+        logger.info("Starting %s", self._service_name)
 
         # 1. 安装日志（公共）
         self._install_logs()
@@ -262,7 +262,7 @@ class BaseCompletedOptions(ABC):
 
         controller = HealthzController()
         web_server.install_healthz_controller(controller)
-        logger.info("健康检查控制器已安装 (/healthz, /livez, /readyz)")
+        logger.info("Health check controller installed (/healthz, /livez, /readyz)")
 
     # ---- 子类必须实现的抽象方法 ----
 

@@ -164,7 +164,7 @@ class VLLMVideoClient:
         if repetition_penalty is not None:
             payload["repetition_penalty"] = repetition_penalty
 
-        logger.debug(f"发送请求到 vLLM: {url}")
+        logger.debug(f"Sending request to vLLM: {url}")
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
@@ -175,13 +175,13 @@ class VLLMVideoClient:
             if response.status_code != 200:
                 error_detail = response.text
                 logger.error(
-                    f"vLLM 请求失败: status={response.status_code}, "
+                    f"vLLM request failed: status={response.status_code}, "
                     f"detail={error_detail}"
                 )
             response.raise_for_status()
             result = response.json()
 
-        logger.debug(f"vLLM 响应: model={result.get('model', '')}")
+        logger.debug(f"vLLM response: model={result.get('model', '')}")
         return ChatCompletionResponse(result)
 
     async def health_check(self) -> bool:
@@ -200,15 +200,15 @@ class VLLMVideoClient:
                     is_ready = self.model_name in model_names
                     if not is_ready:
                         logger.debug(
-                            f"模型 {self.model_name} 尚未就绪，"
-                            f"当前可用模型: {model_names}"
+                            f"Model {self.model_name} not ready yet, "
+                            f"available models: {model_names}"
                         )
                     return is_ready
                 else:
-                    logger.debug(f"vLLM server 返回状态码: {response.status_code}")
+                    logger.debug(f"vLLM server returned status code: {response.status_code}")
                     return False
         except Exception as e:
-            logger.warning(f"vLLM 健康检查失败: {e}")
+            logger.warning(f"vLLM health check failed: {e}")
             return False
 
     async def list_models(self) -> List[str]:
@@ -222,5 +222,5 @@ class VLLMVideoClient:
                 result = response.json()
                 return [model["id"] for model in result.get("data", [])]
         except Exception as e:
-            logger.error(f"获取模型列表失败: {e}")
+            logger.error(f"Failed to list models: {e}")
             return []

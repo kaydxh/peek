@@ -88,7 +88,7 @@ class ConfigWatcher:
             self._last_hash = self._compute_hash()
             self._last_config = self._load_config()
         else:
-            logger.warning(f"配置文件不存在: {self._config_path}")
+            logger.warning("Config file does not exist: %s", self._config_path)
 
     def _compute_hash(self) -> Optional[str]:
         """计算配置文件的 MD5 哈希"""
@@ -96,7 +96,7 @@ class ConfigWatcher:
             with open(self._config_path, "rb") as f:
                 return hashlib.md5(f.read()).hexdigest()
         except Exception as e:
-            logger.error(f"计算配置文件哈希失败: {e}")
+            logger.error("Failed to compute config file hash: %s", e)
             return None
 
     def _load_config(self) -> Dict[str, Any]:
@@ -105,7 +105,7 @@ class ConfigWatcher:
             with open(self._config_path, "r", encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         except Exception as e:
-            logger.error(f"加载配置文件失败: {e}")
+            logger.error("Failed to load config file: %s", e)
             return {}
 
     def on_change(self, callback: OnChangeCallback) -> None:
@@ -133,7 +133,7 @@ class ConfigWatcher:
     def start(self) -> None:
         """启动配置文件监听（后台线程）"""
         if self._thread is not None and self._thread.is_alive():
-            logger.warning("ConfigWatcher 已在运行")
+            logger.warning("ConfigWatcher is already running")
             return
 
         self._stop_event.clear()
@@ -143,7 +143,7 @@ class ConfigWatcher:
             daemon=True,
         )
         self._thread.start()
-        logger.info(f"ConfigWatcher 已启动，监听: {self._config_path}")
+        logger.info("ConfigWatcher started, watching: %s", self._config_path)
 
     def stop(self) -> None:
         """停止配置文件监听"""
@@ -151,7 +151,7 @@ class ConfigWatcher:
         if self._thread is not None:
             self._thread.join(timeout=5.0)
             self._thread = None
-        logger.info("ConfigWatcher 已停止")
+        logger.info("ConfigWatcher stopped")
 
     def _poll_loop(self) -> None:
         """轮询检测文件变更"""
@@ -159,7 +159,7 @@ class ConfigWatcher:
             try:
                 self._check_change()
             except Exception as e:
-                logger.error(f"ConfigWatcher 检测变更异常: {e}")
+                logger.error("ConfigWatcher change detection error: %s", e)
 
             self._stop_event.wait(self._poll_interval)
 
@@ -186,7 +186,7 @@ class ConfigWatcher:
         self._last_config = new_config
         self._last_change_time = now
 
-        logger.info(f"检测到配置变更: {self._config_path}")
+        logger.info("Config change detected: %s", self._config_path)
 
         # 触发回调
         with self._lock:
@@ -196,7 +196,7 @@ class ConfigWatcher:
             try:
                 callback(old_config, new_config)
             except Exception as e:
-                logger.error(f"配置变更回调执行异常: {e}")
+                logger.error("Config change callback error: %s", e)
 
     @property
     def is_running(self) -> bool:

@@ -242,7 +242,7 @@ def _parse_ffprobe_data(data: Dict[str, Any], source: str) -> VideoInfo:
         info.channels = first_audio.channels
         info.channel_layout = first_audio.channel_layout
 
-    logger.debug(f"视频信息探测完成: {info.filename}, {info.resolution}, {info.duration:.2f}s")
+        logger.debug(f"Video info probed: {info.filename}, {info.resolution}, {info.duration:.2f}s")
     return info
 
 

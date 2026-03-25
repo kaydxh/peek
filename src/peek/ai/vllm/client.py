@@ -78,8 +78,8 @@ class VLLMClient:
             "stream": stream,
         }
 
-        logger.debug(f"发送请求到 vLLM: {url}")
-        logger.debug(f"请求负载: {payload}")
+        logger.debug(f"Sending request to vLLM: {url}")
+        logger.debug(f"Request payload: {payload}")
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
@@ -90,7 +90,7 @@ class VLLMClient:
             response.raise_for_status()
             result = response.json()
 
-        logger.debug(f"vLLM 响应: {result}")
+        logger.debug(f"vLLM response: {result}")
         return result
 
     async def health_check(self) -> bool:
@@ -111,15 +111,15 @@ class VLLMClient:
                     is_ready = self.model_name in model_names
                     if not is_ready:
                         logger.debug(
-                            f"模型 {self.model_name} 尚未就绪，"
-                            f"当前可用模型: {model_names}"
+                            f"Model {self.model_name} not ready yet, "
+                            f"available models: {model_names}"
                         )
                     return is_ready
                 else:
-                    logger.debug(f"vLLM server 返回状态码: {response.status_code}")
+                    logger.debug(f"vLLM server returned status code: {response.status_code}")
                     return False
         except Exception as e:
-            logger.warning(f"vLLM 健康检查失败: {e}")
+            logger.warning(f"vLLM health check failed: {e}")
             return False
 
     async def list_models(self) -> List[str]:
@@ -136,5 +136,5 @@ class VLLMClient:
                 result = response.json()
                 return [model["id"] for model in result.get("data", [])]
         except Exception as e:
-            logger.error(f"获取模型列表失败: {e}")
+            logger.error(f"Failed to list models: {e}")
             return []

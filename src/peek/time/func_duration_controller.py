@@ -49,8 +49,8 @@ class FunctionDurationController:
         start_time = time.time()
         self.is_running = True
 
-        logger.info("开始执行函数，目标运行时长: %s秒", target_duration)
-        logger.info("开始时间: %s", datetime.now().strftime('%H:%M:%S'))
+        logger.info("Starting function execution, target duration: %ss", target_duration)
+        logger.info("Start time: %s", datetime.now().strftime('%H:%M:%S'))
         logger.info("-" * 50)
 
         try:
@@ -77,7 +77,7 @@ class FunctionDurationController:
                 self._display_progress(elapsed, target_duration, call_duration)
 
         except KeyboardInterrupt:
-            logger.info("用户中断执行")
+            logger.info("Execution interrupted by user")
             self.is_running = False
 
         # 计算最终统计信息
@@ -110,11 +110,11 @@ class FunctionDurationController:
         # 预估需要的调用次数
         estimated_calls = int(target_duration / estimated_call_time)
 
-        logger.info("智能执行模式")
-        logger.info("目标运行时长: %s秒", target_duration)
-        logger.info("预估单次调用时间: %s秒", estimated_call_time)
-        logger.info("预估需要调用次数: %s次", estimated_calls)
-        logger.info("开始时间: %s", datetime.now().strftime('%H:%M:%S'))
+        logger.info("Smart execution mode")
+        logger.info("Target duration: %ss", target_duration)
+        logger.info("Estimated call time: %ss", estimated_call_time)
+        logger.info("Estimated call count: %s", estimated_calls)
+        logger.info("Start time: %s", datetime.now().strftime('%H:%M:%S'))
         logger.info("-" * 50)
 
         try:
@@ -149,7 +149,7 @@ class FunctionDurationController:
                 self._display_adaptive_progress(elapsed, target_duration, call_duration)
 
         except KeyboardInterrupt:
-            logger.info("用户中断执行")
+            logger.info("Execution interrupted by user")
             self.is_running = False
 
         # 计算最终统计信息
@@ -176,8 +176,8 @@ class FunctionDurationController:
         start_time = time.time()
         self.is_running = True
 
-        logger.info("执行函数 %d 次", call_count)
-        logger.info("开始时间: %s", datetime.now().strftime('%H:%M:%S'))
+        logger.info("Executing function %d times", call_count)
+        logger.info("Start time: %s", datetime.now().strftime('%H:%M:%S'))
         logger.info("-" * 50)
 
         try:
@@ -202,12 +202,12 @@ class FunctionDurationController:
                 eta = elapsed / (i + 1) * (call_count - i - 1) if i > 0 else 0
 
                 logger.info(
-                    "进度: %d/%d (%.1f%%) | 本次耗时: %.3fs | 已用时: %.1fs | 预计剩余: %.1fs",
+                    "Progress: %d/%d (%.1f%%) | Call time: %.3fs | Elapsed: %.1fs | ETA: %.1fs",
                     i + 1, call_count, progress, call_duration, elapsed, eta,
                 )
 
         except KeyboardInterrupt:
-            logger.info("用户中断执行")
+            logger.info("Execution interrupted by user")
             self.is_running = False
 
         # 计算最终统计信息
@@ -232,8 +232,7 @@ class FunctionDurationController:
         avg_time = sum(self.call_times) / len(self.call_times)
         estimated_total_calls = int(target / avg_time)
 
-        logger.info(
-            "进度: %.1f%% | 已执行: %d次 | 已用时: %.1fs | 本次耗时: %.3fs | 平均耗时: %.3fs | 预计总次数: %d",
+        logger.info("Progress: %.1f%% | Calls: %d | Elapsed: %.1fs | Call time: %.3fs | Avg: %.3fs | Est. total: %d",
             progress, self.stats.total_calls, elapsed, call_time, avg_time, estimated_total_calls,
         )
 
@@ -244,8 +243,7 @@ class FunctionDurationController:
         avg_time = sum(self.call_times) / len(self.call_times)
         estimated_remaining_calls = int(remaining / avg_time) if avg_time > 0 else 0
 
-        logger.info(
-            "进度: %.1f%% | 已执行: %d次 | 已用时: %.1fs | 剩余时间: %.1fs | 本次耗时: %.3fs | 预计还需: %d次",
+        logger.info("Progress: %.1f%% | Calls: %d | Elapsed: %.1fs | Remaining: %.1fs | Call time: %.3fs | Est. remaining: %d",
             progress, self.stats.total_calls, elapsed, remaining, call_time, estimated_remaining_calls,
         )
 
@@ -263,19 +261,19 @@ class FunctionDurationController:
     def _display_final_stats(self):
         """显示最终统计信息"""
         logger.info("=" * 50)
-        logger.info("执行完成！统计信息：")
-        logger.info("总调用次数: %d", self.stats.total_calls)
-        logger.info("目标运行时长: %.2f秒", self.stats.target_duration)
-        logger.info("实际运行时长: %.2f秒", self.stats.actual_duration)
-        logger.info("纯函数执行时长: %.2f秒", self.stats.total_duration)
-        logger.info("平均单次调用时间: %.3f秒", self.stats.average_call_time)
-        logger.info("时间利用率: %.1f%%", self.stats.efficiency)
+        logger.info("Execution completed! Statistics:")
+        logger.info("Total calls: %d", self.stats.total_calls)
+        logger.info("Target duration: %.2fs", self.stats.target_duration)
+        logger.info("Actual duration: %.2fs", self.stats.actual_duration)
+        logger.info("Pure execution time: %.2fs", self.stats.total_duration)
+        logger.info("Average call time: %.3fs", self.stats.average_call_time)
+        logger.info("Time utilization: %.1f%%", self.stats.efficiency)
 
         if self.call_times:
-            logger.info("最快调用时间: %.3f秒", min(self.call_times))
-            logger.info("最慢调用时间: %.3f秒", max(self.call_times))
+            logger.info("Fastest call: %.3fs", min(self.call_times))
+            logger.info("Slowest call: %.3fs", max(self.call_times))
 
-        logger.info("结束时间: %s", datetime.now().strftime('%H:%M:%S'))
+        logger.info("End time: %s", datetime.now().strftime('%H:%M:%S'))
         logger.info("=" * 50)
 
 
@@ -307,7 +305,7 @@ def threaded_controller_demo():
     controller = FunctionDurationController()
 
     def run_in_thread():
-        logger.info("在后台线程中运行...")
+        logger.info("Running in background thread...")
         return controller.run_for_duration(sample_function_100ms, 10)
 
     # 启动后台线程
@@ -316,46 +314,46 @@ def threaded_controller_demo():
 
     # 主线程可以做其他事情
     time.sleep(5)
-    logger.info("主线程：5秒后停止后台执行")
+    logger.info("Main thread: stopping background execution after 5s")
     controller.stop()
 
     thread.join()
-    logger.info("后台线程已停止")
+    logger.info("Background thread stopped")
 
 
 def main():
     """主函数 - 演示各种用法"""
     controller = FunctionDurationController()
 
-    logger.info("=== 函数运行时长控制器演示 ===\n")
+    logger.info("=== Function Duration Controller Demo ===\n")
 
     # 示例1: 运行60秒（约600次调用）
-    logger.info("1. 运行函数60秒（预期约600次调用）:")
+    logger.info("1. Run function for 60s (expected ~600 calls):")
     stats1 = controller.run_for_duration(sample_function_100ms, 5)  # 为了演示，改为5秒
     logger.info()
 
     # 示例2: 智能自适应运行
-    logger.info("2. 智能自适应运行（10秒）:")
+    logger.info("2. Smart adaptive run (10s):")
     stats2 = controller.run_for_duration_with_adaptive_timing(
         variable_time_function, 3, 0.1  # 为了演示，改为3秒
     )
     logger.info()
 
     # 示例3: 指定调用次数
-    logger.info("3. 执行指定次数（50次）:")
+    logger.info("3. Run specified count (50 times):")
     stats3 = controller.run_with_call_count(sample_function_100ms, 10)  # 为了演示，改为10次
     logger.info()
 
     # 示例4: CPU密集型任务
-    logger.info("4. CPU密集型任务（5秒）:")
+    logger.info("4. CPU-intensive task (5s):")
     stats4 = controller.run_for_duration(cpu_intensive_function, 2, 50000)  # 为了演示，改为2秒
     logger.info()
 
     # 示例5: 多线程控制演示
-    logger.info("5. 多线程控制演示:")
+    logger.info("5. Multi-thread control demo:")
     threaded_controller_demo()
 
-    logger.info("\n=== 演示完成 ===")
+    logger.info("\n=== Demo completed ===")
 
 
 # 高级功能
@@ -378,7 +376,7 @@ class AdvancedDurationController(FunctionDurationController):
         start_time = time.time()
         self.is_running = True
 
-        logger.info("性能监控模式 - 目标时长: %s秒", target_duration)
+        logger.info("Performance monitoring mode - target duration: %ss", target_duration)
         logger.info("-" * 50)
 
         try:
@@ -408,7 +406,7 @@ class AdvancedDurationController(FunctionDurationController):
                     self._display_progress(elapsed, target_duration, call_duration)
 
         except KeyboardInterrupt:
-            logger.info("用户中断执行")
+            logger.info("Execution interrupted by user")
             self.is_running = False
 
         self._calculate_final_stats(time.time() - start_time)
@@ -435,8 +433,8 @@ class AdvancedDurationController(FunctionDurationController):
         if not self.performance_log:
             return
 
-        logger.info("性能摘要:")
-        logger.info("时间点\t\t调用次数\t每秒调用数\t最近平均耗时")
+        logger.info("Performance summary:")
+        logger.info("Timestamp\t\tCalls\t\tQPS\t\tRecent avg time")
         logger.info("-" * 60)
 
         for log_entry in self.performance_log[-5:]:  # 显示最后5个记录点
@@ -452,7 +450,7 @@ if __name__ == "__main__":
     main() 
 
     # 高级功能演示
-    logger.info("\n\n=== 高级功能演示 ===")
+    logger.info("\n\n=== Advanced features demo ===")
     advanced_controller = AdvancedDurationController()
     advanced_controller.run_with_performance_monitoring(
         sample_function_100ms, 3, log_interval=25

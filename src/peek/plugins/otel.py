@@ -213,7 +213,7 @@ async def install_opentelemetry(
         web_server: 可选的 Web 服务器实例，用于 instrument FastAPI
     """
     if not config or not config.get("enabled", False):
-        logger.debug("OpenTelemetry 未启用，跳过安装")
+        logger.debug("OpenTelemetry is not enabled, skipping")
         return
 
     try:
@@ -229,7 +229,7 @@ async def install_opentelemetry(
         # 将 tide 配置格式转换为 peek 格式
         peek_config = _convert_config_to_peek_format(config)
 
-        logger.debug(f"转换后的 peek 配置: {peek_config}")
+        logger.debug(f"Converted peek config: {peek_config}")
 
         # 使用 peek 的 OpenTelemetryService
         service = OpenTelemetryService.from_config_dict(peek_config)
@@ -254,20 +254,20 @@ async def install_opentelemetry(
                     exclude_spans=["receive", "send"],  # 禁用 http send/receive 子 span
                 )
 
-                logger.info("FastAPI 已集成 OpenTelemetry（send/receive span 已禁用）")
+                logger.info("FastAPI integrated with OpenTelemetry (send/receive spans disabled)")
             except ImportError:
-                logger.debug("FastAPI instrumentation 不可用")
+                logger.debug("FastAPI instrumentation not available")
             except Exception as e:
-                logger.warning(f"FastAPI instrumentation 失败: {e}")
+                logger.warning(f"FastAPI instrumentation failed: {e}")
 
         logger.info(
-            "OpenTelemetry 安装成功（via peek）: "
+            "OpenTelemetry installed (via peek): "
             f"tracer={peek_config.get('tracer', {}).get('exporter_type', 'none')}, "
             f"metric={peek_config.get('metric', {}).get('exporter_type', 'none')}"
         )
 
     except Exception as e:
-        logger.error(f"安装 OpenTelemetry 失败: {e}")
+        logger.error(f"Failed to install OpenTelemetry: {e}")
         raise
 
 

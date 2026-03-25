@@ -103,4 +103,4 @@ async def uninstall_redis() -> None:
             logger.error(f"Failed to uninstall Redis: {e}")
         finally:
             _redis_client = None
-            logger.info("Redis 连接已关闭")
+            logger.info("Redis connection closed")

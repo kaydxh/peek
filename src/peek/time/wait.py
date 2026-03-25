@@ -130,18 +130,18 @@ async def call_with_timeout(
     if timeout <= 0:
         result = await func(*args, **kwargs)
         elapsed = time.monotonic() - start_time
-        logger.debug(f"call_with_timeout: 执行完成, elapsed={elapsed:.3f}s")
+        logger.debug(f"call_with_timeout: completed, elapsed={elapsed:.3f}s")
         return result
 
     try:
         result = await asyncio.wait_for(func(*args, **kwargs), timeout=timeout)
         elapsed = time.monotonic() - start_time
-        logger.debug(f"call_with_timeout: 执行完成, elapsed={elapsed:.3f}s")
+        logger.debug(f"call_with_timeout: completed, elapsed={elapsed:.3f}s")
         return result
     except asyncio.TimeoutError:
         elapsed = time.monotonic() - start_time
-        logger.warning(f"call_with_timeout: 执行超时, timeout={timeout}s, elapsed={elapsed:.3f}s")
-        raise WaitTimeoutError(f"执行超时: timeout={timeout}s")
+        logger.warning(f"call_with_timeout: timed out, timeout={timeout}s, elapsed={elapsed:.3f}s")
+        raise WaitTimeoutError(f"Execution timed out: timeout={timeout}s")
 
 
 def call_with_timeout_sync(
@@ -177,7 +177,7 @@ def call_with_timeout_sync(
     if timeout <= 0:
         result = func(*args, **kwargs)
         elapsed = time.monotonic() - start_time
-        logger.debug(f"call_with_timeout_sync: 执行完成, elapsed={elapsed:.3f}s")
+        logger.debug(f"call_with_timeout_sync: completed, elapsed={elapsed:.3f}s")
         return result
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -185,12 +185,12 @@ def call_with_timeout_sync(
         try:
             result = future.result(timeout=timeout)
             elapsed = time.monotonic() - start_time
-            logger.debug(f"call_with_timeout_sync: 执行完成, elapsed={elapsed:.3f}s")
+            logger.debug(f"call_with_timeout_sync: completed, elapsed={elapsed:.3f}s")
             return result
         except concurrent.futures.TimeoutError:
             elapsed = time.monotonic() - start_time
-            logger.warning(f"call_with_timeout_sync: 执行超时, timeout={timeout}s, elapsed={elapsed:.3f}s")
-            raise WaitTimeoutError(f"执行超时: timeout={timeout}s")
+            logger.warning(f"call_with_timeout_sync: timed out, timeout={timeout}s, elapsed={elapsed:.3f}s")
+            raise WaitTimeoutError(f"Execution timed out: timeout={timeout}s")
 
 
 # ============================================================================
@@ -341,7 +341,7 @@ async def backoff_until(
             # 提前获取下一次等待时间
             wait_time, should_continue = backoff.next_backoff()
             if not should_continue:
-                msg = f"达到最大等待时间或次数限制: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
+                msg = f"Max wait time or count limit reached: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
                 logger.warning(f"backoff_until: {msg}")
                 if last_error:
                     raise MaxRetriesExceededError(msg) from last_error
@@ -350,14 +350,14 @@ async def backoff_until(
         # 执行函数
         try:
             result = await func(*args, **kwargs)
-            logger.debug(f"backoff_until: 函数执行成功, count={backoff.elapsed_count}")
+            logger.debug(f"backoff_until: function executed successfully, count={backoff.elapsed_count}")
 
             if not loop:
                 return result
 
         except Exception as e:
             last_error = e
-            logger.debug(f"backoff_until: 函数执行异常, count={backoff.elapsed_count}, error={e}")
+            logger.debug(f"backoff_until: function execution error, count={backoff.elapsed_count}, error={e}")
 
             if stop_on_error:
                 raise
@@ -366,7 +366,7 @@ async def backoff_until(
             # 函数执行完成后才获取等待时间
             wait_time, should_continue = backoff.next_backoff()
             if not should_continue:
-                msg = f"达到最大等待时间或次数限制: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
+                msg = f"Max wait time or count limit reached: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
                 logger.warning(f"backoff_until: {msg}")
                 if last_error:
                     raise MaxRetriesExceededError(msg) from last_error
@@ -472,7 +472,7 @@ async def poll_immediate(
         # 检查是否超时
         elapsed = time.monotonic() - start_time
         if timeout > 0 and elapsed >= timeout:
-            raise WaitTimeoutError(f"等待条件超时: timeout={timeout}s, elapsed={elapsed:.2f}s")
+            raise WaitTimeoutError(f"Condition wait timed out: timeout={timeout}s, elapsed={elapsed:.2f}s")
 
         # 首次检查或等待间隔
         if first_check and immediate:
@@ -486,10 +486,10 @@ async def poll_immediate(
         try:
             done, result = await condition(*args, **kwargs)
             if done:
-                logger.debug(f"poll_immediate: 条件满足, elapsed={time.monotonic() - start_time:.2f}s")
+                logger.debug(f"poll_immediate: condition met, elapsed={time.monotonic() - start_time:.2f}s")
                 return result
         except Exception as e:
-            logger.debug(f"poll_immediate: 条件检查异常, error={e}")
+            logger.debug(f"poll_immediate: condition check error, error={e}")
             # 继续轮询，除非超时
 
 
@@ -524,7 +524,7 @@ async def poll_until_context_done(
 
             await asyncio.sleep(interval)
         except asyncio.CancelledError:
-            raise WaitCancelledError("等待被取消")
+            raise WaitCancelledError("Wait cancelled")
 
 
 # ============================================================================
@@ -605,16 +605,16 @@ def retry_sync(
     for attempt in range(total_attempts):
         try:
             result = func(*args, **kwargs)
-            logger.debug(f"retry_sync: 执行成功, attempt={attempt + 1}")
+            logger.debug(f"retry_sync: succeeded, attempt={attempt + 1}")
             return result
         except Exception as e:
             last_error = e
-            logger.debug(f"retry_sync: 执行异常, attempt={attempt + 1}, error={e}")
+            logger.debug(f"retry_sync: failed, attempt={attempt + 1}, error={e}")
 
             if attempt < total_attempts - 1:
                 time.sleep(period)
 
-    msg = f"超过最大重试次数: retry_times={retry_times}"
+    msg = f"Max retries exceeded: retry_times={retry_times}"
     raise MaxRetriesExceededError(msg) from last_error
 
 
@@ -686,7 +686,7 @@ def wait_for_condition_sync(
         if timeout > 0 and elapsed >= timeout:
             if message:
                 raise WaitTimeoutError(message)
-            raise WaitTimeoutError(f"等待条件超时: timeout={timeout}s, elapsed={elapsed:.2f}s")
+            raise WaitTimeoutError(f"Condition wait timed out: timeout={timeout}s, elapsed={elapsed:.2f}s")
 
         if condition():
             return
@@ -793,7 +793,7 @@ class TimeoutSync:
             import signal
 
             def handler(signum, frame):
-                raise WaitTimeoutError(f"执行超时: timeout={self.timeout}s")
+                raise WaitTimeoutError(f"Execution timed out: timeout={self.timeout}s")
 
             self._old_handler = signal.signal(signal.SIGALRM, handler)
             signal.alarm(int(self.timeout))
