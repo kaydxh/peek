@@ -66,7 +66,7 @@ async def create_redis_client(
             db=config.db,
         )
     else:
-    # 单节点模式，对应 Go 版本 redis.NewClient
+        # 单节点模式，对应 Go 版本 redis.NewClient
         connect_kwargs = dict(
             host=config.host,
             port=config.port,

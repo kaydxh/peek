@@ -206,9 +206,9 @@ def create_resource(
             service_name="my-service",
             service_version="1.0.0",
             enable_k8s=True,
-            zhiyan_global_app_mark="xxxxxx",
+            zhiyan_global_app_mark="<your-app-mark>",
             zhiyan_env="test",
-            zhiyan_apm_token="xxxx#apm-log-xxx#17044_xxx",
+            zhiyan_apm_token="<your-apm-token>",
             meter_type="global",
         )
         ```

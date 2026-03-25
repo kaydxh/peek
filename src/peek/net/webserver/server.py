@@ -432,7 +432,7 @@ class GenericWebServer:
         try:
             self.add_post_start_hook(name, hook)
         except Exception as e:
-            print(f"Failed to add post start hook {name}: {e}", file=sys.stderr)
+            logger.critical("Failed to add post start hook %s: %s", name, e)
             sys.exit(1)
 
     def add_pre_shutdown_hook(
@@ -483,7 +483,7 @@ class GenericWebServer:
         try:
             self.add_pre_shutdown_hook(name, hook)
         except Exception as e:
-            print(f"Failed to add pre shutdown hook {name}: {e}", file=sys.stderr)
+            logger.critical("Failed to add pre shutdown hook %s: %s", name, e)
             sys.exit(1)
 
     async def _run_post_start_hooks(self) -> None:
@@ -503,9 +503,9 @@ class GenericWebServer:
                 else:
                     entry.hook()
                 entry.done.set()
-                print(f"Post start hook {name} completed")
+                logger.info("Post start hook %s completed", name)
             except Exception as e:
-                print(f"Post start hook {name} failed: {e}", file=sys.stderr)
+                logger.error("Post start hook %s failed: %s", name, e)
 
         tasks = [run_hook(name, entry) for name, entry in hooks.items()]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -527,9 +527,9 @@ class GenericWebServer:
                 else:
                     entry.hook()
                 entry.done.set()
-                print(f"Pre shutdown hook {name} completed")
+                logger.info("Pre shutdown hook %s completed", name)
             except Exception as e:
-                print(f"Pre shutdown hook {name} failed: {e}", file=sys.stderr)
+                logger.error("Pre shutdown hook %s failed: %s", name, e)
 
     def install_healthz_controller(
         self,

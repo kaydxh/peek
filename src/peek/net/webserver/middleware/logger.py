@@ -8,6 +8,7 @@
 对大字符串字段只打印前 N 个字节和总长度
 """
 
+import logging
 from typing import Any, Awaitable, Callable, List, Optional
 
 from fastapi import Request, Response
@@ -68,7 +69,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             log_func = getattr(self.logger, level, self.logger.info)
             log_func(msg)
         else:
-            print(msg)
+            logging.getLogger(__name__).info(msg)
 
     def _truncate_string(self, value: str) -> str:
         """
