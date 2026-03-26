@@ -12,13 +12,15 @@
 import logging
 import os
 import sys
-from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from pydantic import BaseModel, Field, field_validator
+
 from .formatter import GlogFormatter, JsonFormatter, TextFormatter, ShortFilenameFilter
 from .rotate import RotatingFileHandler
+from peek.time.parse import parse_duration as _parse_duration_util
 
 
 def _get_program_name() -> str:
@@ -73,8 +75,7 @@ LEVEL_MAP = {
 }
 
 
-@dataclass
-class LogConfig:
+class LogConfig(BaseModel):
     """日志配置
     
     Attributes:
@@ -82,85 +83,34 @@ class LogConfig:
         level: 日志级别
         filepath: 日志文件目录
         redirect: 输出重定向目标
-        max_age: 最大保留时间（秒或带单位字符串，如 "604800s"）
+        max_age: 最大保留时间（秒）
         max_count: 最大保留文件数
         rotate_size: 按大小轮转（字节）
-        rotate_interval: 按时间间隔轮转（秒或带单位字符串，如 "3600s"）
+        rotate_interval: 按时间间隔轮转（秒）
         report_caller: 是否报告调用者信息
         enable_colors: 是否启用颜色输出
         prefix_name: 日志文件前缀名
         suffix_name: 日志文件后缀名
     """
-    formatter: str = "glog"
-    level: str = "info"
-    filepath: str = "./log"
-    redirect: str = "stdout"
-    max_age: Any = "604800s"  # 7 days
-    max_count: int = 200
-    rotate_size: int = 104857600  # 100MB
-    rotate_interval: Any = "3600s"  # 1 hour
-    report_caller: bool = True
-    enable_colors: bool = False
-    prefix_name: str = ""
-    suffix_name: str = ".log"
-    
-    def __post_init__(self):
-        """后处理，转换时间单位"""
-        # 转换 max_age
-        if isinstance(self.max_age, str):
-            self.max_age = self._parse_duration(self.max_age)
-        
-        # 转换 rotate_interval
-        if isinstance(self.rotate_interval, str):
-            self.rotate_interval = self._parse_duration(self.rotate_interval)
-    
-    @staticmethod
-    def _parse_duration(duration_str: str) -> float:
-        """解析时间字符串
-        
-        支持格式：
-        - "3600" -> 3600 秒
-        - "3600s" -> 3600 秒
-        - "60m" -> 3600 秒
-        - "1h" -> 3600 秒
-        
-        Args:
-            duration_str: 时间字符串
-            
-        Returns:
-            float: 秒数
-        """
-        if not duration_str:
-            return 0.0
-        
-        duration_str = duration_str.strip().lower()
-        
-        # 纯数字
-        if duration_str.isdigit():
-            return float(duration_str)
-        
-        # 带单位
-        multipliers = {
-            "s": 1,
-            "m": 60,
-            "h": 3600,
-            "d": 86400,
-        }
-        
-        for suffix, multiplier in multipliers.items():
-            if duration_str.endswith(suffix):
-                try:
-                    value = float(duration_str[:-1])
-                    return value * multiplier
-                except ValueError:
-                    pass
-        
-        # 默认按秒处理
-        try:
-            return float(duration_str)
-        except ValueError:
-            return 0.0
-    
+    formatter: str = Field(default="glog", description="日志格式（glog、text、json）")
+    level: str = Field(default="info", description="日志级别")
+    filepath: str = Field(default="./log", description="日志文件目录")
+    redirect: str = Field(default="stdout", description="输出重定向目标")
+    max_age: float = Field(default=604800, ge=0, description="最大保留时间（秒）")
+    max_count: int = Field(default=200, ge=0, description="最大保留文件数")
+    rotate_size: int = Field(default=104857600, ge=0, description="按大小轮转（字节）")
+    rotate_interval: float = Field(default=3600, ge=0, description="按时间间隔轮转（秒）")
+    report_caller: bool = Field(default=True, description="是否报告调用者信息")
+    enable_colors: bool = Field(default=False, description="是否启用颜色输出")
+    prefix_name: str = Field(default="", description="日志文件前缀名")
+    suffix_name: str = Field(default=".log", description="日志文件后缀名")
+
+    @field_validator("max_age", "rotate_interval", mode="before")
+    @classmethod
+    def parse_duration_field(cls, v):
+        """解析时间字符串，复用 peek.time.parse.parse_duration"""
+        return _parse_duration_util(v)
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "LogConfig":
         """从字典创建配置
@@ -171,20 +121,7 @@ class LogConfig:
         Returns:
             LogConfig: 日志配置实例
         """
-        return cls(
-            formatter=data.get("formatter", "glog"),
-            level=data.get("level", "info"),
-            filepath=data.get("filepath", "./log"),
-            redirect=data.get("redirect", "stdout"),
-            max_age=data.get("max_age", "604800s"),
-            max_count=data.get("max_count", 200),
-            rotate_size=data.get("rotate_size", 104857600),
-            rotate_interval=data.get("rotate_interval", "3600s"),
-            report_caller=data.get("report_caller", True),
-            enable_colors=data.get("enable_colors", False),
-            prefix_name=data.get("prefix_name", ""),
-            suffix_name=data.get("suffix_name", ".log"),
-        )
+        return cls.model_validate(data)
 
 
 def install_logs(config: Optional[LogConfig] = None) -> None:
@@ -261,8 +198,10 @@ def install_logs(config: Optional[LogConfig] = None) -> None:
     # 输出安装信息
     logger = logging.getLogger(__name__)
     logger.info(
-        f"日志初始化完成: level={config.level}, formatter={config.formatter}, "
-        f"redirect={config.redirect}, filepath={config.filepath}"
+        "日志初始化完成: level=%s, formatter=%s, "
+        "redirect=%s, filepath=%s",
+        config.level, config.formatter,
+        config.redirect, config.filepath
     )
 
 
