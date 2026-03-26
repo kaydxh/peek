@@ -316,9 +316,9 @@ class CompositeHealthChecker(HealthChecker):
         """
         results = []
         for checker in self._checkers:
-            start_time = asyncio.get_event_loop().time()
+            start_time = asyncio.get_running_loop().time()
             err = await checker.check()
-            duration_ms = (asyncio.get_event_loop().time() - start_time) * 1000
+            duration_ms = (asyncio.get_running_loop().time() - start_time) * 1000
 
             results.append(
                 HealthCheckResult(
