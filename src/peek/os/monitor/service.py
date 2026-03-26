@@ -132,7 +132,7 @@ class MonitorService:
             except ImportError:
                 logger.warning("psutil not installed, cannot monitor child processes")
             except Exception as e:
-                logger.warning(f"Failed to get child process list: {e}")
+                logger.warning("Failed to get child process list: %s", e)
 
         return pids
 
@@ -166,9 +166,9 @@ class MonitorService:
                         pids=self._pids,
                         config=self._monitor_config,
                     )
-                    logger.debug(f"Multi-process monitor created: pids={self._pids}")
+                    logger.debug("Multi-process monitor created: pids=%s", self._pids)
                 except Exception as e:
-                    logger.error(f"Failed to create multi-process monitor: {e}")
+                    logger.error("Failed to create multi-process monitor: %s", e)
                     # 退回到单进程监控
                     self._monitor = ProcessMonitor(
                         pid=os.getpid(),
@@ -239,7 +239,7 @@ class MonitorService:
             return result
 
         except Exception as e:
-            logger.error(f"Failed to get resource snapshot: {e}")
+            logger.error("Failed to get resource snapshot: %s", e)
             return {
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
@@ -278,7 +278,7 @@ class MonitorService:
                     "interval": self.config.interval,
                 }
             except Exception as e:
-                logger.error(f"Failed to start continuous collection: {e}")
+                logger.error("Failed to start continuous collection: %s", e)
                 return {
                     "status": "error",
                     "message": f"启动失败: {e}",
@@ -310,7 +310,7 @@ class MonitorService:
                     "summary": summary,
                 }
             except Exception as e:
-                logger.error(f"Failed to stop continuous collection: {e}")
+                logger.error("Failed to stop continuous collection: %s", e)
                 self._is_collecting = False
                 return {
                     "status": "error",
@@ -345,7 +345,7 @@ class MonitorService:
                 "summary": summary,
             }
         except Exception as e:
-            logger.error(f"Failed to get statistics summary: {e}")
+            logger.error("Failed to get statistics summary: %s", e)
             return {
                 "status": "error",
                 "message": str(e),
@@ -392,7 +392,7 @@ class MonitorService:
                 return visualizer.generate_html_report()
 
         except Exception as e:
-            logger.error(f"Failed to generate report: {e}")
+            logger.error("Failed to generate report: %s", e)
             return None
 
     def shutdown(self) -> None:

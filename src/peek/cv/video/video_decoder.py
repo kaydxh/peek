@@ -86,9 +86,10 @@ class VideoDecoder:
             )
 
         logger.info(
-            f"视频解码器已初始化: method={self._method.value}, "
-            f"fps={self._fps}, max_frames={self._max_frames}, "
-            f"image_format={self._image_format}, image_quality={self._image_quality}"
+            "视频解码器已初始化: method=%s, fps=%s, max_frames=%s, "
+            "image_format=%s, image_quality=%s",
+            self._method.value, self._fps, self._max_frames,
+            self._image_format, self._image_quality,
         )
 
     @property
@@ -151,7 +152,7 @@ class VideoDecoder:
 
         video_bytes = base64.b64decode(base64_video)
         frames = self._decoder.decode(video_bytes)
-        logger.info(f"Video decode completed: method={self._method.value}, frames={len(frames)}")
+        logger.info("Video decode completed: method=%s, frames=%s", self._method.value, len(frames))
         return frames
 
     def decode_to_bytes(self, base64_video: str) -> Optional[List[bytes]]:

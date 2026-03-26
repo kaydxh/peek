@@ -75,7 +75,7 @@ class ChatHandler:
         Returns:
             ChatCompletionResponse: 聊天补全响应
         """
-        logger.info(f"Processing chat completion: request_id={request.request_id}")
+        logger.info("Processing chat completion: request_id=%s", request.request_id)
 
         # 构建消息列表
         messages: List[ChatMessage] = []
