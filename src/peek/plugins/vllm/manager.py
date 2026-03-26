@@ -9,6 +9,7 @@ of the vLLM server subprocess.
 
 import asyncio
 import atexit
+import json
 import logging
 import os
 import signal
@@ -157,7 +158,6 @@ class VLLMServerManager:
 
         # 多模态处理器参数（视频帧采样等）
         if self.config.mm_processor_kwargs:
-            import json
             try:
                 mm_kwargs_str = json.dumps(self.config.mm_processor_kwargs, separators=(",", ":"))
                 cmd += ["--mm-processor-kwargs", mm_kwargs_str]
@@ -166,7 +166,6 @@ class VLLMServerManager:
 
         # 媒体IO参数（视频帧数控制等）
         if self.config.media_io_kwargs:
-            import json
             try:
                 media_io_str = json.dumps(self.config.media_io_kwargs, separators=(",", ":"))
                 cmd += ["--media-io-kwargs", media_io_str]
@@ -192,7 +191,7 @@ class VLLMServerManager:
         try:
             reader = asyncio.StreamReader()
             protocol = asyncio.StreamReaderProtocol(reader)
-            transport, _ = await asyncio.get_event_loop().connect_read_pipe(
+            transport, _ = await asyncio.get_running_loop().connect_read_pipe(
                 lambda: protocol, self.process.stdout
             )
 
@@ -427,55 +426,11 @@ class VLLMServerManager:
                 if self.process.poll() is not None:
                     exit_code = self.process.returncode
 
-                    # nsys 模式特殊处理
+                    # nsys 模式特殊处理：采集完成后切换回普通模式重启
                     if self.config.nsys_enabled and not self._nsys_collection_done:
-                        elapsed = time.time() - self._nsys_start_time
-                        nsys_total = self.config.nsys_delay + self.config.nsys_duration
-                        if elapsed >= nsys_total:
-                            self._nsys_collection_done = True
-                            nsys_report_path = f"{self.config.nsys_output}.nsys-rep"
-                            logger.info(
-                                "[Watchdog][nsys] Collection finished (%.0fs), "
-                                "waiting for report file: %s",
-                                elapsed, nsys_report_path,
-                            )
-                            await asyncio.sleep(15)
-
-                            if os.path.exists(nsys_report_path):
-                                file_size = os.path.getsize(nsys_report_path)
-                                logger.info(
-                                    "[Watchdog][nsys] Report generated: %s (%.1f MB)",
-                                    nsys_report_path, file_size / 1024 / 1024,
-                                )
-                            else:
-                                logger.warning(
-                                    "[Watchdog][nsys] Report not found: %s, "
-                                    "check nsys installation and output path permissions",
-                                    nsys_report_path,
-                                )
-
-                            logger.info(
-                                "[Watchdog][nsys] Collection complete, restarting vLLM server (without nsys)..."
-                            )
-                            self.config.nsys_enabled = False
-                            self.process = None
-                            if self.log_task:
-                                self.log_task.cancel()
-                                self.log_task = None
-                            await self.start()
-                            await self.wait_for_ready()
-                            self._ready = True
-                            self._restart_count = 0
-                            logger.info(
-                                "[Watchdog][nsys] vLLM server restarted (normal mode, no nsys)"
-                            )
+                        nsys_handled = await self._handle_nsys_completion(exit_code)
+                        if nsys_handled:
                             continue
-                        else:
-                            logger.warning(
-                                "[Watchdog][nsys] vLLM process terminated during nsys collection "
-                                "(ran %.0fs / expected %ds), exit code: %s",
-                                elapsed, nsys_total, exit_code,
-                            )
 
                     logger.error(
                         "[Watchdog] vLLM process has terminated! Exit code: %s, "
@@ -518,6 +473,74 @@ class VLLMServerManager:
                 break
             except Exception as e:
                 logger.error("[Watchdog] Watchdog check error: %s", e, exc_info=True)
+
+    async def _handle_nsys_completion(self, exit_code: int) -> bool:
+        """Handle nsys collection completion when vLLM process terminates.
+
+        Checks whether nsys profiling has finished. If so, collects the report
+        and restarts vLLM in normal mode (without nsys). If the process terminated
+        before nsys collection was expected to finish, logs a warning and returns
+        False so the caller can proceed with a normal restart.
+
+        Args:
+            exit_code: The exit code of the terminated vLLM process
+
+        Returns:
+            True if nsys completion was handled (caller should continue/skip),
+            False if nsys collection was not yet complete (caller should proceed
+            with normal restart logic).
+        """
+        elapsed = time.time() - self._nsys_start_time
+        nsys_total = self.config.nsys_delay + self.config.nsys_duration
+
+        if elapsed < nsys_total:
+            # nsys 采集尚未完成就终止了，交给正常重启流程处理
+            logger.warning(
+                "[Watchdog][nsys] vLLM process terminated during nsys collection "
+                "(ran %.0fs / expected %ds), exit code: %s",
+                elapsed, nsys_total, exit_code,
+            )
+            return False
+
+        # nsys 采集已完成，收集报告并切换到普通模式重启
+        self._nsys_collection_done = True
+        nsys_report_path = f"{self.config.nsys_output}.nsys-rep"
+        logger.info(
+            "[Watchdog][nsys] Collection finished (%.0fs), "
+            "waiting for report file: %s",
+            elapsed, nsys_report_path,
+        )
+        await asyncio.sleep(15)
+
+        if os.path.exists(nsys_report_path):
+            file_size = os.path.getsize(nsys_report_path)
+            logger.info(
+                "[Watchdog][nsys] Report generated: %s (%.1f MB)",
+                nsys_report_path, file_size / 1024 / 1024,
+            )
+        else:
+            logger.warning(
+                "[Watchdog][nsys] Report not found: %s, "
+                "check nsys installation and output path permissions",
+                nsys_report_path,
+            )
+
+        logger.info(
+            "[Watchdog][nsys] Collection complete, restarting vLLM server (without nsys)..."
+        )
+        self.config.nsys_enabled = False
+        self.process = None
+        if self.log_task:
+            self.log_task.cancel()
+            self.log_task = None
+        await self.start()
+        await self.wait_for_ready()
+        self._ready = True
+        self._restart_count = 0
+        logger.info(
+            "[Watchdog][nsys] vLLM server restarted (normal mode, no nsys)"
+        )
+        return True
 
     async def _try_restart(self) -> None:
         """Attempt to restart vLLM server (with rate limiting and max restart protection)"""
@@ -580,6 +603,9 @@ class VLLMServerManager:
         """Stop vLLM server process"""
         # 先停止看门狗，避免停止进程后被自动重启
         await self.stop_watchdog()
+
+        # 反注册 atexit 回调，解除强引用，避免实例无法被 GC 回收
+        atexit.unregister(self._cleanup_on_exit)
 
         if self.process is None:
             return
