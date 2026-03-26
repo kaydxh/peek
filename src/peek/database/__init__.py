@@ -11,16 +11,34 @@
 - peek.database.redis: Redis 异步连接工厂
 """
 
-from peek.database.mysql import MySQLConfig, create_mysql_engine, check_mysql_health, get_mysql_pool_stats
-from peek.database.redis import RedisConfig, create_redis_client, check_redis_health, get_redis_pool_stats
+from peek.database.mysql import (
+    MySQLConfig,
+    create_mysql_engine,
+    close_mysql_engine,
+    check_mysql_health,
+    get_mysql_pool_stats,
+    mysql_engine_context,
+)
+from peek.database.redis import (
+    RedisConfig,
+    create_redis_client,
+    close_redis_client,
+    check_redis_health,
+    get_redis_pool_stats,
+    redis_client_context,
+)
 
 __all__ = [
     "MySQLConfig",
     "create_mysql_engine",
+    "close_mysql_engine",
     "check_mysql_health",
     "get_mysql_pool_stats",
+    "mysql_engine_context",
     "RedisConfig",
     "create_redis_client",
+    "close_redis_client",
     "check_redis_health",
     "get_redis_pool_stats",
+    "redis_client_context",
 ]

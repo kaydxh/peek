@@ -10,7 +10,8 @@ MySQL 连接工厂
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Union
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Dict, Optional, Union
 
 import sqlalchemy
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -144,3 +145,30 @@ def get_mysql_pool_stats(engine: Any) -> Dict:
         }
     except Exception:
         return {}
+
+
+@asynccontextmanager
+async def mysql_engine_context(
+    config: Union[MySQLConfig, Dict[str, Any]],
+) -> AsyncIterator[Optional[Any]]:
+    """MySQL 引擎异步上下文管理器
+
+    自动管理引擎的创建和关闭，避免资源泄漏。
+
+    Args:
+        config: MySQLConfig 实例或 dict 配置
+
+    Yields:
+        SQLAlchemy AsyncEngine 实例，未启用时 yield None
+
+    使用示例：
+        async with mysql_engine_context(config) as engine:
+            if engine:
+                async with engine.connect() as conn:
+                    result = await conn.execute(text("SELECT 1"))
+    """
+    engine = await create_mysql_engine(config)
+    try:
+        yield engine
+    finally:
+        await close_mysql_engine(engine)
