@@ -104,8 +104,12 @@ class ShutdownConfig(BaseModel):
         return parse_duration(v)
 
 
-class WebConfig(BaseModel):
-    """Web 服务器配置"""
+class AppWebConfig(BaseModel):
+    """应用级 Web 服务器配置
+
+    注意：此为框架级通用配置模型，与 peek.net.webserver.config.WebConfig 不同。
+    WebServer 专用配置请使用 peek.net.webserver.config.WebConfig。
+    """
 
     bind_address: NetConfig = Field(default_factory=NetConfig, description="绑定地址")
     grpc: GrpcConfig = Field(default_factory=GrpcConfig, description="gRPC 配置")
