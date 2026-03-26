@@ -130,17 +130,17 @@ async def call_with_timeout(
     if timeout <= 0:
         result = await func(*args, **kwargs)
         elapsed = time.monotonic() - start_time
-        logger.debug(f"call_with_timeout: completed, elapsed={elapsed:.3f}s")
+        logger.debug("call_with_timeout: completed, elapsed=%.3fs", elapsed)
         return result
 
     try:
         result = await asyncio.wait_for(func(*args, **kwargs), timeout=timeout)
         elapsed = time.monotonic() - start_time
-        logger.debug(f"call_with_timeout: completed, elapsed={elapsed:.3f}s")
+        logger.debug("call_with_timeout: completed, elapsed=%.3fs", elapsed)
         return result
     except asyncio.TimeoutError:
         elapsed = time.monotonic() - start_time
-        logger.warning(f"call_with_timeout: timed out, timeout={timeout}s, elapsed={elapsed:.3f}s")
+        logger.warning("call_with_timeout: timed out, timeout=%ss, elapsed=%.3fs", timeout, elapsed)
         raise WaitTimeoutError(f"Execution timed out: timeout={timeout}s")
 
 
@@ -177,7 +177,7 @@ def call_with_timeout_sync(
     if timeout <= 0:
         result = func(*args, **kwargs)
         elapsed = time.monotonic() - start_time
-        logger.debug(f"call_with_timeout_sync: completed, elapsed={elapsed:.3f}s")
+        logger.debug("call_with_timeout_sync: completed, elapsed=%.3fs", elapsed)
         return result
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -185,11 +185,11 @@ def call_with_timeout_sync(
         try:
             result = future.result(timeout=timeout)
             elapsed = time.monotonic() - start_time
-            logger.debug(f"call_with_timeout_sync: completed, elapsed={elapsed:.3f}s")
+            logger.debug("call_with_timeout_sync: completed, elapsed=%.3fs", elapsed)
             return result
         except concurrent.futures.TimeoutError:
             elapsed = time.monotonic() - start_time
-            logger.warning(f"call_with_timeout_sync: timed out, timeout={timeout}s, elapsed={elapsed:.3f}s")
+            logger.warning("call_with_timeout_sync: timed out, timeout=%ss, elapsed=%.3fs", timeout, elapsed)
             raise WaitTimeoutError(f"Execution timed out: timeout={timeout}s")
 
 
@@ -342,7 +342,7 @@ async def backoff_until(
             wait_time, should_continue = backoff.next_backoff()
             if not should_continue:
                 msg = f"Max wait time or count limit reached: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
-                logger.warning(f"backoff_until: {msg}")
+                logger.warning("backoff_until: %s", msg)
                 if last_error:
                     raise MaxRetriesExceededError(msg) from last_error
                 raise MaxRetriesExceededError(msg)
@@ -350,14 +350,14 @@ async def backoff_until(
         # 执行函数
         try:
             result = await func(*args, **kwargs)
-            logger.debug(f"backoff_until: function executed successfully, count={backoff.elapsed_count}")
+            logger.debug("backoff_until: function executed successfully, count=%s", backoff.elapsed_count)
 
             if not loop:
                 return result
 
         except Exception as e:
             last_error = e
-            logger.debug(f"backoff_until: function execution error, count={backoff.elapsed_count}, error={e}")
+            logger.debug("backoff_until: function execution error, count=%s, error=%s", backoff.elapsed_count, e)
 
             if stop_on_error:
                 raise
@@ -367,7 +367,7 @@ async def backoff_until(
             wait_time, should_continue = backoff.next_backoff()
             if not should_continue:
                 msg = f"Max wait time or count limit reached: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
-                logger.warning(f"backoff_until: {msg}")
+                logger.warning("backoff_until: %s", msg)
                 if last_error:
                     raise MaxRetriesExceededError(msg) from last_error
                 raise MaxRetriesExceededError(msg)
@@ -486,10 +486,10 @@ async def poll_immediate(
         try:
             done, result = await condition(*args, **kwargs)
             if done:
-                logger.debug(f"poll_immediate: condition met, elapsed={time.monotonic() - start_time:.2f}s")
+                logger.debug("poll_immediate: condition met, elapsed=%.2fs", time.monotonic() - start_time)
                 return result
         except Exception as e:
-            logger.debug(f"poll_immediate: condition check error, error={e}")
+            logger.debug("poll_immediate: condition check error, error=%s", e)
             # 继续轮询，除非超时
 
 
@@ -605,11 +605,11 @@ def retry_sync(
     for attempt in range(total_attempts):
         try:
             result = func(*args, **kwargs)
-            logger.debug(f"retry_sync: succeeded, attempt={attempt + 1}")
+            logger.debug("retry_sync: succeeded, attempt=%s", attempt + 1)
             return result
         except Exception as e:
             last_error = e
-            logger.debug(f"retry_sync: failed, attempt={attempt + 1}, error={e}")
+            logger.debug("retry_sync: failed, attempt=%s, error=%s", attempt + 1, e)
 
             if attempt < total_attempts - 1:
                 time.sleep(period)

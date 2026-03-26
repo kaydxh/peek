@@ -123,7 +123,7 @@ class TransformFilter:
 
         if not filter_str:
             # 没有变换操作，直接复制
-            logger.info(f"No transform needed, copying directly: {source} -> {output}")
+            logger.info("No transform needed, copying directly: %s -> %s", source, output)
             shutil.copy2(source, output)
             return output
 
@@ -131,7 +131,7 @@ class TransformFilter:
 
         out = ffmpeg.input(source).output(output, vf=filter_str, acodec="copy")
 
-        logger.info(f"Video transform: {source} -> {output}, filter={filter_str}")
+        logger.info("Video transform: %s -> %s, filter=%s", source, output, filter_str)
 
         try:
             out.run(overwrite_output=overwrite, quiet=True)
@@ -142,7 +142,7 @@ class TransformFilter:
                 f"视频变换失败:\n" + "\n".join(error_lines)
             )
 
-        logger.info(f"Video transform completed: {output}")
+        logger.info("Video transform completed: %s", output)
         return output
 
     @staticmethod

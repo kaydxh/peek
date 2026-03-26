@@ -54,7 +54,7 @@ class VLLMChatRepository(ChatRepository):
             for msg in request.messages
         ]
 
-        logger.info(f"Processing chat request: request_id={request.request_id}")
+        logger.info("Processing chat request: request_id=%s", request.request_id)
 
         try:
             # 调用 vLLM API
@@ -83,14 +83,14 @@ class VLLMChatRepository(ChatRepository):
             )
 
             logger.info(
-                f"Chat request completed: request_id={request.request_id}, "
-                f"tokens={usage.get('total_tokens', 0)}"
+                "Chat request completed: request_id=%s, tokens=%s",
+                request.request_id, usage.get('total_tokens', 0),
             )
 
             return response
 
         except Exception as e:
-            logger.error(f"Chat request failed: request_id={request.request_id}, error={e}")
+            logger.error("Chat request failed: request_id=%s, error=%s", request.request_id, e)
             raise
 
     async def health_check(self) -> bool:
@@ -116,5 +116,5 @@ class VLLMChatRepository(ChatRepository):
             client = self._get_client()
             return await client.health_check()
         except Exception as e:
-            logger.warning(f"Health check failed: {e}")
+            logger.warning("Health check failed: %s", e)
             return False

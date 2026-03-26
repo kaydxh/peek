@@ -167,8 +167,8 @@ class FFmpegDecoder(BaseDecoder):
             duration = self._get_duration(container)
 
             logger.debug(
-                f"ffmpeg 解码: total_frames={total_frames}, video_fps={video_fps:.2f}, "
-                f"duration={duration:.2f}s"
+                "ffmpeg 解码: total_frames=%s, video_fps=%.2f, duration=%.2fs",
+                total_frames, video_fps, duration,
             )
 
             # 计算采样帧索引
@@ -179,8 +179,8 @@ class FFmpegDecoder(BaseDecoder):
             frame_set = set(frame_indices)
 
             logger.debug(
-                f"采样计划: effective_total={effective_total}, "
-                f"sample_frames={len(frame_indices)}, frame_indices={frame_indices}"
+                "采样计划: effective_total=%s, sample_frames=%s, frame_indices=%s",
+                effective_total, len(frame_indices), frame_indices,
             )
 
             # 可选 seek 到起始位置（对应 kingfisher InputFile::seek）
@@ -213,7 +213,7 @@ class FFmpegDecoder(BaseDecoder):
                 as_bytes=as_bytes,
             )
 
-            logger.info(f"ffmpeg decode completed: frames={len(frames)}")
+            logger.info("ffmpeg decode completed: frames=%s", len(frames))
             return frames
 
         finally:
@@ -250,7 +250,7 @@ class FFmpegDecoder(BaseDecoder):
             # 某些格式可能不支持从内存流打开，回退到临时文件
             logger.debug("Failed to open from memory, falling back to temp file")
         except Exception as e:
-            logger.debug(f"Failed to open from memory: {e}, falling back to temp file")
+            logger.debug("Failed to open from memory: %s, falling back to temp file", e)
 
         # 回退方案：写入临时文件
         tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
@@ -338,15 +338,15 @@ class FFmpegDecoder(BaseDecoder):
                 if hw_codec:
                     video_stream.codec_context.codec = hw_codec
                     logger.info(
-                        f"启用 GPU 硬件解码: {codec_name} -> {hw_codec_name}, "
-                        f"gpu_id={self._config.gpu_id}"
+                        "启用 GPU 硬件解码: %s -> %s, gpu_id=%s",
+                        codec_name, hw_codec_name, self._config.gpu_id,
                     )
                     return
             except Exception as e:
-                logger.warning(f"GPU hardware decoder {hw_codec_name} not available: {e}")
+                logger.warning("GPU hardware decoder %s not available: %s", hw_codec_name, e)
 
         if self._config.auto_switch_to_soft_codec:
-            logger.info(f"Falling back to software decoder: {codec_name}")
+            logger.info("Falling back to software decoder: %s", codec_name)
         else:
             raise RuntimeError(
                 f"GPU 硬件解码器不可用且未启用自动回退: {codec_name}"
@@ -745,8 +745,9 @@ class FFmpegDecoder(BaseDecoder):
             duration = self._get_duration(container)
 
             logger.debug(
-                f"ffmpeg 批量解码: total_frames={total_frames}, video_fps={video_fps:.2f}, "
-                f"duration={duration:.2f}s, batch_size={batch_size}"
+                "ffmpeg 批量解码: total_frames=%s, video_fps=%.2f, "
+                "duration=%.2fs, batch_size=%s",
+                total_frames, video_fps, duration, batch_size,
             )
 
             # 计算采样帧索引

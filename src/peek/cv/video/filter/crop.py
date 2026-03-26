@@ -140,7 +140,7 @@ class CropFilter:
         # 因为 crop filter 使用了 ffmpeg 表达式（如 iw, ih），直接使用 -vf 参数
         out = ffmpeg.input(source).output(output, vf=filter_str, acodec="copy")
 
-        logger.info(f"Video crop: {source} -> {output}, filter={filter_str}")
+        logger.info("Video crop: %s -> %s, filter=%s", source, output, filter_str)
 
         try:
             out.run(overwrite_output=overwrite, quiet=True)
@@ -151,7 +151,7 @@ class CropFilter:
                 f"视频裁剪失败:\n" + "\n".join(error_lines)
             )
 
-        logger.info(f"Video crop completed: {output}")
+        logger.info("Video crop completed: %s", output)
         return output
 
     @staticmethod

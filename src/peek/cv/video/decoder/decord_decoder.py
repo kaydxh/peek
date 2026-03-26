@@ -70,8 +70,8 @@ class DecordDecoder(BaseDecoder):
         frame_indices = self._compute_frame_indices(total_frames, video_fps)
 
         logger.debug(
-            f"decord 解码: total_frames={total_frames}, video_fps={video_fps:.2f}, "
-            f"sample_frames={len(frame_indices)}"
+            "decord 解码: total_frames=%s, video_fps=%.2f, sample_frames=%s",
+            total_frames, video_fps, len(frame_indices),
         )
 
         frames = []
@@ -84,7 +84,7 @@ class DecordDecoder(BaseDecoder):
             else:
                 frames.append(self._image_to_base64(img))
 
-        logger.info(f"decord decode completed: frames={len(frames)}")
+        logger.info("decord decode completed: frames=%s", len(frames))
         return frames
 
     def decode_batches(
@@ -123,8 +123,9 @@ class DecordDecoder(BaseDecoder):
         frame_indices = self._compute_frame_indices(total_frames, video_fps)
 
         logger.debug(
-            f"decord 批量解码: total_frames={total_frames}, video_fps={video_fps:.2f}, "
-            f"sample_frames={len(frame_indices)}, batch_size={batch_size}"
+            "decord 批量解码: total_frames=%s, video_fps=%.2f, "
+            "sample_frames=%s, batch_size=%s",
+            total_frames, video_fps, len(frame_indices), batch_size,
         )
 
         batch = []

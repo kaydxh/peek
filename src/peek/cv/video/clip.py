@@ -133,7 +133,7 @@ class VideoClip:
         out = stream.output(output, **output_kwargs)
 
         # 执行
-        logger.info(f"Video clip: {source} -> {output}, start={start}, end={end}, duration={duration}")
+        logger.info("Video clip: %s -> %s, start=%s, end=%s, duration=%s", source, output, start, end, duration)
 
         try:
             out.run(overwrite_output=overwrite, quiet=True)
@@ -144,7 +144,7 @@ class VideoClip:
                 f"ffmpeg 截取失败:\n" + "\n".join(error_lines)
             )
 
-        logger.info(f"Video clip completed: {output}")
+        logger.info("Video clip completed: %s", output)
         return output
 
     @staticmethod
@@ -194,7 +194,7 @@ class VideoClip:
 
         out = stream.output(output_path, **output_kwargs)
 
-        logger.info(f"Video split: {source}, segment duration: {segment_duration}s")
+        logger.info("Video split: %s, segment duration: %ss", source, segment_duration)
 
         try:
             out.run(overwrite_output=overwrite, quiet=True)
@@ -209,5 +209,5 @@ class VideoClip:
         glob_pattern = output_pattern.replace("%03d", "*").replace("%d", "*")
         output_files = sorted(glob.glob(str(output_dir_path / glob_pattern)))
 
-        logger.info(f"Video split completed: {len(output_files)} segments")
+        logger.info("Video split completed: %s segments", len(output_files))
         return output_files

@@ -191,7 +191,7 @@ class QwenVLDecoder(BaseDecoder):
                 else:
                     frames.append(self._image_to_base64(img))
 
-            logger.info(f"qwen-vl-utils decode completed: frames={len(frames)}")
+            logger.info("qwen-vl-utils decode completed: frames=%s", len(frames))
             return frames
 
         finally:

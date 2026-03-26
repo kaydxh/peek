@@ -170,7 +170,7 @@ class RotatingFileWriter:
             rotated = True
             file_size = 0
         except Exception as e:
-            logger.error(f"Failed to get file info: {e}")
+            logger.error("Failed to get file info: %s", e)
             return None
         
         # 按大小轮转
@@ -192,7 +192,7 @@ class RotatingFileWriter:
                         try:
                             self.rotate_callback(old_path)
                         except Exception as e:
-                            logger.error(f"Rotate callback error: {e}")
+                            logger.error("Rotate callback error: %s", e)
                 
                 # 打开新文件
                 self._file = open(self._cur_filepath, "ab")
@@ -205,7 +205,7 @@ class RotatingFileWriter:
                 self._cleanup_old_files(glob_path)
                 
             except Exception as e:
-                logger.error(f"Failed to create file {self._cur_filepath}: {e}")
+                logger.error("Failed to create file %s: %s", self._cur_filepath, e)
                 return None
         
         return self._file
@@ -306,7 +306,7 @@ class RotatingFileWriter:
             # 创建相对路径的符号链接
             os.symlink(os.path.basename(target), link_path)
         except Exception as e:
-            logger.debug(f"Failed to create symlink: {e}")
+            logger.debug("Failed to create symlink: %s", e)
     
     def _cleanup_old_files(self, glob_path: str):
         """清理过期的日志文件
@@ -358,9 +358,9 @@ class RotatingFileWriter:
         for filepath in files_to_delete:
             try:
                 os.remove(filepath)
-                logger.debug(f"Deleted old log file: {filepath}")
+                logger.debug("Deleted old log file: %s", filepath)
             except Exception as e:
-                logger.debug(f"Failed to delete {filepath}: {e}")
+                logger.debug("Failed to delete %s: %s", filepath, e)
     
     def close(self):
         """关闭文件"""

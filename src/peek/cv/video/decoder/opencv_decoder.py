@@ -80,8 +80,8 @@ class OpenCVDecoder(BaseDecoder):
                 frame_set = set(frame_indices)
 
                 logger.debug(
-                    f"opencv 解码: total_frames={total_frames}, video_fps={video_fps:.2f}, "
-                    f"sample_frames={len(frame_indices)}"
+                    "opencv 解码: total_frames=%s, video_fps=%.2f, sample_frames=%s",
+                    total_frames, video_fps, len(frame_indices),
                 )
 
                 frames = []
@@ -103,7 +103,7 @@ class OpenCVDecoder(BaseDecoder):
 
                     frame_idx += 1
 
-                logger.info(f"opencv decode completed: frames={len(frames)}")
+                logger.info("opencv decode completed: frames=%s", len(frames))
                 return frames
             finally:
                 cap.release()
@@ -153,8 +153,9 @@ class OpenCVDecoder(BaseDecoder):
                 frame_set = set(frame_indices)
 
                 logger.debug(
-                    f"opencv 批量解码: total_frames={total_frames}, video_fps={video_fps:.2f}, "
-                    f"sample_frames={len(frame_indices)}, batch_size={batch_size}"
+                    "opencv 批量解码: total_frames=%s, video_fps=%.2f, "
+                    "sample_frames=%s, batch_size=%s",
+                    total_frames, video_fps, len(frame_indices), batch_size,
                 )
 
                 batch = []
