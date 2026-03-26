@@ -18,6 +18,7 @@ class VLLMClient:
     """vLLM 文本聊天客户端
 
     通过 HTTP 与 vLLM 服务器通信，使用 OpenAI 兼容的 API 格式。
+    内部复用 httpx.AsyncClient 连接池以提升性能。
     """
 
     host: str = "localhost"
@@ -37,6 +38,8 @@ class VLLMClient:
         }
         if self.api_key:
             self._headers["Authorization"] = f"Bearer {self.api_key}"
+        # 复用 httpx 连接池，避免每次请求创建新连接
+        self._http_client: Optional[httpx.AsyncClient] = None
 
     @property
     def base_url(self) -> str:
@@ -78,19 +81,19 @@ class VLLMClient:
             "stream": stream,
         }
 
-        logger.debug(f"Sending request to vLLM: {url}")
-        logger.debug(f"Request payload: {payload}")
+        logger.debug("Sending request to vLLM: %s", url)
+        logger.debug("Request payload: %s", payload)
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                url,
-                json=payload,
-                headers=self._headers,
-            )
-            response.raise_for_status()
-            result = response.json()
+        client = await self._get_client()
+        response = await client.post(
+            url,
+            json=payload,
+            headers=self._headers,
+        )
+        response.raise_for_status()
+        result = response.json()
 
-        logger.debug(f"vLLM response: {result}")
+        logger.debug("vLLM response: %s", result)
         return result
 
     async def health_check(self) -> bool:
@@ -103,23 +106,23 @@ class VLLMClient:
         """
         try:
             url = f"{self._base_url}/v1/models"
-            async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(url, headers=self._headers)
-                if response.status_code == 200:
-                    data = response.json()
-                    model_names = [model["id"] for model in data.get("data", [])]
-                    is_ready = self.model_name in model_names
-                    if not is_ready:
-                        logger.debug(
-                            f"Model {self.model_name} not ready yet, "
-                            f"available models: {model_names}"
-                        )
-                    return is_ready
-                else:
-                    logger.debug(f"vLLM server returned status code: {response.status_code}")
+            client = await self._get_client(timeout=5)
+            response = await client.get(url, headers=self._headers)
+            if response.status_code == 200:
+                data = response.json()
+                model_names = [model["id"] for model in data.get("data", [])]
+                is_ready = self.model_name in model_names
+                if not is_ready:
+                    logger.debug(
+                        "Model %s not ready yet, available models: %s",
+                        self.model_name, model_names,
+                    )
+                return is_ready
+            else:
+                logger.debug("vLLM server returned status code: %s", response.status_code)
                     return False
         except Exception as e:
-            logger.warning(f"vLLM health check failed: {e}")
+            logger.warning("vLLM health check failed: %s", e)
             return False
 
     async def list_models(self) -> List[str]:
@@ -130,11 +133,33 @@ class VLLMClient:
         """
         try:
             url = f"{self._base_url}/v1/models"
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.get(url, headers=self._headers)
-                response.raise_for_status()
-                result = response.json()
-                return [model["id"] for model in result.get("data", [])]
+            client = await self._get_client(timeout=10)
+            response = await client.get(url, headers=self._headers)
+            response.raise_for_status()
+            result = response.json()
+            return [model["id"] for model in result.get("data", [])]
         except Exception as e:
-            logger.error(f"Failed to list models: {e}")
+            logger.error("Failed to list models: %s", e)
             return []
+
+    async def _get_client(self, timeout: Optional[int] = None) -> httpx.AsyncClient:
+        """获取或创建 httpx 客户端（复用连接池）
+
+        Args:
+            timeout: 可选的超时覆盖，None 时使用默认 timeout
+
+        Returns:
+            httpx.AsyncClient 实例
+        """
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(timeout=self.timeout)
+        if timeout is not None and timeout != self.timeout:
+            # 对于不同超时的请求，创建临时客户端
+            return httpx.AsyncClient(timeout=timeout)
+        return self._http_client
+
+    async def close(self) -> None:
+        """关闭 HTTP 客户端，释放连接池资源"""
+        if self._http_client is not None and not self._http_client.is_closed:
+            await self._http_client.aclose()
+            self._http_client = None
