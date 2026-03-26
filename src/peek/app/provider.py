@@ -102,11 +102,11 @@ class Provider:
         """
         with self._lock:
             if name in self._dependencies and not overwrite:
-                logger.warning(f"Dependency '{name}' already exists, skipping")
+                logger.warning("Dependency '%s' already exists, skipping", name)
                 return self
 
             self._dependencies[name] = instance
-            logger.debug(f"Registered dependency: {name}")
+            logger.debug("Registered dependency: %s", name)
         return self
 
     def register_factory(
@@ -128,7 +128,7 @@ class Provider:
         """
         with self._lock:
             self._factories[name] = factory
-            logger.debug(f"Registered factory: {name}")
+            logger.debug("Registered factory: %s", name)
         return self
 
     def get(self, name: str, default: Any = None) -> Any:
@@ -152,7 +152,7 @@ class Provider:
                 # 双重检查
                 if name not in self._dependencies:
                     self._dependencies[name] = self._factories[name]()
-                    logger.debug(f"Created dependency from factory: {name}")
+                    logger.debug("Created dependency from factory: %s", name)
                 return self._dependencies[name]
 
         return default
@@ -187,7 +187,7 @@ class Provider:
             instance = self._dependencies.pop(name, None)
             self._factories.pop(name, None)
             if instance:
-                logger.debug(f"Unregistered dependency: {name}")
+                logger.debug("Unregistered dependency: %s", name)
             return instance
 
     def has(self, name: str) -> bool:
@@ -209,6 +209,27 @@ class Provider:
             self._factories.clear()
             self._config = None
             logger.debug("Provider cleared")
+
+    @classmethod
+    def reset(cls) -> None:
+        """重置单例实例（仅用于测试场景）
+
+        清除单例实例，使下次调用 Provider() 或 get_provider() 时
+        重新创建全新的实例。
+
+        警告：此方法仅应在单元测试的 setup/teardown 中使用，
+        不要在生产代码中调用。
+
+        使用示例：
+            def teardown_method(self):
+                Provider.reset()
+        """
+        with cls._lock:
+            if cls._instance is not None:
+                cls._instance._dependencies.clear()
+                cls._instance._factories.clear()
+                cls._instance._config = None
+            cls._instance = None
 
     @property
     def dependencies(self) -> Dict[str, Any]:

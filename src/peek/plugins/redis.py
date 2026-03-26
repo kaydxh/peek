@@ -85,7 +85,7 @@ async def install_redis(
     except ImportError:
         logger.warning("Redis dependencies not installed, skipping")
     except Exception as e:
-        logger.warning(f"Failed to install Redis: {e}, skipping Redis plugin")
+        logger.warning("Failed to install Redis: %s, skipping Redis plugin", e)
 
     return None
 
@@ -100,7 +100,7 @@ async def uninstall_redis() -> None:
 
             await close_redis_client(_redis_client)
         except Exception as e:
-            logger.error(f"Failed to uninstall Redis: {e}")
+            logger.error("Failed to uninstall Redis: %s", e)
         finally:
             _redis_client = None
             logger.info("Redis connection closed")

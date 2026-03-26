@@ -86,7 +86,7 @@ async def install_mysql(
     except ImportError:
         logger.warning("MySQL dependencies not installed, skipping")
     except Exception as e:
-        logger.error(f"Failed to install MySQL: {e}")
+        logger.error("Failed to install MySQL: %s", e)
         raise
 
     return None
@@ -102,7 +102,7 @@ async def uninstall_mysql() -> None:
 
             await close_mysql_engine(_mysql_engine)
         except Exception as e:
-            logger.error(f"Failed to uninstall MySQL: {e}")
+            logger.error("Failed to uninstall MySQL: %s", e)
         finally:
             _mysql_engine = None
             logger.info("MySQL connection closed")

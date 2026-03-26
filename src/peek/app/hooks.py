@@ -87,7 +87,7 @@ class HookManager:
             hook_type=hook_type,
         )
         self._hooks[hook_type].append(entry)
-        logger.debug(f"Hook '{name}' registered for {hook_type.value}")
+        logger.debug("Hook '%s' registered for %s", name, hook_type.value)
         return self
 
     def register_post_start(
@@ -124,16 +124,16 @@ class HookManager:
 
         for hook in sorted_hooks:
             try:
-                logger.debug(f"Running hook '{hook.name}' ({hook_type.value})")
+                logger.debug("Running hook '%s' (%s)", hook.name, hook_type.value)
 
                 if asyncio.iscoroutinefunction(hook.func):
                     await hook.func()
                 else:
                     hook.func()
 
-                logger.debug(f"Hook '{hook.name}' completed")
+                logger.debug("Hook '%s' completed", hook.name)
             except Exception as e:
-                logger.error(f"Hook '{hook.name}' failed: {e}")
+                logger.error("Hook '%s' failed: %s", hook.name, e)
                 # 根据钩子类型决定是否继续
                 if hook_type == HookType.POST_START:
                     raise

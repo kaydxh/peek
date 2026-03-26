@@ -229,7 +229,7 @@ async def install_opentelemetry(
         # 将 tide 配置格式转换为 peek 格式
         peek_config = _convert_config_to_peek_format(config)
 
-        logger.debug(f"Converted peek config: {peek_config}")
+        logger.debug("Converted peek config: %s", peek_config)
 
         # 使用 peek 的 OpenTelemetryService
         service = OpenTelemetryService.from_config_dict(peek_config)
@@ -258,7 +258,7 @@ async def install_opentelemetry(
             except ImportError:
                 logger.debug("FastAPI instrumentation not available")
             except Exception as e:
-                logger.warning(f"FastAPI instrumentation failed: {e}")
+                logger.warning("FastAPI instrumentation failed: %s", e)
 
         logger.info(
             "OpenTelemetry installed (via peek): "
@@ -267,7 +267,7 @@ async def install_opentelemetry(
         )
 
     except Exception as e:
-        logger.error(f"Failed to install OpenTelemetry: {e}")
+        logger.error("Failed to install OpenTelemetry: %s", e)
         raise
 
 

@@ -281,7 +281,7 @@ class MetricInterceptor(UnaryServerInterceptor):
                     description="Number of gRPC requests in progress",
                 )
             except Exception as e:
-                logger.warning(f"Failed to initialize metrics: {e}")
+                logger.warning("Failed to initialize metrics: %s", e)
 
     def _parse_method(self, method_name: str) -> Dict[str, str]:
         """解析方法名"""
@@ -412,7 +412,7 @@ class ModularInterceptor(UnaryServerInterceptor):
                     unit="ms",
                 )
             except Exception as e:
-                logger.warning(f"Failed to initialize modular metrics: {e}")
+                logger.warning("Failed to initialize modular metrics: %s", e)
 
     def intercept_unary(
         self,

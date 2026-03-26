@@ -66,7 +66,7 @@ class ConfigLoader:
             data = yaml.safe_load(f) or {}
 
         self._merge_data(self._data, data)
-        logger.info(f"Loaded config from {path}")
+        logger.info("Loaded config from %s", path)
         return self
 
     def load_env(self, prefix: Optional[str] = None) -> "ConfigLoader":
@@ -99,7 +99,7 @@ class ConfigLoader:
 
             # 设置到配置中
             self._set_nested(self._data, keys, parsed_value)
-            logger.debug(f"Loaded env config: {key}={parsed_value}")
+            logger.debug("Loaded env config: %s=%s", key, parsed_value)
 
         return self
 

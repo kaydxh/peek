@@ -661,7 +661,7 @@ class GenericWebServer:
         grpc_address = f"{self.host}:{self.grpc_port}"
         self._grpc_server.add_insecure_port(grpc_address)
         self._grpc_server.start()
-        logger.info(f"gRPC server started on {grpc_address}")
+        logger.info("gRPC server started on %s", grpc_address)
         self._grpc_server.wait_for_termination()
 
     def _stop_grpc_server(self, grace: Optional[float] = None) -> None:
@@ -744,7 +744,7 @@ class GenericWebServer:
 
     async def _handle_shutdown(self, sig: signal.Signals) -> None:
         """处理关闭信号"""
-        logger.info(f"Received signal {sig.name}, initiating graceful shutdown...")
+        logger.info("Received signal %s, initiating graceful shutdown...", sig.name)
 
         # 停止 gRPC 服务器
         if self._grpc_server is not None:
@@ -771,7 +771,7 @@ class GenericWebServer:
             self._grpc_thread.start()
 
         # 启动 HTTP 服务器
-        logger.info(f"HTTP server starting on {self.host}:{self.port}")
+        logger.info("HTTP server starting on %s:%s", self.host, self.port)
         uvicorn.run(
             self.app,
             host=self.host,

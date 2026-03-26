@@ -377,7 +377,7 @@ class ConfigLoader:
         with open(path, "r", encoding="utf-8") as f:
             self._raw_config = yaml.safe_load(f) or {}
 
-        logger.info(f"Loaded config from {file_path}")
+        logger.info("Loaded config from %s", file_path)
 
     def load_from_dict(self, config_dict: Dict[str, Any]) -> "ConfigLoader":
         """
