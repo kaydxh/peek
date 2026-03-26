@@ -19,6 +19,7 @@ import signal
 import sys
 import threading
 import traceback
+from abc import ABC, abstractmethod
 from concurrent import futures
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -55,7 +56,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class WebHandler:
+class WebHandler(ABC):
     """
     WebHandler 接口
 
@@ -63,6 +64,7 @@ class WebHandler:
     类似 Go 版本的 WebHandler interface
     """
 
+    @abstractmethod
     def set_routes(self, app: FastAPI) -> None:
         """
         设置路由
@@ -70,7 +72,7 @@ class WebHandler:
         Args:
             app: FastAPI 应用实例
         """
-        raise NotImplementedError("Subclass must implement set_routes method")
+        ...
 
 
 class GenericWebServer:
