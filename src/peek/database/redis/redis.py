@@ -10,7 +10,8 @@ Redis 连接工厂
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Union
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Dict, Optional, Union
 
 from peek.database.redis.config import RedisConfig
 
@@ -169,3 +170,30 @@ def get_redis_pool_stats(client: Any) -> Dict:
         }
     except Exception:
         return {}
+
+
+@asynccontextmanager
+async def redis_client_context(
+    config: Union[RedisConfig, Dict[str, Any]],
+) -> AsyncIterator[Optional[Any]]:
+    """Redis 客户端异步上下文管理器
+
+    自动管理客户端的创建和关闭，避免资源泄漏。
+
+    Args:
+        config: RedisConfig 实例或 dict 配置
+
+    Yields:
+        redis.asyncio.Redis 客户端实例，未启用时 yield None
+
+    使用示例：
+        async with redis_client_context(config) as client:
+            if client:
+                await client.set("key", "value")
+                value = await client.get("key")
+    """
+    client = await create_redis_client(config)
+    try:
+        yield client
+    finally:
+        await close_redis_client(client)

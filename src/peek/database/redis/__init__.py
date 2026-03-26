@@ -9,11 +9,19 @@ Redis 模块
 """
 
 from peek.database.redis.config import RedisConfig
-from peek.database.redis.redis import create_redis_client, check_redis_health, get_redis_pool_stats
+from peek.database.redis.redis import (
+    create_redis_client,
+    close_redis_client,
+    check_redis_health,
+    get_redis_pool_stats,
+    redis_client_context,
+)
 
 __all__ = [
     "RedisConfig",
     "create_redis_client",
+    "close_redis_client",
     "check_redis_health",
     "get_redis_pool_stats",
+    "redis_client_context",
 ]
