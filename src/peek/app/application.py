@@ -18,6 +18,7 @@ import asyncio
 import logging
 import signal
 import sys
+from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional
 
 import click
@@ -30,7 +31,7 @@ from peek.app.provider import Provider, get_provider
 logger = logging.getLogger(__name__)
 
 
-class BaseApp:
+class BaseApp(ABC):
     """
     应用程序基类
 
@@ -212,6 +213,7 @@ class BaseApp:
         self._hook_manager.register(HookType.PRE_SHUTDOWN, name, func, priority)
         return self
 
+    @abstractmethod
     def run_with_config(self, config_path: str) -> None:
         """
         使用配置文件启动应用
@@ -221,7 +223,7 @@ class BaseApp:
         Args:
             config_path: 配置文件路径
         """
-        raise NotImplementedError("Subclass must implement run_with_config()")
+        ...
 
     def run(self, config: Any) -> None:
         """
