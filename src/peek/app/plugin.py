@@ -101,10 +101,10 @@ class PluginManager:
             self
         """
         if plugin.name in self._plugins:
-            logger.warning(f"Plugin '{plugin.name}' already registered, overwriting")
+            logger.warning("Plugin '%s' already registered, overwriting", plugin.name)
 
         self._plugins[plugin.name] = plugin
-        logger.debug(f"Plugin '{plugin.name}' registered with priority {plugin.priority}")
+        logger.debug("Plugin '%s' registered with priority %s", plugin.name, plugin.priority)
         return self
 
     def unregister(self, name: str) -> Optional[Plugin]:
@@ -149,16 +149,16 @@ class PluginManager:
 
         for plugin in sorted_plugins:
             if not plugin.should_install(ctx):
-                logger.debug(f"Skipping plugin '{plugin.name}' (disabled)")
+                logger.debug("Skipping plugin '%s' (disabled)", plugin.name)
                 continue
 
             try:
-                logger.info(f"Installing plugin '{plugin.name}'...")
+                logger.info("Installing plugin '%s'...", plugin.name)
                 await plugin.install(ctx)
                 self._installed.append(plugin.name)
-                logger.info(f"Plugin '{plugin.name}' installed successfully")
+                logger.info("Plugin '%s' installed successfully", plugin.name)
             except Exception as e:
-                logger.error(f"Failed to install plugin '{plugin.name}': {e}")
+                logger.error("Failed to install plugin '%s': %s", plugin.name, e)
                 raise
 
     async def uninstall_all(self, ctx: Any) -> None:
@@ -177,11 +177,11 @@ class PluginManager:
                 continue
 
             try:
-                logger.info(f"Uninstalling plugin '{name}'...")
+                logger.info("Uninstalling plugin '%s'...", name)
                 await plugin.uninstall(ctx)
-                logger.info(f"Plugin '{name}' uninstalled successfully")
+                logger.info("Plugin '%s' uninstalled successfully", name)
             except Exception as e:
-                logger.error(f"Failed to uninstall plugin '{name}': {e}")
+                logger.error("Failed to uninstall plugin '%s': %s", name, e)
                 # 继续卸载其他插件
 
         self._installed.clear()

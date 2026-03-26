@@ -410,13 +410,13 @@ class LoggingInterceptor(UnaryServerInterceptor):
 
         if self.log_request:
             request_str = self._truncate(str(request))
-            logger.info(f"{prefix} gRPC Request {method_name}: {request_str}")
+            logger.info("%s gRPC Request %s: %s", prefix, method_name, request_str)
 
         response = handler(request, context)
 
         if self.log_response:
             response_str = self._truncate(str(response))
-            logger.info(f"{prefix} gRPC Response {method_name}: {response_str}")
+            logger.info("%s gRPC Response %s: %s", prefix, method_name, response_str)
 
         return response
 

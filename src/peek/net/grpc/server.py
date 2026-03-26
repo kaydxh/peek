@@ -184,7 +184,7 @@ class GRPCServer:
         self._server.start()
         self._started = True
 
-        logger.info(f"gRPC server started on {self.address}")
+        logger.info("gRPC server started on %s", self.address)
         return self
 
     def stop(self, grace: Optional[float] = None) -> None:
@@ -329,7 +329,7 @@ class AsyncGRPCServer:
         await self._server.start()
         self._started = True
 
-        logger.info(f"Async gRPC server started on {self.address}")
+        logger.info("Async gRPC server started on %s", self.address)
         return self
 
     async def stop(self, grace: Optional[float] = None) -> None:

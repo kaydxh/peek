@@ -84,7 +84,7 @@ async def create_web_server(web_config: Any, **kwargs) -> Any:
     # 安装限流中间件
     install_qps_limit_middleware(server, web_config)
 
-    logger.info(f"WebServer created: http://{host}:{port}")
+    logger.info("WebServer created: http://%s:%s", host, port)
     return server
 
 
@@ -125,7 +125,7 @@ def install_grpc_interceptors(server: Any) -> None:
             f"(RequestID, Trace, Recovery, Timer, Logging)"
         )
     except Exception as e:
-        logger.warning(f"Failed to install gRPC interceptors: {e}")
+        logger.warning("Failed to install gRPC interceptors: %s", e)
 
 
 def install_qps_limit_middleware(server: Any, web_config: Any) -> None:
@@ -258,5 +258,5 @@ async def _create_fallback_server(web_config: Any) -> Any:
             await server.serve()
 
     server = FallbackWebServer()
-    logger.info(f"Fallback WebServer created: http://{host}:{port}")
+    logger.info("Fallback WebServer created: http://%s:%s", host, port)
     return server

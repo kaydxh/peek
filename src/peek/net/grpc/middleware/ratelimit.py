@@ -230,7 +230,7 @@ class QPSLimitInterceptor(UnaryServerInterceptor):
             allowed = self._limiter.allow()
 
         if not allowed:
-            logger.warning(f"Rate limit exceeded for {method_name}")
+            logger.warning("Rate limit exceeded for %s", method_name)
             context.abort(
                 grpc.StatusCode.RESOURCE_EXHAUSTED,
                 f"{method_name} is rejected by rate limiter, QPS limit exceeded",
@@ -267,7 +267,7 @@ class ConcurrencyLimitInterceptor(UnaryServerInterceptor):
     ) -> Any:
         acquired = self._semaphore.acquire(blocking=False)
         if not acquired:
-            logger.warning(f"Concurrency limit exceeded for {method_name}")
+            logger.warning("Concurrency limit exceeded for %s", method_name)
             context.abort(
                 grpc.StatusCode.RESOURCE_EXHAUSTED,
                 f"{method_name} is rejected, max concurrency exceeded",
@@ -370,7 +370,7 @@ class MethodQPSLimitInterceptor(UnaryServerInterceptor):
         # 检查 QPS 限制
         qps_limiter = self._get_qps_limiter(method_name)
         if qps_limiter and not qps_limiter.allow():
-            logger.warning(f"QPS limit exceeded for {method_name}")
+            logger.warning("QPS limit exceeded for %s", method_name)
             context.abort(
                 grpc.StatusCode.RESOURCE_EXHAUSTED,
                 f"{method_name} is rejected, QPS limit exceeded",
@@ -381,7 +381,7 @@ class MethodQPSLimitInterceptor(UnaryServerInterceptor):
         if concurrency_semaphore:
             acquired = concurrency_semaphore.acquire(blocking=False)
             if not acquired:
-                logger.warning(f"Concurrency limit exceeded for {method_name}")
+                logger.warning("Concurrency limit exceeded for %s", method_name)
                 context.abort(
                     grpc.StatusCode.RESOURCE_EXHAUSTED,
                     f"{method_name} is rejected, max concurrency exceeded",

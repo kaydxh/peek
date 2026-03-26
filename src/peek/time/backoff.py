@@ -389,8 +389,9 @@ class ExponentialBackOff:
 
                 if not should_continue:
                     logger.warning(
-                    f"Retry exhausted, limit reached: elapsed_count={self._elapsed_count}, "
-                    f"elapsed_time={self.elapsed_time:.2f}s, error={e}"
+                    "Retry exhausted, limit reached: elapsed_count=%s, "
+                    "elapsed_time=%.2fs, error=%s",
+                    self._elapsed_count, self.elapsed_time, e
                     )
                     if self.opts.on_failure:
                         self.opts.on_failure(e, self._elapsed_count)
@@ -401,8 +402,9 @@ class ExponentialBackOff:
                     self.opts.on_retry(e, self._elapsed_count, wait_time)
 
                 logger.debug(
-                    f"Retrying: attempt={self._elapsed_count}, "
-                    f"wait={wait_time:.3f}s, error={e}"
+                    "Retrying: attempt=%s, "
+                    "wait=%.3fs, error=%s",
+                    self._elapsed_count, wait_time, e
                 )
 
                 await asyncio.sleep(wait_time)
@@ -452,8 +454,9 @@ class ExponentialBackOff:
 
                 if not should_continue:
                     logger.warning(
-                    f"Retry exhausted, limit reached: elapsed_count={self._elapsed_count}, "
-                    f"elapsed_time={self.elapsed_time:.2f}s, error={e}"
+                    "Retry exhausted, limit reached: elapsed_count=%s, "
+                    "elapsed_time=%.2fs, error=%s",
+                    self._elapsed_count, self.elapsed_time, e
                     )
                     if self.opts.on_failure:
                         self.opts.on_failure(e, self._elapsed_count)
@@ -464,8 +467,9 @@ class ExponentialBackOff:
                     self.opts.on_retry(e, self._elapsed_count, wait_time)
 
                 logger.debug(
-                    f"Retrying: attempt={self._elapsed_count}, "
-                    f"wait={wait_time:.3f}s, error={e}"
+                    "Retrying: attempt=%s, "
+                    "wait=%.3fs, error=%s",
+                    self._elapsed_count, wait_time, e
                 )
 
                 time.sleep(wait_time)

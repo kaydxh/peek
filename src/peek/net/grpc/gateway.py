@@ -304,7 +304,7 @@ class GRPCGateway:
         self._grpc_server = self._create_grpc_server()
         self._grpc_server.add_insecure_port(f"{self.host}:{self.grpc_port}")
         self._grpc_server.start()
-        logger.info(f"gRPC server started on {self.host}:{self.grpc_port}")
+        logger.info("gRPC server started on %s:%s", self.host, self.grpc_port)
         self._grpc_server.wait_for_termination()
 
     def run(
@@ -329,7 +329,7 @@ class GRPCGateway:
             self._grpc_thread.start()
 
         # 启动 HTTP 服务器
-        logger.info(f"HTTP server starting on {self.host}:{self.http_port}")
+        logger.info("HTTP server starting on %s:%s", self.host, self.http_port)
 
         config = uvicorn.Config(
             self.app,

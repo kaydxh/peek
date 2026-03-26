@@ -239,7 +239,7 @@ class BaseApp:
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt")
         except Exception as e:
-            logger.error(f"Application error: {e}", exc_info=True)
+            logger.error("Application error: %s", e, exc_info=True)
             sys.exit(1)
 
     async def _run_async(self) -> None:
@@ -257,14 +257,14 @@ class BaseApp:
 
         try:
             # 安装插件
-            logger.info(f"Starting {self.name} v{self.version}")
+            logger.info("Starting %s v%s", self.name, self.version)
             await self._install_plugins()
 
             # 执行启动后钩子
             await self._hook_manager.run_hooks(HookType.POST_START)
 
             # 等待关闭信号
-            logger.info(f"{self.name} is running...")
+            logger.info("%s is running...", self.name)
             await self._shutdown_event.wait()
 
         finally:
@@ -276,11 +276,11 @@ class BaseApp:
             await self._uninstall_plugins()
 
             self._running = False
-            logger.info(f"{self.name} stopped")
+            logger.info("%s stopped", self.name)
 
     async def _handle_signal(self, sig: signal.Signals) -> None:
         """处理系统信号"""
-        logger.info(f"Received signal {sig.name}")
+        logger.info("Received signal %s", sig.name)
         if self._shutdown_event:
             self._shutdown_event.set()
 
