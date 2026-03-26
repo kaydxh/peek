@@ -20,6 +20,7 @@ def parse_duration(value: Union[str, int, float, None]) -> float:
     - "10s": 10 秒
     - "5m": 5 分钟
     - "1h": 1 小时
+    - "1d": 1 天
     - "1h30m": 1 小时 30 分钟
     - "100ms": 100 毫秒
     - "500us": 500 微秒
@@ -52,13 +53,15 @@ def parse_duration(value: Union[str, int, float, None]) -> float:
 
     # 解析带单位的时间
     total_seconds = 0.0
-    pattern = r"(\d+(?:\.\d+)?)\s*(ms|us|ns|h|m|s)?"
+    pattern = r"(\d+(?:\.\d+)?)\s*(ms|us|ns|d|h|m|s)?"
 
     for match in re.finditer(pattern, value, re.IGNORECASE):
         num = float(match.group(1))
         unit = (match.group(2) or "s").lower()
 
-        if unit == "h":
+        if unit == "d":
+            total_seconds += num * 86400
+        elif unit == "h":
             total_seconds += num * 3600
         elif unit == "m":
             total_seconds += num * 60

@@ -18,6 +18,7 @@ from peek.logs.config import (
     get_logger,
     install_logs,
 )
+from peek.time.parse import parse_duration
 
 
 # ============ LogConfig 测试 ============
@@ -39,31 +40,31 @@ class TestLogConfig:
 
     def test_parse_duration_seconds(self):
         """解析秒数"""
-        assert LogConfig._parse_duration("3600") == 3600.0
-        assert LogConfig._parse_duration("3600s") == 3600.0
+        assert parse_duration("3600") == 3600.0
+        assert parse_duration("3600s") == 3600.0
 
     def test_parse_duration_minutes(self):
         """解析分钟"""
-        assert LogConfig._parse_duration("60m") == 3600.0
+        assert parse_duration("60m") == 3600.0
 
     def test_parse_duration_hours(self):
         """解析小时"""
-        assert LogConfig._parse_duration("1h") == 3600.0
+        assert parse_duration("1h") == 3600.0
 
     def test_parse_duration_days(self):
         """解析天"""
-        assert LogConfig._parse_duration("1d") == 86400.0
+        assert parse_duration("1d") == 86400.0
 
     def test_parse_duration_empty(self):
         """空字符串返回 0"""
-        assert LogConfig._parse_duration("") == 0.0
+        assert parse_duration("") == 0.0
 
     def test_parse_duration_invalid(self):
         """无效字符串返回 0"""
-        assert LogConfig._parse_duration("abc") == 0.0
+        assert parse_duration("abc") == 0.0
 
-    def test_post_init_converts_strings(self):
-        """__post_init__ 应自动转换字符串为数值"""
+    def test_field_validator_converts_strings(self):
+        """field_validator 应自动转换字符串为数值"""
         config = LogConfig(max_age="1h", rotate_interval="30m")
         assert config.max_age == 3600.0
         assert config.rotate_interval == 1800.0
