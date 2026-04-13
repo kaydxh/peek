@@ -88,5 +88,26 @@ target/
 .clangd
 .cache
 
+# Claude Code
+.claude/
+
+# Log files
+*.log
+pip-log.txt
+
+# Testing tools
+.tox/
+.nox/
+
+# Python packaging
+MANIFEST
+
+# Python version managers
+.python-version
+
+# PDM
+.pdm.toml
+.pdm-python.toml
+
 # Other
 .DS_Store
