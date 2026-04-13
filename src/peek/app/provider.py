@@ -71,8 +71,9 @@ class Provider:
         Args:
             config: 配置对象
         """
-        self._config = config
-        logger.debug("Config set in provider")
+        with self._lock:
+            self._config = config
+            logger.debug("Config set in provider")
 
     def get_config(self) -> Optional[Any]:
         """
@@ -81,7 +82,8 @@ class Provider:
         Returns:
             配置对象
         """
-        return self._config
+        with self._lock:
+            return self._config
 
     def register(
         self,
@@ -142,17 +144,15 @@ class Provider:
         Returns:
             依赖实例
         """
-        # 先查找已创建的实例
-        if name in self._dependencies:
-            return self._dependencies[name]
+        with self._lock:
+            # 先查找已创建的实例
+            if name in self._dependencies:
+                return self._dependencies[name]
 
-        # 尝试使用工厂创建
-        if name in self._factories:
-            with self._lock:
-                # 双重检查
-                if name not in self._dependencies:
-                    self._dependencies[name] = self._factories[name]()
-                    logger.debug("Created dependency from factory: %s", name)
+            # 尝试使用工厂创建
+            if name in self._factories:
+                self._dependencies[name] = self._factories[name]()
+                logger.debug("Created dependency from factory: %s", name)
                 return self._dependencies[name]
 
         return default
@@ -200,7 +200,8 @@ class Provider:
         Returns:
             是否存在
         """
-        return name in self._dependencies or name in self._factories
+        with self._lock:
+            return name in self._dependencies or name in self._factories
 
     def clear(self) -> None:
         """清除所有依赖"""
