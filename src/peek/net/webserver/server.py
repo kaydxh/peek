@@ -186,6 +186,7 @@ class GenericWebServer:
 
         # gRPC 相关
         self._grpc_server: Optional["grpc.Server"] = None
+        self._grpc_executor: Optional["futures.ThreadPoolExecutor"] = None
         self._grpc_interceptors: List["grpc.ServerInterceptor"] = []
         self._grpc_service_handlers: List[Callable] = []
         self._grpc_service_names: List[str] = []
@@ -507,10 +508,21 @@ class GenericWebServer:
                 entry.done.set()
                 logger.info("Post start hook %s completed", name)
             except Exception as e:
-                logger.error("Post start hook %s failed: %s", name, e)
+                entry.done.set()  # 标记完成，避免等待者永远阻塞
+                raise RuntimeError(f"Post start hook {name} failed: {e}") from e
 
         tasks = [run_hook(name, entry) for name, entry in hooks.items()]
-        await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 检查所有 hook 的执行结果，收集失败的
+        failed = [r for r in results if isinstance(r, BaseException)]
+        if failed:
+            for err in failed:
+                logger.error("%s", err)
+            raise RuntimeError(
+                f"{len(failed)}/{len(tasks)} post start hook(s) failed: "
+                + "; ".join(str(e) for e in failed)
+            )
 
     async def _run_pre_shutdown_hooks(self) -> None:
         """运行所有关闭前钩子（顺序执行）"""
@@ -624,8 +636,11 @@ class GenericWebServer:
 
     def _create_grpc_server(self) -> "grpc.Server":
         """创建 gRPC 服务器"""
+        self._grpc_executor = futures.ThreadPoolExecutor(
+            max_workers=self.grpc_max_workers
+        )
         server = grpc.server(
-            futures.ThreadPoolExecutor(max_workers=self.grpc_max_workers),
+            self._grpc_executor,
             interceptors=self._grpc_interceptors,
             options=self._grpc_options,
         )
@@ -678,6 +693,12 @@ class GenericWebServer:
 
             self._grpc_server.stop(grace)
             logger.info("gRPC server stopped")
+
+        # 显式关闭线程池，释放工作线程
+        if self._grpc_executor is not None:
+            self._grpc_executor.shutdown(wait=True)
+            self._grpc_executor = None
+            logger.debug("gRPC thread pool executor shut down")
 
     def set_grpc_service_status(self, service_name: str, serving: bool) -> None:
         """

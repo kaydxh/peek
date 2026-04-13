@@ -27,7 +27,13 @@ import logging
 import threading
 from typing import Any, Optional
 
-import requests
+try:
+    import requests
+except ImportError:
+    raise ImportError(
+        "The 'requests' package is required for peek.net.http. "
+        "Install it with: pip install peek[http]"
+    ) from None
 
 from peek.time.backoff import ExponentialBackOff
 
@@ -73,6 +79,8 @@ class HttpClient:
         self.max_interval = max_interval
         self.default_headers = headers or {}
         self._local = threading.local()
+        self._sessions_lock = threading.Lock()
+        self._sessions: list = []  # 跟踪所有线程创建的 session
 
     def _get_session(self) -> requests.Session:
         """获取当前线程的 Session 实例
@@ -84,6 +92,8 @@ class HttpClient:
             session = requests.Session()
             session.headers.update(self.default_headers)
             self._local.session = session
+            with self._sessions_lock:
+                self._sessions.append(session)
         return self._local.session
 
     def _request_with_retry(
@@ -208,6 +218,19 @@ class HttpClient:
         if hasattr(self._local, "session"):
             self._local.session.close()
             del self._local.session
+
+    def close_all(self) -> None:
+        """关闭所有线程的 Session
+
+        在应用关闭时调用，确保所有线程创建的 TCP 连接都被释放。
+        """
+        with self._sessions_lock:
+            for session in self._sessions:
+                try:
+                    session.close()
+                except Exception:
+                    pass
+            self._sessions.clear()
 
 
 # ======================== 模块级便捷函数（向后兼容） ========================
