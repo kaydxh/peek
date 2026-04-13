@@ -368,9 +368,18 @@ class RotatingFileWriter:
             if self._file is not None:
                 self._file.close()
                 self._file = None
-    
+
+    def __enter__(self):
+        """支持 with 语法"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """退出 with 块时关闭文件"""
+        self.close()
+        return False
+
     def __del__(self):
-        """析构函数"""
+        """析构函数（兜底，不应依赖此方法）"""
         self.close()
 
 
