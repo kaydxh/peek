@@ -35,77 +35,15 @@ web:
 
 import logging
 import os
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from peek.time.parse import parse_duration
+
 logger = logging.getLogger(__name__)
-
-
-# ======================== 时间解析工具 ========================
-
-
-def parse_duration(value: Union[str, int, float, None]) -> float:
-    """
-    解析时间字符串为秒数
-
-    支持格式:
-    - 纯数字: 直接作为秒数
-    - "30s": 30 秒
-    - "5m": 5 分钟
-    - "1h": 1 小时
-    - "1h30m": 1 小时 30 分钟
-    - "100ms": 100 毫秒
-    - "1.5s": 1.5 秒
-
-    Args:
-        value: 时间字符串或数字
-
-    Returns:
-        秒数（float）
-    """
-    if value is None:
-        return 0.0
-
-    if isinstance(value, (int, float)):
-        return float(value)
-
-    if not isinstance(value, str):
-        return 0.0
-
-    value = value.strip().lower()
-    if not value:
-        return 0.0
-
-    # 纯数字
-    try:
-        return float(value)
-    except ValueError:
-        pass
-
-    # 解析时间单位
-    total_seconds = 0.0
-    pattern = r'(\d+(?:\.\d+)?)\s*(ms|s|m|h|d)?'
-    matches = re.findall(pattern, value)
-
-    unit_multipliers = {
-        'ms': 0.001,
-        's': 1,
-        'm': 60,
-        'h': 3600,
-        'd': 86400,
-        '': 1,  # 默认秒
-    }
-
-    for num_str, unit in matches:
-        num = float(num_str)
-        multiplier = unit_multipliers.get(unit, 1)
-        total_seconds += num * multiplier
-
-    return total_seconds
 
 
 # ======================== 配置模型定义 ========================

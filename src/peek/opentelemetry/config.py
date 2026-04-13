@@ -6,70 +6,12 @@ OpenTelemetry 配置模块
 """
 
 import os
-import re
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
-
-def parse_duration(value: Union[str, int, float]) -> float:
-    """
-    解析时间字符串为秒数
-
-    支持格式：
-    - 纯数字：直接作为秒数
-    - "30s"：30 秒
-    - "5m"：5 分钟
-    - "1h"：1 小时
-    - "1h30m"：1 小时 30 分钟
-    - "100ms"：100 毫秒
-
-    Args:
-        value: 时间值
-
-    Returns:
-        秒数（float）
-    """
-    if isinstance(value, (int, float)):
-        return float(value)
-
-    if not isinstance(value, str):
-        return 0.0
-
-    value = value.strip()
-    if not value:
-        return 0.0
-
-    # 纯数字
-    if value.isdigit() or value.replace(".", "", 1).isdigit():
-        return float(value)
-
-    total_seconds = 0.0
-
-    # 解析时间单位
-    patterns = [
-        (r"(\d+(?:\.\d+)?)\s*h", 3600),    # 小时
-        (r"(\d+(?:\.\d+)?)\s*m(?!s)", 60),  # 分钟（不匹配 ms）
-        (r"(\d+(?:\.\d+)?)\s*s(?!$)", 1),   # 秒
-        (r"(\d+(?:\.\d+)?)\s*ms", 0.001),   # 毫秒
-        (r"(\d+(?:\.\d+)?)\s*us", 0.000001),  # 微秒
-        (r"(\d+(?:\.\d+)?)\s*$", 1),         # 末尾的 s
-    ]
-
-    for pattern, multiplier in patterns:
-        match = re.search(pattern, value, re.IGNORECASE)
-        if match:
-            total_seconds += float(match.group(1)) * multiplier
-
-    # 如果没有匹配到任何单位，尝试直接解析
-    if total_seconds == 0.0:
-        try:
-            return float(value.rstrip("s"))
-        except ValueError:
-            return 0.0
-
-    return total_seconds
+from peek.time.parse import parse_duration
 
 
 class ExporterType(str, Enum):
