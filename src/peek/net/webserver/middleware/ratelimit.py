@@ -884,7 +884,7 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
     """
     并发限制中间件
 
-    仅限制最大并发数
+    仅限制最大并发数，基于原子计数器实现。
     """
 
     # 默认跳过限流的路径（健康检查、指标等基础设施路径）
@@ -910,11 +910,13 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
             skip_paths: 跳过限流的路径列表（健康检查等），None 使用默认列表
         """
         super().__init__(app)
-        self.max_concurrency = max_concurrency
-        self._semaphore = asyncio.Semaphore(max_concurrency)
-        self._current = 0
-        self._lock = Lock()
+        self._limiter = ConcurrencyLimiter(max_concurrency)
         self.skip_paths = skip_paths if skip_paths is not None else self.DEFAULT_SKIP_PATHS
+
+    @property
+    def max_concurrency(self) -> int:
+        """获取最大并发数"""
+        return self._limiter.max_concurrency
 
     def _should_skip(self, path: str) -> bool:
         """判断路径是否跳过限流"""
@@ -933,18 +935,15 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
         if self._should_skip(path):
             return await call_next(request)
 
-        # 尝试获取信号量（非阻塞）
-        acquired = self._semaphore.locked() is False
-
-        if not acquired:
-            try:
-                # 尝试立即获取
-                await asyncio.wait_for(self._semaphore.acquire(), timeout=0)
-                acquired = True
-            except asyncio.TimeoutError:
-                pass
-
-        if not acquired:
+        if not self._limiter.allow():
+            logger.warning(
+                "Request rejected by concurrency limiter: %s %s "
+                "(current: %d, max: %d)",
+                request.method,
+                path,
+                self._limiter.current(),
+                self._limiter.max_concurrency,
+            )
             return JSONResponse(
                 status_code=429,
                 headers={"Retry-After": "1"},
@@ -956,13 +955,13 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
             )
 
         try:
-            with self._lock:
-                self._current += 1
             return await call_next(request)
         finally:
-            self._semaphore.release()
-            with self._lock:
-                self._current -= 1
+            self._limiter.put()
+
+    def stats(self) -> Dict[str, Any]:
+        """获取并发限流统计信息"""
+        return self._limiter.stats()
 
 
 # ======================== 工厂函数 ========================

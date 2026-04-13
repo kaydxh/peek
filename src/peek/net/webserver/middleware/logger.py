@@ -8,6 +8,7 @@
 对大字符串字段只打印前 N 个字节和总长度
 """
 
+import json
 import logging
 from typing import Any, Awaitable, Callable, List, Optional
 
@@ -29,6 +30,12 @@ class LoggerMiddleware(BaseHTTPMiddleware):
 
     # 默认字符串截断长度
     DEFAULT_MAX_STRING_LENGTH = 10
+    # 默认 body 日志最大捕获字节数（4KB）
+    DEFAULT_MAX_BODY_LOG_BYTES = 4 * 1024
+    # 默认递归截断最大深度
+    DEFAULT_MAX_TRUNCATE_DEPTH = 10
+    # 默认列表/字典截断最大元素数
+    DEFAULT_MAX_TRUNCATE_ITEMS = 100
 
     def __init__(
         self,
@@ -39,6 +46,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         log_request_headers: bool = False,
         log_response_headers: bool = False,
         max_string_length: int = DEFAULT_MAX_STRING_LENGTH,
+        max_body_log_bytes: int = DEFAULT_MAX_BODY_LOG_BYTES,
+        max_truncate_depth: int = DEFAULT_MAX_TRUNCATE_DEPTH,
+        max_truncate_items: int = DEFAULT_MAX_TRUNCATE_ITEMS,
         skip_paths: List[str] = None,
     ):
         """
@@ -52,6 +62,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             log_request_headers: 是否记录请求头（类似 Go 版 InOutputHeaderPrinter）
             log_response_headers: 是否记录响应头（类似 Go 版 InOutputHeaderPrinter）
             max_string_length: 字符串字段的最大打印长度，超过则截断
+            max_body_log_bytes: body 日志的最大捕获字节数，超过则只记录大小不记录内容
+            max_truncate_depth: _truncate_value 递归的最大深度
+            max_truncate_items: _truncate_value 中列表/字典的最大处理元素数
             skip_paths: 跳过记录的路径列表（如 /health, /metrics）
         """
         super().__init__(app)
@@ -61,6 +74,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         self.log_request_headers = log_request_headers
         self.log_response_headers = log_response_headers
         self.max_string_length = max_string_length
+        self.max_body_log_bytes = max_body_log_bytes
+        self.max_truncate_depth = max_truncate_depth
+        self.max_truncate_items = max_truncate_items
         self.skip_paths = skip_paths or ["/healthz", "/readyz", "/livez", "/metrics"]
 
     def _log(self, msg: str, level: str = "info") -> None:
@@ -88,16 +104,20 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         truncated = value[:self.max_string_length]
         return f"{truncated}...(len:{len(value)} bytes)"
 
-    def _truncate_value(self, value: Any) -> Any:
+    def _truncate_value(self, value: Any, depth: int = 0) -> Any:
         """
         递归处理值，对字符串进行截断
 
         Args:
             value: 任意类型的值
+            depth: 当前递归深度
 
         Returns:
             处理后的值
         """
+        if depth >= self.max_truncate_depth:
+            return "<truncated: max depth exceeded>"
+
         if isinstance(value, str):
             return self._truncate_string(value)
         elif isinstance(value, bytes):
@@ -106,11 +126,26 @@ class LoggerMiddleware(BaseHTTPMiddleware):
                 return f"<bytes:{len(value)}>"
             return f"<bytes:{self.max_string_length}+...>(len:{len(value)} bytes)"
         elif isinstance(value, dict):
-            return {k: self._truncate_value(v) for k, v in value.items()}
-        elif isinstance(value, list):
-            return [self._truncate_value(item) for item in value]
-        elif isinstance(value, tuple):
-            return tuple(self._truncate_value(item) for item in value)
+            items = list(value.items())
+            if len(items) > self.max_truncate_items:
+                result = {
+                    k: self._truncate_value(v, depth + 1)
+                    for k, v in items[:self.max_truncate_items]
+                }
+                result["..."] = f"<{len(items) - self.max_truncate_items} more keys>"
+                return result
+            return {k: self._truncate_value(v, depth + 1) for k, v in items}
+        elif isinstance(value, (list, tuple)):
+            is_tuple = isinstance(value, tuple)
+            if len(value) > self.max_truncate_items:
+                result = [
+                    self._truncate_value(item, depth + 1)
+                    for item in value[:self.max_truncate_items]
+                ]
+                result.append(f"<...{len(value) - self.max_truncate_items} more items>")
+                return tuple(result) if is_tuple else result
+            result = [self._truncate_value(item, depth + 1) for item in value]
+            return tuple(result) if is_tuple else result
         else:
             return value
 
@@ -130,9 +165,12 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             if not body:
                 return None
 
+            # 超过阈值，只记录大小
+            if len(body) > self.max_body_log_bytes:
+                return f"<body too large: {len(body)} bytes, limit: {self.max_body_log_bytes}>"
+
             # 尝试解析为 JSON
             try:
-                import json
                 body_json = json.loads(body)
                 # 对 JSON 内容进行截断处理
                 truncated_body = self._truncate_value(body_json)
@@ -158,8 +196,11 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         if not body:
             return "<empty>"
 
+        # 超过阈值，只记录大小
+        if len(body) > self.max_body_log_bytes:
+            return f"<body too large: {len(body)} bytes, limit: {self.max_body_log_bytes}>"
+
         try:
-            import json
             body_json = json.loads(body)
             # 对 JSON 内容进行截断处理
             truncated_body = self._truncate_value(body_json)
@@ -218,13 +259,27 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             # 需要捕获响应体，使用自定义的响应包装
             response = await call_next(request)
 
-            # 读取响应体
-            response_body = b""
+            # 使用 bytearray 避免 O(n²) 的 bytes 拼接
+            body_buffer = bytearray()
+            body_exceeded = False
             async for chunk in response.body_iterator:
-                response_body += chunk
+                if isinstance(chunk, str):
+                    chunk = chunk.encode("utf-8")
+                if not body_exceeded:
+                    body_buffer.extend(chunk)
+                    if len(body_buffer) > self.max_body_log_bytes:
+                        body_exceeded = True
+
+            response_body = bytes(body_buffer)
 
             # 记录响应
-            response_body_str = self._format_response_body(response_body)
+            if body_exceeded:
+                response_body_str = (
+                    f"<body too large: {len(response_body)} bytes, "
+                    f"limit: {self.max_body_log_bytes}>"
+                )
+            else:
+                response_body_str = self._format_response_body(response_body)
             log_msg = (
                 f"{prefix} <-- {request.method} {request.url.path} "
                 f"{response.status_code}"
