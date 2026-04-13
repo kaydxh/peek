@@ -136,7 +136,9 @@ class ConfigWatcher:
             logger.warning("ConfigWatcher is already running")
             return
 
+        # 确保旧的 stop event 已清除
         self._stop_event.clear()
+        # 清除可能残留的已结束线程引用
         self._thread = threading.Thread(
             target=self._poll_loop,
             name="config-watcher",
@@ -150,7 +152,13 @@ class ConfigWatcher:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=5.0)
-            self._thread = None
+            if self._thread.is_alive():
+                logger.warning(
+                    "ConfigWatcher thread did not stop within 5s, "
+                    "it may still be running in the background"
+                )
+            else:
+                self._thread = None
         logger.info("ConfigWatcher stopped")
 
     def _poll_loop(self) -> None:
