@@ -122,13 +122,16 @@ class VLLMInferenceHealthChecker(HealthChecker):
     """
     vLLM 推理级别健康检查器
 
-    通过发送一个轻量级的 chat completion 请求来检查 vLLM 推理引擎是否正常工作。
+    通过发送一个轻量级的推理请求来检查 vLLM 推理引擎是否正常工作。
     解决 vLLM server 进程存活但推理引擎卡死（如 GPU OOM / Scheduler 死锁）的检测盲区。
 
     与 HTTPHealthChecker（仅检查 /health 端点）不同，本检查器能检测到：
     - 推理引擎 hang 住（健康端点正常但推理无响应）
     - KV Cache 耗尽导致的调度器死锁
     - GPU 异常导致的推理卡死
+
+    对于 pooling runner 模式（如分类模型），使用 /classify 端点；
+    对于默认 generate runner，使用 /chat/completions 端点。
     """
 
     def __init__(
@@ -137,6 +140,7 @@ class VLLMInferenceHealthChecker(HealthChecker):
         api_url: str,
         model_name: str,
         timeout: float = 10.0,
+        runner_type: str = "",
     ):
         """
         Args:
@@ -144,11 +148,13 @@ class VLLMInferenceHealthChecker(HealthChecker):
             api_url: vLLM API 地址（如 http://localhost:8001/v1）
             model_name: 模型名称
             timeout: 推理请求超时时间（秒），默认 10s，应远小于业务超时
+            runner_type: vLLM runner 类型，如 "pooling"（分类模型），留空则使用默认 generate runner
         """
         self._name = checker_name
         self.api_url = api_url
         self.model_name = model_name
         self.timeout = timeout
+        self.runner_type = runner_type
 
     @property
     def name(self) -> str:
@@ -158,19 +164,32 @@ class VLLMInferenceHealthChecker(HealthChecker):
         """
         发送轻量级推理请求检查引擎是否正常
 
-        使用极短的 prompt 和 max_tokens=1 来最小化开销
+        pooling 模式使用 /classify 端点，generate 模式使用 /chat/completions 端点。
         """
+        is_pooling = self.runner_type == "pooling"
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.api_url}/chat/completions",
-                    json={
-                        "model": self.model_name,
-                        "messages": [{"role": "user", "content": "hi"}],
-                        "max_tokens": 1,
-                        "temperature": 0.0,
-                    },
-                )
+                if is_pooling:
+                    # pooling 模式（分类模型）使用 /classify 端点探活
+                    response = await client.post(
+                        f"{self.api_url}/classify",
+                        json={
+                            "model": self.model_name,
+                            "messages": [{"role": "user", "content": "hi"}],
+                        },
+                    )
+                else:
+                    # 默认 generate 模式使用 /chat/completions 端点探活
+                    response = await client.post(
+                        f"{self.api_url}/chat/completions",
+                        json={
+                            "model": self.model_name,
+                            "messages": [{"role": "user", "content": "hi"}],
+                            "max_tokens": 1,
+                            "temperature": 0.0,
+                        },
+                    )
                 if response.status_code == 200:
                     return None
                 else:
