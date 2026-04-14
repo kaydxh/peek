@@ -147,14 +147,37 @@ class VLLMServerManager:
             "--port", str(self.config.port),
             "--served-model-name", self.config.model_name,
             "--gpu-memory-utilization", str(self.config.gpu_memory_utilization),
-            "--max-num-batched-tokens", str(self.config.max_num_batched_tokens),
-            "--max-num-seqs", str(self.config.max_num_seqs),
             "--max-model-len", str(self.config.max_model_len),
             "--tensor-parallel-size", str(self.config.tensor_parallel_size),
         ]
 
+        # runner 类型（如 pooling 用于分类模型）
+        if self.config.runner:
+            cmd += ["--runner", self.config.runner]
+
+        # 信任远程代码
+        if self.config.trust_remote_code:
+            cmd.append("--trust-remote-code")
+
+        # HuggingFace 模型配置覆盖
+        if self.config.hf_overrides:
+            try:
+                hf_overrides_str = json.dumps(self.config.hf_overrides, separators=(",", ":"))
+                cmd += ["--hf-overrides", hf_overrides_str]
+            except (TypeError, ValueError) as e:
+                logger.error("Invalid hf_overrides: %s, error: %s", self.config.hf_overrides, e)
+
         if self.config.dtype and self.config.dtype != "auto":
             cmd += ["--dtype", self.config.dtype]
+
+        # 以下参数仅在非 pooling runner 模式下添加（pooling 模式不需要这些生成相关参数）
+        is_pooling = self.config.runner == "pooling"
+
+        if not is_pooling:
+            cmd += [
+                "--max-num-batched-tokens", str(self.config.max_num_batched_tokens),
+                "--max-num-seqs", str(self.config.max_num_seqs),
+            ]
 
         # 多模态处理器参数（视频帧采样等）
         if self.config.mm_processor_kwargs:
@@ -164,21 +187,22 @@ class VLLMServerManager:
             except (TypeError, ValueError) as e:
                 logger.error("Invalid mm_processor_kwargs: %s, error: %s", self.config.mm_processor_kwargs, e)
 
-        # 媒体IO参数（视频帧数控制等）
-        if self.config.media_io_kwargs:
-            try:
-                media_io_str = json.dumps(self.config.media_io_kwargs, separators=(",", ":"))
-                cmd += ["--media-io-kwargs", media_io_str]
-            except (TypeError, ValueError) as e:
-                logger.error("Invalid media_io_kwargs: %s, error: %s", self.config.media_io_kwargs, e)
-        else:
-            # 默认：使用所有视频帧（-1 表示不限制帧数）
-            cmd += ["--media-io-kwargs", '{"video":{"num_frames":-1}}']
+        # 媒体IO参数（视频帧数控制等），仅在非 pooling 模式下添加
+        if not is_pooling:
+            if self.config.media_io_kwargs:
+                try:
+                    media_io_str = json.dumps(self.config.media_io_kwargs, separators=(",", ":"))
+                    cmd += ["--media-io-kwargs", media_io_str]
+                except (TypeError, ValueError) as e:
+                    logger.error("Invalid media_io_kwargs: %s, error: %s", self.config.media_io_kwargs, e)
+            else:
+                # 默认：使用所有视频帧（-1 表示不限制帧数）
+                cmd += ["--media-io-kwargs", '{"video":{"num_frames":-1}}']
 
-        if self.config.enable_prefix_caching:
+        if not is_pooling and self.config.enable_prefix_caching:
             cmd.append("--enable-prefix-caching")
 
-        if self.config.enable_chunked_prefill:
+        if not is_pooling and self.config.enable_chunked_prefill:
             cmd.append("--enable-chunked-prefill")
 
         return cmd

@@ -126,6 +126,10 @@ class AppWebConfig(BaseModel):
     )
 
 
+
+# 向后兼容别名：v0.0.6 及之前版本使用 WebConfig 名称
+WebConfig = AppWebConfig
+
 class LogConfig(BaseModel):
     """日志配置"""
 

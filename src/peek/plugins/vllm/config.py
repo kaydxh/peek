@@ -41,6 +41,9 @@ class VLLMConfig:
     timeout: int = 60
 
     # vLLM server 启动参数（仅当 auto_start=True 时有效）
+    runner: str = ""  # vLLM runner 类型，如 "pooling"（分类模型），留空则使用默认 generate runner
+    trust_remote_code: bool = False  # 是否信任远程代码
+    hf_overrides: Optional[Dict[str, Any]] = None  # HuggingFace 模型配置覆盖
     gpu_memory_utilization: float = 0.9
     tensor_parallel_size: int = 1
     max_num_seqs: int = 256
@@ -110,6 +113,9 @@ def parse_vllm_config(
         "temperature": 0.7,
         "top_p": 0.9,
         "timeout": 60,
+        "runner": "",
+        "trust_remote_code": False,
+        "hf_overrides": None,
         "gpu_memory_utilization": 0.9,
         "tensor_parallel_size": 1,
         "max_num_seqs": 256,
@@ -175,6 +181,9 @@ def parse_vllm_config(
         temperature=data.get("temperature", defs["temperature"]),
         top_p=data.get("top_p", defs["top_p"]),
         timeout=data.get("timeout", defs["timeout"]),
+        runner=data.get("runner", defs["runner"]),
+        trust_remote_code=data.get("trust_remote_code", defs["trust_remote_code"]),
+        hf_overrides=data.get("hf_overrides", defs["hf_overrides"]),
         gpu_memory_utilization=data.get("gpu_memory_utilization", defs["gpu_memory_utilization"]),
         tensor_parallel_size=data.get("tensor_parallel_size", defs["tensor_parallel_size"]),
         max_num_seqs=data.get("max_num_seqs", defs["max_num_seqs"]),
