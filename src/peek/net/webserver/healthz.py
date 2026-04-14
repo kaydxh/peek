@@ -172,8 +172,10 @@ class VLLMInferenceHealthChecker(HealthChecker):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 if is_pooling:
                     # pooling 模式（分类模型）使用 /classify 端点探活
+                    # 注意：/classify 端点不在 /v1 路径下，需要去掉 /v1 前缀
+                    base_url = self.api_url.removesuffix("/v1")
                     response = await client.post(
-                        f"{self.api_url}/classify",
+                        f"{base_url}/classify",
                         json={
                             "model": self.model_name,
                             "messages": [{"role": "user", "content": "hi"}],

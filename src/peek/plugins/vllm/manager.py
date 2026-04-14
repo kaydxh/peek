@@ -384,8 +384,10 @@ class VLLMServerManager:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 if is_pooling:
                     # pooling 模式（分类模型）使用 /classify 端点探活
+                    # 注意：/classify 端点不在 /v1 路径下，需要使用基础 URL
+                    base_url = f"http://{self.config.host}:{self.config.port}"
                     response = await client.post(
-                        f"{self._api_url}/classify",
+                        f"{base_url}/classify",
                         json={
                             "model": self.config.model_name,
                             "messages": [{"role": "user", "content": "hi"}],
