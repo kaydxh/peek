@@ -120,7 +120,7 @@ class VLLMClient:
                 return is_ready
             else:
                 logger.debug("vLLM server returned status code: %s", response.status_code)
-                    return False
+                return False
         except Exception as e:
             logger.warning("vLLM health check failed: %s", e)
             return False
