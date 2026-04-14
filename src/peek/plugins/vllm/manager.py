@@ -366,6 +366,9 @@ class VLLMServerManager:
         Detects issues where vLLM server process is alive and /health is OK,
         but the inference engine is stuck (e.g. GPU OOM, KV Cache exhaustion, Scheduler deadlock).
 
+        For pooling runner mode (e.g. classification models), uses /classify endpoint;
+        for default generate runner, uses /chat/completions endpoint.
+
         Args:
             timeout: Inference request timeout in seconds, defaults to config's inference_probe_timeout
 
@@ -375,17 +378,30 @@ class VLLMServerManager:
         if timeout is None:
             timeout = self.config.inference_probe_timeout
 
+        is_pooling = self.config.runner == "pooling"
+
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(
-                    f"{self._api_url}/chat/completions",
-                    json={
-                        "model": self.config.model_name,
-                        "messages": [{"role": "user", "content": "hi"}],
-                        "max_tokens": 1,
-                        "temperature": 0.0,
-                    },
-                )
+                if is_pooling:
+                    # pooling 模式（分类模型）使用 /classify 端点探活
+                    response = await client.post(
+                        f"{self._api_url}/classify",
+                        json={
+                            "model": self.config.model_name,
+                            "messages": [{"role": "user", "content": "hi"}],
+                        },
+                    )
+                else:
+                    # 默认 generate 模式使用 /chat/completions 端点探活
+                    response = await client.post(
+                        f"{self._api_url}/chat/completions",
+                        json={
+                            "model": self.config.model_name,
+                            "messages": [{"role": "user", "content": "hi"}],
+                            "max_tokens": 1,
+                            "temperature": 0.0,
+                        },
+                    )
                 if response.status_code == 200:
                     return True
                 else:
