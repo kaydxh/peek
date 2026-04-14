@@ -11,12 +11,11 @@ Metric API 函数式接口
 import logging
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from opentelemetry import metrics
 from opentelemetry.metrics import Counter as OtelCounter
 from opentelemetry.metrics import Histogram as OtelHistogram
-from opentelemetry.metrics import UpDownCounter as OtelGauge
 
 from peek.opentelemetry.metric.meter import get_app_meter_provider
 
@@ -42,7 +41,9 @@ def _get_app_meter(meter_name: str) -> Optional[metrics.Meter]:
     return None
 
 
-def _get_global_counter(meter_name: str, instrument_name: str, unit: str = "") -> OtelCounter:
+def _get_global_counter(
+    meter_name: str, instrument_name: str, unit: str = ""
+) -> OtelCounter:
     """获取或创建全局 Counter"""
     key = (meter_name, instrument_name)
     if key not in _global_counters:
@@ -70,7 +71,9 @@ def _get_global_histogram(
     return _global_histograms[key]
 
 
-def _get_app_counter(meter_name: str, instrument_name: str, unit: str = "") -> Optional[OtelCounter]:
+def _get_app_counter(
+    meter_name: str, instrument_name: str, unit: str = ""
+) -> Optional[OtelCounter]:
     """获取或创建 App Counter"""
     meter = _get_app_meter(meter_name)
     if not meter:
@@ -108,7 +111,10 @@ def _to_attributes(attrs: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """转换属性字典"""
     if not attrs:
         return {}
-    return {k: str(v) if not isinstance(v, (str, int, float, bool)) else v for k, v in attrs.items()}
+    return {
+        k: str(v) if not isinstance(v, (str, int, float, bool)) else v
+        for k, v in attrs.items()
+    }
 
 
 # ========== 全局 API（基础设施指标）==========
@@ -194,7 +200,9 @@ def global_record_duration(
     attributes: Optional[Dict[str, Any]] = None,
 ) -> None:
     """全局记录耗时（毫秒）"""
-    global_record_histogram(meter_name, instrument_name, duration_ms, attributes, unit="ms")
+    global_record_histogram(
+        meter_name, instrument_name, duration_ms, attributes, unit="ms"
+    )
 
 
 @contextmanager

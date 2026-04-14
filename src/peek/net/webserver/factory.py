@@ -11,7 +11,7 @@ Web 服务器工厂
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,32 +39,32 @@ async def create_web_server(web_config: Any, **kwargs) -> Any:
         return await _create_fallback_server(web_config)
 
     # 获取配置值，处理 dict 和 dataclass 两种情况
-    bind_address = getattr(web_config, 'bind_address', {}) or {}
+    bind_address = getattr(web_config, "bind_address", {}) or {}
     if isinstance(bind_address, dict):
-        host = bind_address.get('host', '0.0.0.0')
-        port = bind_address.get('port', 10001)
+        host = bind_address.get("host", "0.0.0.0")
+        port = bind_address.get("port", 10001)
     else:
-        host = getattr(bind_address, 'host', '0.0.0.0')
-        port = getattr(bind_address, 'port', 10001)
+        host = getattr(bind_address, "host", "0.0.0.0")
+        port = getattr(bind_address, "port", 10001)
 
-    grpc_config = getattr(web_config, 'grpc', {}) or {}
-    shutdown_config = getattr(web_config, 'shutdown', {}) or {}
+    grpc_config = getattr(web_config, "grpc", {}) or {}
+    shutdown_config = getattr(web_config, "shutdown", {}) or {}
 
     # 获取 gRPC 端口
     if isinstance(grpc_config, dict):
-        grpc_enabled = grpc_config.get('enabled', False)
-        grpc_port = grpc_config.get('port', None) if grpc_enabled else None
+        grpc_enabled = grpc_config.get("enabled", False)
+        grpc_port = grpc_config.get("port", None) if grpc_enabled else None
     else:
-        grpc_enabled = getattr(grpc_config, 'enabled', False)
-        grpc_port = getattr(grpc_config, 'port', None) if grpc_enabled else None
+        grpc_enabled = getattr(grpc_config, "enabled", False)
+        grpc_port = getattr(grpc_config, "port", None) if grpc_enabled else None
 
     # 获取 shutdown 配置
     if isinstance(shutdown_config, dict):
-        shutdown_delay = shutdown_config.get('delay_duration', 0)
-        shutdown_timeout = shutdown_config.get('timeout_duration', 5.0)
+        shutdown_delay = shutdown_config.get("delay_duration", 0)
+        shutdown_timeout = shutdown_config.get("timeout_duration", 5.0)
     else:
-        shutdown_delay = getattr(shutdown_config, 'delay_duration', 0)
-        shutdown_timeout = getattr(shutdown_config, 'timeout_duration', 5.0)
+        shutdown_delay = getattr(shutdown_config, "delay_duration", 0)
+        shutdown_timeout = getattr(shutdown_config, "timeout_duration", 5.0)
 
     # 创建服务器
     server = GenericWebServer(
@@ -137,20 +137,22 @@ def install_qps_limit_middleware(server: Any, web_config: Any) -> None:
     """
     try:
         from peek.net.webserver.middleware import (
-            QPSLimitConfig,
             MethodQPSConfig,
+            QPSLimitConfig,
             QPSRateLimitMiddleware,
         )
     except ImportError:
-        logger.warning("peek.net.webserver.middleware not available, skipping QPS limit middleware")
+        logger.warning(
+            "peek.net.webserver.middleware not available, skipping QPS limit middleware"
+        )
         return
 
     # 获取 qps_limit 配置
-    qps_limit_config = getattr(web_config, 'qps_limit', {}) or {}
+    qps_limit_config = getattr(web_config, "qps_limit", {}) or {}
     if isinstance(qps_limit_config, dict):
-        http_qps_config = qps_limit_config.get('http', {})
+        http_qps_config = qps_limit_config.get("http", {})
     else:
-        http_qps_config = getattr(qps_limit_config, 'http', {}) or {}
+        http_qps_config = getattr(qps_limit_config, "http", {}) or {}
 
     if not http_qps_config:
         logger.debug("No HTTP QPS limit config found, skipping QPS limit middleware")
@@ -158,15 +160,15 @@ def install_qps_limit_middleware(server: Any, web_config: Any) -> None:
 
     # 解析配置
     if isinstance(http_qps_config, dict):
-        default_qps = http_qps_config.get('default_qps', 0)
-        default_burst = http_qps_config.get('default_burst', 0)
-        max_concurrency = http_qps_config.get('max_concurrency', 0)
-        method_qps_list = http_qps_config.get('method_qps', [])
+        default_qps = http_qps_config.get("default_qps", 0)
+        default_burst = http_qps_config.get("default_burst", 0)
+        max_concurrency = http_qps_config.get("max_concurrency", 0)
+        method_qps_list = http_qps_config.get("method_qps", [])
     else:
-        default_qps = getattr(http_qps_config, 'default_qps', 0)
-        default_burst = getattr(http_qps_config, 'default_burst', 0)
-        max_concurrency = getattr(http_qps_config, 'max_concurrency', 0)
-        method_qps_list = getattr(http_qps_config, 'method_qps', [])
+        default_qps = getattr(http_qps_config, "default_qps", 0)
+        default_burst = getattr(http_qps_config, "default_burst", 0)
+        max_concurrency = getattr(http_qps_config, "max_concurrency", 0)
+        method_qps_list = getattr(http_qps_config, "method_qps", [])
 
     # 如果没有配置任何限流参数，跳过
     if default_qps <= 0 and max_concurrency <= 0 and not method_qps_list:
@@ -177,21 +179,25 @@ def install_qps_limit_middleware(server: Any, web_config: Any) -> None:
     method_configs = []
     for item in method_qps_list:
         if isinstance(item, dict):
-            method_configs.append(MethodQPSConfig(
-                method=item.get('method', '*'),
-                path=item.get('path', '/'),
-                qps=item.get('qps', 0),
-                burst=item.get('burst', 0),
-                max_concurrency=item.get('max_concurrency', 0),
-            ))
+            method_configs.append(
+                MethodQPSConfig(
+                    method=item.get("method", "*"),
+                    path=item.get("path", "/"),
+                    qps=item.get("qps", 0),
+                    burst=item.get("burst", 0),
+                    max_concurrency=item.get("max_concurrency", 0),
+                )
+            )
         else:
-            method_configs.append(MethodQPSConfig(
-                method=getattr(item, 'method', '*'),
-                path=getattr(item, 'path', '/'),
-                qps=getattr(item, 'qps', 0),
-                burst=getattr(item, 'burst', 0),
-                max_concurrency=getattr(item, 'max_concurrency', 0),
-            ))
+            method_configs.append(
+                MethodQPSConfig(
+                    method=getattr(item, "method", "*"),
+                    path=getattr(item, "path", "/"),
+                    qps=getattr(item, "qps", 0),
+                    burst=getattr(item, "burst", 0),
+                    max_concurrency=getattr(item, "max_concurrency", 0),
+                )
+            )
 
     # 创建限流配置
     config = QPSLimitConfig(
@@ -216,21 +222,21 @@ async def _create_fallback_server(web_config: Any) -> Any:
 
     Args:
         web_config: Web 配置对象
-    
+
     Returns:
         FallbackWebServer 实例
     """
-    from fastapi import FastAPI, APIRouter
     import uvicorn
+    from fastapi import APIRouter, FastAPI
 
     # 获取配置值
-    bind_address = getattr(web_config, 'bind_address', {}) or {}
+    bind_address = getattr(web_config, "bind_address", {}) or {}
     if isinstance(bind_address, dict):
-        host = bind_address.get('host', '0.0.0.0')
-        port = bind_address.get('port', 10001)
+        host = bind_address.get("host", "0.0.0.0")
+        port = bind_address.get("port", 10001)
     else:
-        host = getattr(bind_address, 'host', '0.0.0.0')
-        port = getattr(bind_address, 'port', 10001)
+        host = getattr(bind_address, "host", "0.0.0.0")
+        port = getattr(bind_address, "port", 10001)
 
     class FallbackWebServer:
         """回退 Web 服务器，使用 FastAPI 直接实现。"""
@@ -249,10 +255,7 @@ async def _create_fallback_server(web_config: Any) -> Any:
             """运行服务器。"""
             self.app.include_router(self.router)
             config = uvicorn.Config(
-                self.app,
-                host=self.host,
-                port=self.port,
-                log_level="info"
+                self.app, host=self.host, port=self.port, log_level="info"
             )
             server = uvicorn.Server(config)
             await server.serve()

@@ -9,12 +9,16 @@
 
 from peek.ai.vllm.client import VLLMClient
 from peek.ai.vllm.video_client import (
-    VLLMVideoClient,
     ChatCompletionResponse as VideoChatCompletionResponse,
-    LogprobToken,
+)
+from peek.ai.vllm.video_client import Choice as VideoChoice
+from peek.ai.vllm.video_client import (
     Logprobs,
-    Message as VideoMessage,
-    Choice as VideoChoice,
+    LogprobToken,
+)
+from peek.ai.vllm.video_client import Message as VideoMessage
+from peek.ai.vllm.video_client import (
+    VLLMVideoClient,
 )
 
 __all__ = [

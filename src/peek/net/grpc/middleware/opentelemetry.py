@@ -11,7 +11,7 @@ gRPC OpenTelemetry 中间件
 
 import logging
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 import grpc
 
@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 # 尝试导入 OpenTelemetry
 try:
-    from opentelemetry import trace, metrics
-    from opentelemetry.trace import SpanKind, Status, StatusCode
+    from opentelemetry import metrics, trace
     from opentelemetry.propagate import extract
     from opentelemetry.semconv.trace import SpanAttributes
+    from opentelemetry.trace import SpanKind, Status, StatusCode
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -49,9 +49,7 @@ class UnaryServerInterceptor(grpc.ServerInterceptor):
 
     def intercept_service(
         self,
-        continuation: Callable[
-            [grpc.HandlerCallDetails], grpc.RpcMethodHandler
-        ],
+        continuation: Callable[[grpc.HandlerCallDetails], grpc.RpcMethodHandler],
         handler_call_details: grpc.HandlerCallDetails,
     ) -> grpc.RpcMethodHandler:
         next_handler = continuation(handler_call_details)
@@ -113,9 +111,7 @@ class TraceInterceptor(UnaryServerInterceptor):
         else:
             self._tracer = None
 
-    def _extract_metadata(
-        self, context: grpc.ServicerContext
-    ) -> Dict[str, str]:
+    def _extract_metadata(self, context: grpc.ServicerContext) -> Dict[str, str]:
         """从 gRPC metadata 提取信息"""
         metadata = {}
         try:
@@ -125,9 +121,7 @@ class TraceInterceptor(UnaryServerInterceptor):
             pass
         return metadata
 
-    def _get_peer_info(
-        self, context: grpc.ServicerContext
-    ) -> Dict[str, str]:
+    def _get_peer_info(self, context: grpc.ServicerContext) -> Dict[str, str]:
         """获取客户端信息"""
         peer_info = {}
         try:

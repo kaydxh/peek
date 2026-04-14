@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import unittest
 import os
+import unittest
+
 import cv2
-import peek.cv.torch.transform as transform_
 import torchvision.transforms as transforms
+
+import peek.cv.torch.transform as transform_
+
 
 # export KMP_DUPLICATE_LIB_OK=True
 class TestTorchTransform(unittest.TestCase):

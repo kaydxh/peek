@@ -50,8 +50,6 @@ class TestVideoClipCut:
             VideoClip.cut("input.mp4", "output.mp4", start=0, duration=0)
 
 
-
-
 # =================== 集成测试（真实视频） ===================
 
 import logging
@@ -59,7 +57,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from conftest import skip_no_video, skip_no_ffmpeg_cli, integration
+from conftest import integration, skip_no_ffmpeg_cli, skip_no_video
 
 logger = logging.getLogger(__name__)
 
@@ -74,25 +72,33 @@ class TestVideoClipReal:
         """按时间范围截取"""
         output = str(output_dir / "cut_output.mp4")
         result = VideoClip.cut(
-            video_path, output,
-            start=1.0, end=3.0,
-            accurate=True, copy_codec=True,
+            video_path,
+            output,
+            start=1.0,
+            end=3.0,
+            accurate=True,
+            copy_codec=True,
         )
 
         assert Path(result).exists()
         assert Path(result).stat().st_size > 0
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert 1.0 <= info.duration <= 4.0
-        logger.info(f"截取结果: duration={info.duration:.2f}s, size={Path(result).stat().st_size}")
+        logger.info(
+            f"截取结果: duration={info.duration:.2f}s, size={Path(result).stat().st_size}"
+        )
 
     def test_cut_by_duration(self, video_path, output_dir):
         """按时长截取"""
         output = str(output_dir / "cut_duration.mp4")
         result = VideoClip.cut(
-            video_path, output,
-            start=0.0, duration=2.0,
+            video_path,
+            output,
+            start=0.0,
+            duration=2.0,
             copy_codec=True,
         )
 
@@ -103,9 +109,12 @@ class TestVideoClipReal:
         """快速模式截取（基于关键帧）"""
         output = str(output_dir / "cut_fast.mp4")
         result = VideoClip.cut(
-            video_path, output,
-            start=2.0, duration=3.0,
-            accurate=False, copy_codec=True,
+            video_path,
+            output,
+            start=2.0,
+            duration=3.0,
+            accurate=False,
+            copy_codec=True,
         )
 
         assert Path(result).exists()
@@ -113,7 +122,8 @@ class TestVideoClipReal:
     def test_split_video(self, video_path, output_dir):
         """视频分割"""
         segments = VideoClip.split(
-            video_path, str(output_dir),
+            video_path,
+            str(output_dir),
             segment_duration=5.0,
         )
 

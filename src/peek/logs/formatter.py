@@ -16,8 +16,6 @@ import os
 import sys
 import threading
 from datetime import datetime
-from typing import Optional
-
 
 # 获取进程 ID
 _PID = os.getpid()
@@ -25,13 +23,13 @@ _PID = os.getpid()
 
 def _short_filename(pathname: str) -> str:
     """获取简短的文件路径（目录/文件名）
-    
+
     将完整路径缩短为 "parent_dir/filename" 格式，
     例如 "/a/b/c/middleware/logger.py" -> "middleware/logger.py"
-    
+
     Args:
         pathname: 完整文件路径
-        
+
     Returns:
         str: 简短的文件路径
     """
@@ -43,11 +41,11 @@ def _short_filename(pathname: str) -> str:
 
 class ShortFilenameFilter(logging.Filter):
     """短文件名过滤器
-    
+
     将 record.filename 从 "logger.py" 替换为 "middleware/logger.py" 格式。
     可以安装到任意 handler 或 logger 上，让使用 %(filename)s 的第三方
     formatter（如 vLLM）也能显示带目录的文件名。
-    
+
     示例：
         handler.addFilter(ShortFilenameFilter())
     """
@@ -59,14 +57,14 @@ class ShortFilenameFilter(logging.Filter):
 
 class GlogFormatter(logging.Formatter):
     """Google Log 格式化器
-    
+
     输出格式：
     [LEVEL] [DATETIME] [PID/TID] [FILE:LINE](FUNC) MESSAGE key=value ...
-    
+
     示例：
     [INFO] [20210917 23:00:00.123456] [12345] [logs/formatter.py:10](main) Hello World request_id=abc123
     """
-    
+
     # 日志级别缩写映射
     LEVEL_MAP = {
         logging.DEBUG: "DEBU",
@@ -75,17 +73,17 @@ class GlogFormatter(logging.Formatter):
         logging.ERROR: "ERRO",
         logging.CRITICAL: "FATA",
     }
-    
+
     # 颜色代码
     COLORS = {
-        logging.DEBUG: "\033[37m",     # 灰色
-        logging.INFO: "\033[36m",      # 青色
-        logging.WARNING: "\033[33m",   # 黄色
-        logging.ERROR: "\033[31m",     # 红色
+        logging.DEBUG: "\033[37m",  # 灰色
+        logging.INFO: "\033[36m",  # 青色
+        logging.WARNING: "\033[33m",  # 黄色
+        logging.ERROR: "\033[31m",  # 红色
         logging.CRITICAL: "\033[35m",  # 紫色
     }
     RESET = "\033[0m"
-    
+
     def __init__(
         self,
         datefmt: str = "%Y%m%d %H:%M:%S",
@@ -96,7 +94,7 @@ class GlogFormatter(logging.Formatter):
         report_caller: bool = True,
     ):
         """初始化格式化器
-        
+
         Args:
             datefmt: 日期格式
             enable_colors: 是否启用颜色
@@ -112,57 +110,57 @@ class GlogFormatter(logging.Formatter):
         self.disable_timestamp = disable_timestamp
         self.full_timestamp = full_timestamp
         self.report_caller = report_caller
-        
+
         # 检测是否为终端
         self._is_terminal = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
-    
+
     def _get_level_text(self, level: int) -> str:
         """获取级别文本
-        
+
         Args:
             level: 日志级别
-            
+
         Returns:
             str: 级别缩写文本
         """
         return self.LEVEL_MAP.get(level, "UNKN")
-    
+
     def _colorize(self, text: str, level: int) -> str:
         """添加颜色
-        
+
         Args:
             text: 文本
             level: 日志级别
-            
+
         Returns:
             str: 带颜色的文本
         """
         if not self.enable_colors or not self._is_terminal:
             return text
-        
+
         color = self.COLORS.get(level, "")
         if color:
             return f"{color}{text}{self.RESET}"
         return text
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """格式化日志记录
-        
+
         Args:
             record: 日志记录
-            
+
         Returns:
             str: 格式化后的日志文本
         """
         # 构建各部分
         parts = []
-        
+
         # 1. 级别
         level_text = self._get_level_text(record.levelno)
         level_part = f"[{level_text}]"
         level_part = self._colorize(level_part, record.levelno)
         parts.append(level_part)
-        
+
         # 2. 时间戳
         if not self.disable_timestamp:
             if self.full_timestamp:
@@ -173,16 +171,18 @@ class GlogFormatter(logging.Formatter):
                 microseconds = int((record.created - int(record.created)) * 1000000)
                 timestamp = f"{timestamp}.{microseconds:06d}"
             else:
-                timestamp = datetime.fromtimestamp(record.created).strftime(self.datefmt)
+                timestamp = datetime.fromtimestamp(record.created).strftime(
+                    self.datefmt
+                )
             parts.append(f"[{timestamp}]")
-        
+
         # 3. 进程/线程 ID
         if self.enable_thread_id:
             tid = threading.current_thread().ident
             parts.append(f"[{tid}]")
         else:
             parts.append(f"[{_PID}]")
-        
+
         # 4. 文件:行号 和函数名
         if self.report_caller:
             # 获取简短的文件路径（目录/文件名）
@@ -190,42 +190,43 @@ class GlogFormatter(logging.Formatter):
             lineno = record.lineno
             funcname = record.funcName
             parts.append(f"[{filename}:{lineno}]({funcname})")
-        
+
         # 5. 消息
         message = record.getMessage()
         parts.append(message)
-        
+
         # 6. 请求上下文字段（自动从 RequestContext 提取）
         try:
             from peek.context import RequestContext
+
             ctx_fields = RequestContext.log_fields()
             for key, value in ctx_fields.items():
                 parts.append(f"{key}={value}")
         except ImportError:
             pass
-        
+
         # 7. 额外字段（如果有）
         if hasattr(record, "extra_fields") and record.extra_fields:
             for key, value in record.extra_fields.items():
                 parts.append(f"{key}={value}")
-        
+
         return " ".join(parts)
 
 
 class TextFormatter(logging.Formatter):
     """文本格式化器
-    
+
     输出格式：
     DATETIME - NAME - LEVEL - [DIR/FILE:LINE] - MESSAGE
     """
-    
+
     def __init__(
         self,
         datefmt: str = "%Y-%m-%d %H:%M:%S",
         report_caller: bool = True,
     ):
         """初始化
-        
+
         Args:
             datefmt: 日期格式
             report_caller: 是否报告调用者
@@ -246,44 +247,44 @@ class TextFormatter(logging.Formatter):
 
 class JsonFormatter(logging.Formatter):
     """JSON 格式化器
-    
+
     输出 JSON 格式的日志
     """
-    
+
     def __init__(self, report_caller: bool = True):
         """初始化
-        
+
         Args:
             report_caller: 是否报告调用者
         """
         super().__init__()
         self.report_caller = report_caller
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """格式化日志记录
-        
+
         Args:
             record: 日志记录
-            
+
         Returns:
             str: JSON 格式的日志
         """
         import json
-        
+
         log_data = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
             "logger": record.name,
         }
-        
+
         if self.report_caller:
             log_data["file"] = _short_filename(record.pathname)
             log_data["line"] = record.lineno
             log_data["function"] = record.funcName
-        
+
         # 添加额外字段
         if hasattr(record, "extra_fields") and record.extra_fields:
             log_data.update(record.extra_fields)
-        
+
         return json.dumps(log_data, ensure_ascii=False)

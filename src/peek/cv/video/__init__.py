@@ -29,8 +29,8 @@ from .clip import VideoClip
 from .decoder import (
     BaseDecoder,
     DecodeConfig,
-    DecordDecoder,
     DecoderFactory,
+    DecordDecoder,
     FFmpegDecoder,
     OpenCVDecoder,
 )

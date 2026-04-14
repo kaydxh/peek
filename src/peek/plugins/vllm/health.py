@@ -26,7 +26,9 @@ def get_vllm_server_manager() -> Optional[VLLMServerManager]:
 
 
 # 注册客户端回调类型：接收 (config, server_manager) 并完成 client 创建 + provider 注册
-ClientRegistrar = Callable[[VLLMConfig, Optional[VLLMServerManager]], Coroutine[Any, Any, None]]
+ClientRegistrar = Callable[
+    [VLLMConfig, Optional[VLLMServerManager]], Coroutine[Any, Any, None]
+]
 
 
 async def install_vllm(
@@ -66,7 +68,10 @@ async def install_vllm(
 
         logger.info(
             "vLLM client installed: host=%s, port=%s, model=%s, auto_start=%s",
-            config.host, config.port, config.model_name, config.auto_start,
+            config.host,
+            config.port,
+            config.model_name,
+            config.auto_start,
         )
 
     except Exception as e:

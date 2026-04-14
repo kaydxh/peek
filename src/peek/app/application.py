@@ -19,7 +19,7 @@ import logging
 import signal
 import sys
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Optional
 
 import click
 
@@ -113,9 +113,7 @@ class BaseApp(ABC):
         """
 
         @self._cli_group.command()
-        @click.option(
-            "--config", "-c", default="conf/config.yaml", help="配置文件路径"
-        )
+        @click.option("--config", "-c", default="conf/config.yaml", help="配置文件路径")
         @click.pass_context
         def serve(ctx: click.Context, config: str) -> None:
             """启动服务"""

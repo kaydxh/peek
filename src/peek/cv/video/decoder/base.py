@@ -34,15 +34,15 @@ class BaseDecoder(ABC):
     ):
         """初始化解码器基类
 
-        Args:
-            fps: 抽帧频率（帧/秒），0 或负数表示不采样（解码所有帧）
-            max_frames: 最大帧数，-1 表示不限制
-            image_format: 输出图片格式，JPEG 或 PNG
-            image_quality: 图片压缩质量（仅 JPEG 有效），范围 1-100
-            size: 分辨率缩放配置，包含 shortest_edge 和 longest_edge，
-用于控制帧图片的像素总数范围（与 Qwen3-VL 的 ViT patch 机制一致）。
-                  为 None 时不进行缩放。
-                  示例: {"shortest_edge": 196608, "longest_edge": 524288}
+                Args:
+                    fps: 抽帧频率（帧/秒），0 或负数表示不采样（解码所有帧）
+                    max_frames: 最大帧数，-1 表示不限制
+                    image_format: 输出图片格式，JPEG 或 PNG
+                    image_quality: 图片压缩质量（仅 JPEG 有效），范围 1-100
+                    size: 分辨率缩放配置，包含 shortest_edge 和 longest_edge，
+        用于控制帧图片的像素总数范围（与 Qwen3-VL 的 ViT patch 机制一致）。
+                          为 None 时不进行缩放。
+                          示例: {"shortest_edge": 196608, "longest_edge": 524288}
         """
         self._fps = fps
         self._max_frames = max_frames
@@ -206,7 +206,9 @@ class BaseDecoder(ABC):
         Returns:
             PIL Image: 缩放后的图片
         """
-        return smart_resize_image(img, self._shortest_edge, self._longest_edge, frame_index=frame_index)
+        return smart_resize_image(
+            img, self._shortest_edge, self._longest_edge, frame_index=frame_index
+        )
 
     def _image_to_bytes(self, img) -> bytes:
         """将 PIL Image 转换为字节数据

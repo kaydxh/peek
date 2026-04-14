@@ -14,17 +14,17 @@ from typing import Optional
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider, SpanProcessor
+from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
 from opentelemetry.sdk.trace.export import (
-    SpanExporter,
     BatchSpanProcessor,
     SimpleSpanProcessor,
+    SpanExporter,
 )
 from opentelemetry.sdk.trace.sampling import (
+    ALWAYS_OFF,
+    ALWAYS_ON,
     Sampler,
     TraceIdRatioBased,
-    ALWAYS_ON,
-    ALWAYS_OFF,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,6 @@ class TracerExporterBuilder(ABC):
         Returns:
             SpanExporter 实例
         """
-        pass
 
 
 class Tracer:

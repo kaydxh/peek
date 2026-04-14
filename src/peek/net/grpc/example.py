@@ -8,7 +8,6 @@ gRPC + HTTP 双协议服务示例
 """
 
 import logging
-from typing import Optional
 
 from fastapi import FastAPI
 
@@ -64,11 +63,11 @@ def example_http_and_grpc():
     注意：需要先生成 proto 文件对应的 Python 代码：
     python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. example.proto
     """
-    from peek.net.webserver import GenericWebServer, WebHandler
     from peek.net.grpc import (
-        create_default_interceptor_chain,
         QPSLimitInterceptor,
+        create_default_interceptor_chain,
     )
+    from peek.net.webserver import GenericWebServer, WebHandler
 
     # 假设已经生成了 proto 文件对应的代码
     # from example_pb2 import HelloRequest, HelloResponse
@@ -83,7 +82,7 @@ def example_http_and_grpc():
     # 创建服务器（同时支持 HTTP 和 gRPC）
     server = GenericWebServer(
         host="0.0.0.0",
-        port=8080,      # HTTP 端口
+        port=8080,  # HTTP 端口
         grpc_port=50051,  # gRPC 端口
         title="HTTP + gRPC Service",
         description="同时提供 HTTP 和 gRPC 服务的示例",
@@ -227,7 +226,6 @@ def example_from_config():
     ```
     """
     from peek.net.webserver import Config, WebHandler
-    from peek.net.grpc import GRPCConfig
 
     class MyHandler(WebHandler):
         def set_routes(self, app: FastAPI) -> None:
@@ -241,7 +239,7 @@ def example_from_config():
     # server = completed.new_server()
 
     # 或者手动创建配置
-    from peek.net.webserver import with_title, with_description
+    from peek.net.webserver import with_description, with_title
 
     config = Config(
         with_title("My Service"),
@@ -271,18 +269,16 @@ def example_production_service():
     - 限流
     - 追踪和指标
     """
+    from peek.net.grpc import (
+        ConcurrencyLimitInterceptor,
+        QPSLimitInterceptor,
+        create_default_interceptor_chain,
+    )
     from peek.net.webserver import (
         GenericWebServer,
-        WebHandler,
         HealthzController,
         PingHealthChecker,
-        create_default_handler_chain,
-        QPSRateLimitMiddleware,
-    )
-    from peek.net.grpc import (
-        create_default_interceptor_chain,
-        QPSLimitInterceptor,
-        ConcurrencyLimitInterceptor,
+        WebHandler,
     )
 
     class MyHandler(WebHandler):

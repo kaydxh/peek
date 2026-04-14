@@ -10,9 +10,9 @@ import sys
 from typing import Optional, TextIO
 
 from opentelemetry.sdk.metrics.export import (
+    ConsoleMetricExporter,
     MetricReader,
     PeriodicExportingMetricReader,
-    ConsoleMetricExporter,
 )
 
 from peek.opentelemetry.metric.meter import PushExporterBuilder
@@ -56,15 +56,19 @@ class StdoutMetricExporterBuilder(PushExporterBuilder):
         if self._pretty_print:
             import json
 
-            def formatter(metric):
+            def _fmt(metric):
                 return json.dumps(metric, indent=2, default=str)
+
+            formatter = _fmt
 
         exporter = ConsoleMetricExporter(
             out=self._out,
             formatter=formatter if self._pretty_print else None,
         )
 
-        logger.info("Stdout Metric exporter created: pretty_print=%s", self._pretty_print)
+        logger.info(
+            "Stdout Metric exporter created: pretty_print=%s", self._pretty_print
+        )
 
         return PeriodicExportingMetricReader(
             exporter=exporter,

@@ -50,8 +50,7 @@ class VLLMChatRepository(ChatRepository):
 
         # 转换消息格式
         messages = [
-            {"role": msg.role.value, "content": msg.content}
-            for msg in request.messages
+            {"role": msg.role.value, "content": msg.content} for msg in request.messages
         ]
 
         logger.info("Processing chat request: request_id=%s", request.request_id)
@@ -84,13 +83,16 @@ class VLLMChatRepository(ChatRepository):
 
             logger.info(
                 "Chat request completed: request_id=%s, tokens=%s",
-                request.request_id, usage.get('total_tokens', 0),
+                request.request_id,
+                usage.get("total_tokens", 0),
             )
 
             return response
 
         except Exception as e:
-            logger.error("Chat request failed: request_id=%s, error=%s", request.request_id, e)
+            logger.error(
+                "Chat request failed: request_id=%s, error=%s", request.request_id, e
+            )
             raise
 
     async def health_check(self) -> bool:

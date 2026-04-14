@@ -27,6 +27,7 @@ skip_no_video = pytest.mark.skipif(
     reason=f"测试视频文件不存在: {VIDEO_PATH}",
 )
 
+
 # 检测外部依赖是否可用
 def _has_module(name):
     try:
@@ -35,23 +36,28 @@ def _has_module(name):
     except ImportError:
         return False
 
+
 def _has_ffmpeg_cli():
     """检查 ffmpeg/ffprobe 可执行文件是否可用"""
     import subprocess
+
     try:
         subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
+
 def _has_ffprobe_cli():
     """检查 ffprobe 可执行文件是否可用"""
     import subprocess
+
     try:
         subprocess.run(["ffprobe", "-version"], capture_output=True, timeout=5)
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
+
 
 HAS_DECORD = _has_module("decord")
 HAS_OPENCV = _has_module("cv2")
@@ -103,7 +109,6 @@ class TestVideoInfoReal:
     """使用真实视频测试 info.probe"""
 
     @skip_no_ffprobe
-
     def test_probe_ffprobe(self, video_path):
         """ffprobe 后端探测视频信息（需要 ffprobe CLI）"""
         from peek.cv.video.info import probe
@@ -144,7 +149,9 @@ class TestVideoInfoReal:
             f"frames={info.total_frames}"
         )
 
-    @pytest.mark.skipif(not (HAS_FFPROBE and HAS_OPENCV), reason="需要 ffprobe + opencv")
+    @pytest.mark.skipif(
+        not (HAS_FFPROBE and HAS_OPENCV), reason="需要 ffprobe + opencv"
+    )
     def test_probe_consistency(self, video_path):
         """两种后端的探测结果应基本一致"""
         from peek.cv.video.info import probe
@@ -241,7 +248,9 @@ class TestOpenCVDecoderReal:
         img_bytes = base64.b64decode(frames[0])
         img = Image.open(io.BytesIO(img_bytes))
         assert img.size[0] > 0
-        logger.info(f"opencv 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}")
+        logger.info(
+            f"opencv 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}"
+        )
 
     def test_decode_to_bytes(self, video_bytes):
         """解码为字节输出"""
@@ -274,7 +283,9 @@ class TestFFmpegDecoderReal:
         img_bytes = base64.b64decode(frames[0])
         img = Image.open(io.BytesIO(img_bytes))
         assert img.size[0] > 0
-        logger.info(f"ffmpeg 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}")
+        logger.info(
+            f"ffmpeg 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}"
+        )
 
     def test_decode_to_bytes(self, video_bytes):
         """解码为字节输出"""
@@ -289,7 +300,7 @@ class TestFFmpegDecoderReal:
 
     def test_decode_with_time_range(self, video_bytes):
         """指定时间范围解码"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
 
         config = DecodeConfig(start_time=1.0, duration=3.0)
         decoder = FFmpegDecoder(fps=1.0, max_frames=10, decode_config=config)
@@ -300,7 +311,7 @@ class TestFFmpegDecoderReal:
 
     def test_decode_with_filter(self, video_bytes):
         """带视频滤镜的解码"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
 
         config = DecodeConfig(video_filter="scale=320:240")
         decoder = FFmpegDecoder(fps=0.5, max_frames=2, decode_config=config)
@@ -313,7 +324,7 @@ class TestFFmpegDecoderReal:
 
     def test_decode_keyframes_only(self, video_bytes):
         """仅解码关键帧"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
 
         config = DecodeConfig(keyframes_only=True)
         decoder = FFmpegDecoder(fps=0.5, max_frames=5, decode_config=config)
@@ -346,9 +357,7 @@ class TestFFmpegDecoderReal:
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
 
         decoder = FFmpegDecoder()
-        frames = decoder.decode_specific_frames(
-            video_bytes, frame_numbers=[0, 10, 30]
-        )
+        frames = decoder.decode_specific_frames(video_bytes, frame_numbers=[0, 10, 30])
 
         assert len(frames) == 3
         for i, fb64 in enumerate(frames):
@@ -366,7 +375,8 @@ class TestFFmpegDecoderReal:
             progress_values.append(p)
 
         decoder = FFmpegDecoder(
-            fps=0.5, max_frames=3,
+            fps=0.5,
+            max_frames=3,
             progress_callback=on_progress,
         )
         frames = decoder.decode(video_bytes)
@@ -387,7 +397,8 @@ class TestFFmpegDecoderReal:
             return call_count[0] > 1  # 第 2 次检查时取消
 
         decoder = FFmpegDecoder(
-            fps=30.0, max_frames=-1,  # 高频率以便触发取消
+            fps=30.0,
+            max_frames=-1,  # 高频率以便触发取消
             cancel_callback=cancel_after_1,
         )
         frames = decoder.decode(video_bytes)
@@ -482,9 +493,12 @@ class TestVideoClipReal:
 
         output = str(output_dir / "cut_output.mp4")
         result = VideoClip.cut(
-            video_path, output,
-            start=1.0, end=3.0,
-            accurate=True, copy_codec=True,
+            video_path,
+            output,
+            start=1.0,
+            end=3.0,
+            accurate=True,
+            copy_codec=True,
         )
 
         assert Path(result).exists()
@@ -492,9 +506,12 @@ class TestVideoClipReal:
 
         # 验证截取后的视频时长
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert 1.0 <= info.duration <= 4.0  # 允许一些误差
-        logger.info(f"截取结果: duration={info.duration:.2f}s, size={Path(result).stat().st_size}")
+        logger.info(
+            f"截取结果: duration={info.duration:.2f}s, size={Path(result).stat().st_size}"
+        )
 
     def test_cut_by_duration(self, video_path, output_dir):
         """按时长截取"""
@@ -502,8 +519,10 @@ class TestVideoClipReal:
 
         output = str(output_dir / "cut_duration.mp4")
         result = VideoClip.cut(
-            video_path, output,
-            start=0.0, duration=2.0,
+            video_path,
+            output,
+            start=0.0,
+            duration=2.0,
             copy_codec=True,
         )
 
@@ -516,9 +535,12 @@ class TestVideoClipReal:
 
         output = str(output_dir / "cut_fast.mp4")
         result = VideoClip.cut(
-            video_path, output,
-            start=2.0, duration=3.0,
-            accurate=False, copy_codec=True,
+            video_path,
+            output,
+            start=2.0,
+            duration=3.0,
+            accurate=False,
+            copy_codec=True,
         )
 
         assert Path(result).exists()
@@ -528,7 +550,8 @@ class TestVideoClipReal:
         from peek.cv.video.clip import VideoClip
 
         segments = VideoClip.split(
-            video_path, str(output_dir),
+            video_path,
+            str(output_dir),
             segment_duration=5.0,
         )
 
@@ -554,13 +577,16 @@ class TestVideoFilterReal:
 
         output = str(output_dir / "scaled.mp4")
         result = ScaleFilter.apply(
-            video_path, output,
-            width=640, height=360,
+            video_path,
+            output,
+            width=640,
+            height=360,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 640
         assert info.height == 360
@@ -572,13 +598,16 @@ class TestVideoFilterReal:
 
         output = str(output_dir / "scaled_aspect.mp4")
         result = ScaleFilter.apply(
-            video_path, output,
-            width=640, height=-2,  # 保持比例且偶数
+            video_path,
+            output,
+            width=640,
+            height=-2,  # 保持比例且偶数
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 640
         assert info.height > 0
@@ -591,13 +620,18 @@ class TestVideoFilterReal:
 
         output = str(output_dir / "cropped.mp4")
         result = CropFilter.apply(
-            video_path, output,
-            x=100, y=50, width=400, height=300,
+            video_path,
+            output,
+            x=100,
+            y=50,
+            width=400,
+            height=300,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 400
         assert info.height == 300
@@ -609,13 +643,17 @@ class TestVideoFilterReal:
 
         output = str(output_dir / "center_cropped.mp4")
         result = CropFilter.apply(
-            video_path, output,
-            center_crop=True, out_width=400, out_height=300,
+            video_path,
+            output,
+            center_crop=True,
+            out_width=400,
+            out_height=300,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 400
         assert info.height == 300
@@ -626,7 +664,8 @@ class TestVideoFilterReal:
 
         output = str(output_dir / "hflip.mp4")
         result = TransformFilter.apply(
-            video_path, output,
+            video_path,
+            output,
             hflip=True,
         )
 
@@ -634,6 +673,7 @@ class TestVideoFilterReal:
 
         # 翻转不改变分辨率
         from peek.cv.video.info import probe
+
         info_orig = probe(video_path)
         info_flip = probe(result)
         assert info_flip.width == info_orig.width
@@ -645,7 +685,8 @@ class TestVideoFilterReal:
 
         output = str(output_dir / "rotate90.mp4")
         result = TransformFilter.apply(
-            video_path, output,
+            video_path,
+            output,
             rotation_angle=90,
         )
 
@@ -653,6 +694,7 @@ class TestVideoFilterReal:
 
         # 旋转 90 度后宽高互换
         from peek.cv.video.info import probe
+
         info_orig = probe(video_path)
         info_rot = probe(result)
         assert info_rot.width == info_orig.height
@@ -664,16 +706,12 @@ class TestVideoFilterReal:
         from peek.cv.video.filter import VideoFilter
 
         output = str(output_dir / "chain_output.mp4")
-        result = (
-            VideoFilter(video_path)
-            .scale(640, -2)
-            .hflip()
-            .output(output)
-        )
+        result = VideoFilter(video_path).scale(640, -2).hflip().output(output)
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 640
         logger.info(f"链式滤镜: {info.resolution}")
@@ -693,6 +731,7 @@ class TestVideoFilterReal:
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 400
         assert info.height == 300
@@ -712,14 +751,20 @@ class TestDecoderConsistency:
     def test_frame_count_consistency(self, video_bytes):
         """三种解码器的帧数应一致"""
         from peek.cv.video.decoder.decord_decoder import DecordDecoder
-        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
 
         fps, max_frames = 0.5, 5
 
-        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode(video_bytes)
-        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode(video_bytes)
-        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode(video_bytes)
+        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode(
+            video_bytes
+        )
+        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode(
+            video_bytes
+        )
+        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode(
+            video_bytes
+        )
 
         logger.info(
             f"帧数对比: decord={len(decord_frames)}, "
@@ -733,15 +778,22 @@ class TestDecoderConsistency:
     def test_frame_size_consistency(self, video_bytes):
         """三种解码器输出帧的分辨率应一致"""
         import io as _io
+
         from peek.cv.video.decoder.decord_decoder import DecordDecoder
-        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
 
         fps, max_frames = 0.5, 1
 
-        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(video_bytes)
-        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(video_bytes)
-        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(video_bytes)
+        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(
+            video_bytes
+        )
+        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(
+            video_bytes
+        )
+        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(
+            video_bytes
+        )
 
         decord_img = Image.open(_io.BytesIO(decord_frames[0]))
         opencv_img = Image.open(_io.BytesIO(opencv_frames[0]))
@@ -768,6 +820,7 @@ class TestSmartResizeWithRealFrames:
     def test_resize_decoded_frame(self, video_bytes):
         """对真实解码帧应用 smart_resize"""
         import io as _io
+
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
         from peek.cv.video.resize import smart_resize_image
 
@@ -787,5 +840,3 @@ class TestSmartResizeWithRealFrames:
         assert new_w * new_h <= 100000 + 28 * 28 * 4
         assert new_w % 28 == 0
         assert new_h % 28 == 0
-
-

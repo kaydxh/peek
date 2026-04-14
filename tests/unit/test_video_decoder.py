@@ -29,7 +29,6 @@ from PIL import Image
 from peek.cv.video.decoder.base import BaseDecoder
 from peek.cv.video.decoder.factory import DecoderFactory
 
-
 # =================== BaseDecoder 测试 ===================
 
 
@@ -60,8 +59,11 @@ class TestBaseDecoder:
         """测试自定义属性值"""
         size = {"shortest_edge": 100000, "longest_edge": 500000}
         decoder = ConcreteDecoder(
-            fps=2.0, max_frames=20, image_format="PNG",
-            image_quality=95, size=size,
+            fps=2.0,
+            max_frames=20,
+            image_format="PNG",
+            image_quality=95,
+            size=size,
         )
         assert decoder.fps == 2.0
         assert decoder.max_frames == 20
@@ -132,6 +134,7 @@ class TestBaseDecoder:
         4. indices = np.linspace(0, total_frames - 1, nframes)
         """
         import math
+
         import numpy as np
 
         # 场景1: total=125, fps=24.0, target_fps=0.5
@@ -185,9 +188,11 @@ class TestBaseDecoder:
 
     def test_decode_batches_default_impl(self):
         """测试 BaseDecoder.decode_batches 默认实现（将全量结果分批返回）"""
+
         class BatchTestDecoder(BaseDecoder):
             def decode(self, video_bytes):
                 return [f"frame_{i}" for i in range(10)]
+
             def decode_to_bytes(self, video_bytes):
                 return [f"frame_{i}".encode() for i in range(10)]
 
@@ -203,9 +208,11 @@ class TestBaseDecoder:
 
     def test_decode_batches_to_bytes_default_impl(self):
         """测试 BaseDecoder.decode_batches_to_bytes 默认实现"""
+
         class BatchTestDecoder(BaseDecoder):
             def decode(self, video_bytes):
                 return []
+
             def decode_to_bytes(self, video_bytes):
                 return [b"frame_0", b"frame_1", b"frame_2", b"frame_3", b"frame_4"]
 
@@ -218,9 +225,11 @@ class TestBaseDecoder:
 
     def test_decode_batches_exact_multiple(self):
         """测试帧数刚好是 batch_size 的整数倍"""
+
         class BatchTestDecoder(BaseDecoder):
             def decode(self, video_bytes):
                 return [f"frame_{i}" for i in range(6)]
+
             def decode_to_bytes(self, video_bytes):
                 return []
 
@@ -232,9 +241,11 @@ class TestBaseDecoder:
 
     def test_decode_batches_empty(self):
         """测试空视频批量解码"""
+
         class BatchTestDecoder(BaseDecoder):
             def decode(self, video_bytes):
                 return []
+
             def decode_to_bytes(self, video_bytes):
                 return []
 
@@ -291,6 +302,7 @@ class TestDecoderFactory:
     def test_create_decord(self, mock_check):
         """测试创建 decord 解码器"""
         from peek.cv.video.decoder.decord_decoder import DecordDecoder
+
         decoder = DecoderFactory.create(method="decord", fps=1.0)
         assert isinstance(decoder, DecordDecoder)
         assert decoder.fps == 1.0
@@ -299,6 +311,7 @@ class TestDecoderFactory:
     def test_create_opencv(self, mock_check):
         """测试创建 opencv 解码器"""
         from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
+
         decoder = DecoderFactory.create(method="opencv", fps=2.0)
         assert isinstance(decoder, OpenCVDecoder)
         assert decoder.fps == 2.0
@@ -307,6 +320,7 @@ class TestDecoderFactory:
     def test_create_ffmpeg(self, mock_check):
         """测试创建 ffmpeg 解码器"""
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+
         decoder = DecoderFactory.create(method="ffmpeg", fps=0.5)
         assert isinstance(decoder, FFmpegDecoder)
         assert decoder.fps == 0.5
@@ -314,12 +328,15 @@ class TestDecoderFactory:
     @patch("peek.cv.video.decoder.ffmpeg_decoder.FFmpegDecoder._check_available")
     def test_create_ffmpeg_with_config(self, mock_check):
         """测试创建带配置的 ffmpeg 解码器"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
+
         config = DecodeConfig(start_time=5.0, end_time=10.0)
         progress = MagicMock()
         decoder = DecoderFactory.create(
-            method="ffmpeg", fps=1.0,
-            decode_config=config, progress_callback=progress,
+            method="ffmpeg",
+            fps=1.0,
+            decode_config=config,
+            progress_callback=progress,
         )
         assert isinstance(decoder, FFmpegDecoder)
         assert decoder._config.start_time == 5.0
@@ -339,7 +356,9 @@ class TestDecoderFactory:
 
     def test_create_case_insensitive(self):
         """测试方法名大小写不敏感"""
-        with patch("peek.cv.video.decoder.decord_decoder.DecordDecoder._check_available"):
+        with patch(
+            "peek.cv.video.decoder.decord_decoder.DecordDecoder._check_available"
+        ):
             decoder = DecoderFactory.create(method="DECORD")
             assert decoder.fps == 0.5
 
@@ -354,6 +373,7 @@ class TestDecordDecoder:
     def test_init(self, mock_check):
         """测试初始化"""
         from peek.cv.video.decoder.decord_decoder import DecordDecoder
+
         decoder = DecordDecoder(fps=1.0, max_frames=10)
         assert decoder.fps == 1.0
         assert decoder.max_frames == 10
@@ -362,13 +382,12 @@ class TestDecordDecoder:
         """缺少 decord 库时抛出 ImportError"""
         with patch.dict("sys.modules", {"decord": None}):
             from peek.cv.video.decoder.decord_decoder import DecordDecoder
+
             # _check_available 在 __init__ 中调用，会因找不到 decord 而报错
             # 但我们直接测试静态方法
             with patch("builtins.__import__", side_effect=ImportError):
                 with pytest.raises(ImportError, match="decord"):
                     DecordDecoder._check_available()
-
-
 
 
 # =================== OpenCVDecoder 测试 ===================
@@ -381,6 +400,7 @@ class TestOpenCVDecoder:
     def test_init(self, mock_check):
         """测试初始化"""
         from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
+
         decoder = OpenCVDecoder(fps=2.0, max_frames=5, image_format="PNG")
         assert decoder.fps == 2.0
         assert decoder.max_frames == 5
@@ -389,9 +409,11 @@ class TestOpenCVDecoder:
     def test_import_error_without_opencv(self):
         """缺少 OpenCV 库时抛出 ImportError"""
         import sys
+
         # 临时将 cv2 标记为不可用
         with patch.dict(sys.modules, {"cv2": None}):
             from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
+
             with pytest.raises(ImportError):
                 OpenCVDecoder._check_available()
 
@@ -405,7 +427,8 @@ class TestFFmpegDecoder:
     @patch("peek.cv.video.decoder.ffmpeg_decoder.FFmpegDecoder._check_available")
     def test_init_default(self, mock_check):
         """测试默认初始化"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
+
         decoder = FFmpegDecoder()
         assert decoder.fps == 0.5
         assert decoder.max_frames == -1
@@ -415,11 +438,15 @@ class TestFFmpegDecoder:
     @patch("peek.cv.video.decoder.ffmpeg_decoder.FFmpegDecoder._check_available")
     def test_init_with_config(self, mock_check):
         """测试带配置的初始化"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
+
         config = DecodeConfig(
-            start_time=5.0, end_time=15.0,
-            gpu_id=0, video_filter="scale=1280:720",
-            thread_count=4, keyframes_only=True,
+            start_time=5.0,
+            end_time=15.0,
+            gpu_id=0,
+            video_filter="scale=1280:720",
+            thread_count=4,
+            keyframes_only=True,
         )
         decoder = FFmpegDecoder(fps=1.0, decode_config=config)
         assert decoder._config.start_time == 5.0
@@ -433,6 +460,7 @@ class TestFFmpegDecoder:
     def test_init_with_callbacks(self, mock_check):
         """测试带回调的初始化"""
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+
         progress = MagicMock()
         cancel = MagicMock(return_value=False)
         decoder = FFmpegDecoder(progress_callback=progress, cancel_callback=cancel)
@@ -443,6 +471,7 @@ class TestFFmpegDecoder:
     def test_get_effective_total_frames_no_time_range(self, mock_check):
         """测试无时间范围时的有效帧数计算"""
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+
         decoder = FFmpegDecoder()
         # 无时间范围配置，effective_duration = duration - 0 = 60
         result = decoder._get_effective_total_frames(
@@ -453,7 +482,8 @@ class TestFFmpegDecoder:
     @patch("peek.cv.video.decoder.ffmpeg_decoder.FFmpegDecoder._check_available")
     def test_get_effective_total_frames_with_time_range(self, mock_check):
         """测试有时间范围时的有效帧数计算"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
+
         config = DecodeConfig(start_time=10.0, end_time=20.0)
         decoder = FFmpegDecoder(decode_config=config)
         # effective_duration = min(20, 60) - 10 = 10s
@@ -465,7 +495,8 @@ class TestFFmpegDecoder:
     @patch("peek.cv.video.decoder.ffmpeg_decoder.FFmpegDecoder._check_available")
     def test_get_effective_total_frames_with_duration(self, mock_check):
         """测试使用 duration 配置时的有效帧数计算"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
+
         config = DecodeConfig(start_time=5.0, duration=10.0)
         decoder = FFmpegDecoder(decode_config=config)
         # end = start + duration = 15.0
@@ -479,6 +510,7 @@ class TestFFmpegDecoder:
     def test_calculate_end_frame_none(self, mock_check):
         """测试无结束时间时返回 None"""
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+
         decoder = FFmpegDecoder()
         result = decoder._calculate_end_frame(
             video_fps=30.0, total_frames=1800, duration=60.0
@@ -488,7 +520,8 @@ class TestFFmpegDecoder:
     @patch("peek.cv.video.decoder.ffmpeg_decoder.FFmpegDecoder._check_available")
     def test_calculate_end_frame_with_end_time(self, mock_check):
         """测试有结束时间时的计算"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
+
         config = DecodeConfig(end_time=20.0)
         decoder = FFmpegDecoder(decode_config=config)
         result = decoder._calculate_end_frame(
@@ -499,7 +532,8 @@ class TestFFmpegDecoder:
     @patch("peek.cv.video.decoder.ffmpeg_decoder.FFmpegDecoder._check_available")
     def test_calculate_end_frame_with_start_and_duration(self, mock_check):
         """测试 start_time + duration 组合"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
+
         config = DecodeConfig(start_time=10.0, duration=5.0)
         decoder = FFmpegDecoder(decode_config=config)
         result = decoder._calculate_end_frame(
@@ -514,6 +548,7 @@ class TestDecodeConfig:
     def test_default_values(self):
         """测试默认值"""
         from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig
+
         config = DecodeConfig()
         assert config.start_time is None
         assert config.end_time is None
@@ -527,10 +562,14 @@ class TestDecodeConfig:
     def test_custom_values(self):
         """测试自定义值"""
         from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig
+
         config = DecodeConfig(
-            start_time=1.0, end_time=10.0,
-            gpu_id=0, video_filter="scale=640:480",
-            thread_count=8, keyframes_only=True,
+            start_time=1.0,
+            end_time=10.0,
+            gpu_id=0,
+            video_filter="scale=640:480",
+            thread_count=8,
+            keyframes_only=True,
             auto_switch_to_soft_codec=False,
         )
         assert config.start_time == 1.0
@@ -546,10 +585,17 @@ class TestDecodeConfig:
 
 import logging
 import sys
+
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
 from conftest import (
-    skip_no_video, skip_no_decord, skip_no_opencv, skip_no_av,
-    HAS_DECORD, HAS_OPENCV, HAS_AV, integration,
+    HAS_AV,
+    HAS_DECORD,
+    HAS_OPENCV,
+    integration,
+    skip_no_av,
+    skip_no_decord,
+    skip_no_opencv,
+    skip_no_video,
 )
 
 logger = logging.getLogger(__name__)
@@ -629,7 +675,9 @@ class TestOpenCVDecoderReal:
         img_bytes = base64.b64decode(frames[0])
         img = Image.open(io.BytesIO(img_bytes))
         assert img.size[0] > 0
-        logger.info(f"opencv 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}")
+        logger.info(
+            f"opencv 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}"
+        )
 
     def test_decode_to_bytes(self, video_bytes):
         """解码为字节输出"""
@@ -663,7 +711,9 @@ class TestFFmpegDecoderReal:
         img_bytes = base64.b64decode(frames[0])
         img = Image.open(io.BytesIO(img_bytes))
         assert img.size[0] > 0
-        logger.info(f"ffmpeg 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}")
+        logger.info(
+            f"ffmpeg 解码: {len(frames)} 帧, 第一帧 {img.size[0]}x{img.size[1]}"
+        )
 
     def test_decode_to_bytes(self, video_bytes):
         """解码为字节输出"""
@@ -678,7 +728,7 @@ class TestFFmpegDecoderReal:
 
     def test_decode_with_time_range(self, video_bytes):
         """指定时间范围解码"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
 
         config = DecodeConfig(start_time=1.0, duration=3.0)
         decoder = FFmpegDecoder(fps=1.0, max_frames=10, decode_config=config)
@@ -689,7 +739,7 @@ class TestFFmpegDecoderReal:
 
     def test_decode_with_filter(self, video_bytes):
         """带视频滤镜的解码"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
 
         config = DecodeConfig(video_filter="scale=320:240")
         decoder = FFmpegDecoder(fps=0.5, max_frames=2, decode_config=config)
@@ -701,7 +751,7 @@ class TestFFmpegDecoderReal:
 
     def test_decode_keyframes_only(self, video_bytes):
         """仅解码关键帧"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
 
         config = DecodeConfig(keyframes_only=True)
         decoder = FFmpegDecoder(fps=0.5, max_frames=5, decode_config=config)
@@ -734,9 +784,7 @@ class TestFFmpegDecoderReal:
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
 
         decoder = FFmpegDecoder()
-        frames = decoder.decode_specific_frames(
-            video_bytes, frame_numbers=[0, 10, 30]
-        )
+        frames = decoder.decode_specific_frames(video_bytes, frame_numbers=[0, 10, 30])
 
         assert len(frames) == 3
         for i, fb64 in enumerate(frames):
@@ -754,7 +802,8 @@ class TestFFmpegDecoderReal:
             progress_values.append(p)
 
         decoder = FFmpegDecoder(
-            fps=0.5, max_frames=3,
+            fps=0.5,
+            max_frames=3,
             progress_callback=on_progress,
         )
         frames = decoder.decode(video_bytes)
@@ -774,7 +823,8 @@ class TestFFmpegDecoderReal:
             return call_count[0] > 1
 
         decoder = FFmpegDecoder(
-            fps=30.0, max_frames=-1,
+            fps=30.0,
+            max_frames=-1,
             cancel_callback=cancel_after_1,
         )
         frames = decoder.decode(video_bytes)
@@ -864,7 +914,7 @@ class TestFFmpegDecoderReal:
 
     def test_decode_batches_with_time_range(self, video_bytes):
         """批量读帧 + 时间范围"""
-        from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder, DecodeConfig
+        from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig, FFmpegDecoder
 
         config = DecodeConfig(start_time=1.0, duration=3.0)
         decoder = FFmpegDecoder(fps=1.0, max_frames=10, decode_config=config)
@@ -887,7 +937,8 @@ class TestFFmpegDecoderReal:
             return call_count[0] > 1
 
         decoder = FFmpegDecoder(
-            fps=30.0, max_frames=-1,
+            fps=30.0,
+            max_frames=-1,
             cancel_callback=cancel_after_1,
         )
 
@@ -910,14 +961,20 @@ class TestDecoderConsistency:
     def test_frame_count_consistency(self, video_bytes):
         """三种解码器的帧数应一致"""
         from peek.cv.video.decoder.decord_decoder import DecordDecoder
-        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
 
         fps, max_frames = 0.5, 5
 
-        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode(video_bytes)
-        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode(video_bytes)
-        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode(video_bytes)
+        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode(
+            video_bytes
+        )
+        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode(
+            video_bytes
+        )
+        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode(
+            video_bytes
+        )
 
         logger.info(
             f"帧数对比: decord={len(decord_frames)}, "
@@ -930,15 +987,22 @@ class TestDecoderConsistency:
     def test_frame_size_consistency(self, video_bytes):
         """三种解码器输出帧的分辨率应一致"""
         import io as _io
+
         from peek.cv.video.decoder.decord_decoder import DecordDecoder
-        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
+        from peek.cv.video.decoder.opencv_decoder import OpenCVDecoder
 
         fps, max_frames = 0.5, 1
 
-        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(video_bytes)
-        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(video_bytes)
-        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(video_bytes)
+        decord_frames = DecordDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(
+            video_bytes
+        )
+        opencv_frames = OpenCVDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(
+            video_bytes
+        )
+        ffmpeg_frames = FFmpegDecoder(fps=fps, max_frames=max_frames).decode_to_bytes(
+            video_bytes
+        )
 
         decord_img = Image.open(_io.BytesIO(decord_frames[0]))
         opencv_img = Image.open(_io.BytesIO(opencv_frames[0]))

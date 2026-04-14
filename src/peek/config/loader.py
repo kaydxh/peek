@@ -91,7 +91,7 @@ class ConfigLoader:
                 continue
 
             # 移除前缀并转换为配置路径
-            config_key = key[len(prefix):].lower()
+            config_key = key[len(prefix) :].lower()
             keys = config_key.split("_")
 
             # 尝试解析值
@@ -138,11 +138,7 @@ class ConfigLoader:
     def _merge_data(self, base: Dict, override: Dict) -> None:
         """合并配置数据（深度合并，override 覆盖 base）"""
         for key, value in override.items():
-            if (
-                key in base
-                and isinstance(base[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                 self._merge_data(base[key], value)
             else:
                 base[key] = value

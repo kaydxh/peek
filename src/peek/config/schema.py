@@ -7,9 +7,13 @@
 提供框架级通用的配置数据类，可被上层框架（如 tide）直接复用或继承。
 """
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+if TYPE_CHECKING:
+    from peek.database.mysql.config import MySQLConfig
+    from peek.database.redis.config import RedisConfig
 
 from peek.time.parse import parse_duration
 
@@ -126,9 +130,9 @@ class AppWebConfig(BaseModel):
     )
 
 
-
 # 向后兼容别名：v0.0.6 及之前版本使用 WebConfig 名称
 WebConfig = AppWebConfig
+
 
 class LogConfig(BaseModel):
     """日志配置"""
@@ -212,6 +216,7 @@ class DatabaseConfig(BaseModel):
             return None
         if isinstance(v, dict):
             from peek.database.mysql.config import MySQLConfig
+
             return MySQLConfig.model_validate(v)
         return v
 
@@ -222,5 +227,6 @@ class DatabaseConfig(BaseModel):
             return None
         if isinstance(v, dict):
             from peek.database.redis.config import RedisConfig
+
             return RedisConfig.model_validate(v)
         return v

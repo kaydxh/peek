@@ -22,6 +22,7 @@ def _ensure_ffmpeg():
     """确保 ffmpeg-python 已安装"""
     try:
         import ffmpeg
+
         return ffmpeg
     except ImportError:
         raise ImportError("需要安装 ffmpeg-python: pip install ffmpeg-python")
@@ -133,16 +134,23 @@ class VideoClip:
         out = stream.output(output, **output_kwargs)
 
         # 执行
-        logger.info("Video clip: %s -> %s, start=%s, end=%s, duration=%s", source, output, start, end, duration)
+        logger.info(
+            "Video clip: %s -> %s, start=%s, end=%s, duration=%s",
+            source,
+            output,
+            start,
+            end,
+            duration,
+        )
 
         try:
             out.run(overwrite_output=overwrite, quiet=True)
         except ffmpeg.Error as e:
-            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
-            error_lines = stderr.strip().split("\n")[-5:]
-            raise RuntimeError(
-                f"ffmpeg 截取失败:\n" + "\n".join(error_lines)
+            stderr = (
+                e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
             )
+            error_lines = stderr.strip().split("\n")[-5:]
+            raise RuntimeError("ffmpeg 截取失败:\n" + "\n".join(error_lines))
 
         logger.info("Video clip completed: %s", output)
         return output
@@ -199,11 +207,11 @@ class VideoClip:
         try:
             out.run(overwrite_output=overwrite, quiet=True)
         except ffmpeg.Error as e:
-            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
-            error_lines = stderr.strip().split("\n")[-5:]
-            raise RuntimeError(
-                f"ffmpeg 分割失败:\n" + "\n".join(error_lines)
+            stderr = (
+                e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
             )
+            error_lines = stderr.strip().split("\n")[-5:]
+            raise RuntimeError("ffmpeg 分割失败:\n" + "\n".join(error_lines))
 
         # 收集输出文件
         glob_pattern = output_pattern.replace("%03d", "*").replace("%d", "*")

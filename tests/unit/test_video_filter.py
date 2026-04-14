@@ -23,11 +23,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from peek.cv.video.filter.scale import ScaleFilter, ScaleConfig
-from peek.cv.video.filter.crop import CropFilter, CropConfig
-from peek.cv.video.filter.transform import TransformFilter, TransformConfig
+from peek.cv.video.filter.crop import CropConfig, CropFilter
+from peek.cv.video.filter.scale import ScaleConfig, ScaleFilter
+from peek.cv.video.filter.transform import TransformConfig, TransformFilter
 from peek.cv.video.filter.video_filter import VideoFilter
-
 
 # =================== ScaleFilter 测试 ===================
 
@@ -58,7 +57,9 @@ class TestScaleFilterBuild:
     def test_with_config(self):
         """使用 ScaleConfig"""
         config = ScaleConfig(
-            width=1920, height=1080, algorithm="bilinear",
+            width=1920,
+            height=1080,
+            algorithm="bilinear",
             force_original_aspect_ratio="decrease",
             force_divisible_by=2,
         )
@@ -96,7 +97,9 @@ class TestCropFilterBuild:
     def test_center_crop(self):
         """居中裁剪"""
         result = CropFilter.build_filter(
-            center_crop=True, out_width=640, out_height=480,
+            center_crop=True,
+            out_width=640,
+            out_height=480,
         )
         assert "crop=640:480" in result
         assert "(iw-640)/2" in result
@@ -105,7 +108,8 @@ class TestCropFilterBuild:
     def test_aspect_ratio_crop(self):
         """按宽高比裁剪"""
         result = CropFilter.build_filter(
-            keep_aspect=True, target_aspect=16 / 9,
+            keep_aspect=True,
+            target_aspect=16 / 9,
         )
         assert "crop=" in result
         assert "iw" in result or "ih" in result
@@ -187,7 +191,9 @@ class TestTransformFilterBuild:
 
     def test_combination(self):
         """组合：翻转 + 转置"""
-        result = TransformFilter.build_filter(hflip=True, transpose=True, transpose_dir=1)
+        result = TransformFilter.build_filter(
+            hflip=True, transpose=True, transpose_dir=1
+        )
         assert "hflip" in result
         assert "transpose=1" in result
 
@@ -298,7 +304,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from conftest import skip_no_video, skip_no_ffmpeg_cli, integration
+from conftest import integration, skip_no_ffmpeg_cli, skip_no_video
 
 logger = logging.getLogger(__name__)
 
@@ -319,13 +325,16 @@ class TestVideoFilterReal:
         """缩放滤镜"""
         output = str(output_dir / "scaled.mp4")
         result = ScaleFilter.apply(
-            video_path, output,
-            width=640, height=360,
+            video_path,
+            output,
+            width=640,
+            height=360,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 640
         assert info.height == 360
@@ -335,13 +344,16 @@ class TestVideoFilterReal:
         """保持宽高比缩放"""
         output = str(output_dir / "scaled_aspect.mp4")
         result = ScaleFilter.apply(
-            video_path, output,
-            width=640, height=-2,
+            video_path,
+            output,
+            width=640,
+            height=-2,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 640
         assert info.height > 0
@@ -352,13 +364,18 @@ class TestVideoFilterReal:
         """裁剪滤镜"""
         output = str(output_dir / "cropped.mp4")
         result = CropFilter.apply(
-            video_path, output,
-            x=100, y=50, width=400, height=300,
+            video_path,
+            output,
+            x=100,
+            y=50,
+            width=400,
+            height=300,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 400
         assert info.height == 300
@@ -368,13 +385,17 @@ class TestVideoFilterReal:
         """居中裁剪"""
         output = str(output_dir / "center_cropped.mp4")
         result = CropFilter.apply(
-            video_path, output,
-            center_crop=True, out_width=400, out_height=300,
+            video_path,
+            output,
+            center_crop=True,
+            out_width=400,
+            out_height=300,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 400
         assert info.height == 300
@@ -383,13 +404,15 @@ class TestVideoFilterReal:
         """水平翻转"""
         output = str(output_dir / "hflip.mp4")
         result = TransformFilter.apply(
-            video_path, output,
+            video_path,
+            output,
             hflip=True,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info_orig = probe(video_path)
         info_flip = probe(result)
         assert info_flip.width == info_orig.width
@@ -399,13 +422,15 @@ class TestVideoFilterReal:
         """旋转 90 度"""
         output = str(output_dir / "rotate90.mp4")
         result = TransformFilter.apply(
-            video_path, output,
+            video_path,
+            output,
             rotation_angle=90,
         )
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info_orig = probe(video_path)
         info_rot = probe(result)
         assert info_rot.width == info_orig.height
@@ -415,16 +440,12 @@ class TestVideoFilterReal:
     def test_video_filter_chain(self, video_path, output_dir):
         """链式滤镜组合"""
         output = str(output_dir / "chain_output.mp4")
-        result = (
-            VideoFilter(video_path)
-            .scale(640, -2)
-            .hflip()
-            .output(output)
-        )
+        result = VideoFilter(video_path).scale(640, -2).hflip().output(output)
 
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 640
         logger.info(f"链式滤镜: {info.resolution}")
@@ -442,6 +463,7 @@ class TestVideoFilterReal:
         assert Path(result).exists()
 
         from peek.cv.video.info import probe
+
         info = probe(result)
         assert info.width == 400
         assert info.height == 300

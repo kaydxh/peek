@@ -74,10 +74,12 @@ class GRPCClientConfig:
         ]
 
         if self.load_balancing_policy:
-            options.append((
-                "grpc.lb_policy_name",
-                self.load_balancing_policy,
-            ))
+            options.append(
+                (
+                    "grpc.lb_policy_name",
+                    self.load_balancing_policy,
+                )
+            )
 
         return options
 
@@ -129,7 +131,8 @@ class GRPCConfig:
                     "max_send_message_length", config.server.max_send_message_length
                 ),
                 max_receive_message_length=server_data.get(
-                    "max_receive_message_length", config.server.max_receive_message_length
+                    "max_receive_message_length",
+                    config.server.max_receive_message_length,
                 ),
                 enable_request_id=server_data.get(
                     "enable_request_id", config.server.enable_request_id
@@ -140,9 +143,13 @@ class GRPCConfig:
                 enable_logging=server_data.get(
                     "enable_logging", config.server.enable_logging
                 ),
-                enable_timer=server_data.get("enable_timer", config.server.enable_timer),
+                enable_timer=server_data.get(
+                    "enable_timer", config.server.enable_timer
+                ),
                 log_request=server_data.get("log_request", config.server.log_request),
-                log_response=server_data.get("log_response", config.server.log_response),
+                log_response=server_data.get(
+                    "log_response", config.server.log_response
+                ),
                 slow_threshold_ms=server_data.get(
                     "slow_threshold_ms", config.server.slow_threshold_ms
                 ),
@@ -167,12 +174,15 @@ class GRPCConfig:
                     "max_send_message_length", config.client.max_send_message_length
                 ),
                 max_receive_message_length=client_data.get(
-                    "max_receive_message_length", config.client.max_receive_message_length
+                    "max_receive_message_length",
+                    config.client.max_receive_message_length,
                 ),
                 timeout_seconds=client_data.get(
                     "timeout_seconds", config.client.timeout_seconds
                 ),
-                enable_retry=client_data.get("enable_retry", config.client.enable_retry),
+                enable_retry=client_data.get(
+                    "enable_retry", config.client.enable_retry
+                ),
                 max_retries=client_data.get("max_retries", config.client.max_retries),
                 retry_backoff_ms=client_data.get(
                     "retry_backoff_ms", config.client.retry_backoff_ms

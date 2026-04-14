@@ -46,6 +46,7 @@ class DecoderFactory:
 
         if method == "decord":
             from .decord_decoder import DecordDecoder
+
             decoder = DecordDecoder(
                 fps=fps,
                 max_frames=max_frames,
@@ -55,6 +56,7 @@ class DecoderFactory:
             )
         elif method == "opencv":
             from .opencv_decoder import OpenCVDecoder
+
             decoder = OpenCVDecoder(
                 fps=fps,
                 max_frames=max_frames,
@@ -64,6 +66,7 @@ class DecoderFactory:
             )
         elif method == "ffmpeg":
             from .ffmpeg_decoder import FFmpegDecoder
+
             decoder = FFmpegDecoder(
                 fps=fps,
                 max_frames=max_frames,
@@ -76,6 +79,7 @@ class DecoderFactory:
             )
         elif method == "qwenvl":
             from .qwenvl_decoder import QwenVLDecoder
+
             decoder = QwenVLDecoder(
                 fps=fps,
                 max_frames=max_frames,

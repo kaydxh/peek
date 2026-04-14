@@ -6,6 +6,7 @@
 """
 
 import contextvars
+
 import pytest
 
 from peek.context import (
@@ -19,7 +20,12 @@ from peek.context import (
     set_trace_id,
     set_user_id,
 )
-from peek.context.context import _extra_var, _request_id_var, _trace_id_var, _user_id_var
+from peek.context.context import (
+    _extra_var,
+    _request_id_var,
+    _trace_id_var,
+    _user_id_var,
+)
 
 
 class TestConvenienceFunctions:
@@ -204,7 +210,9 @@ class TestLogFields:
 
     def test_log_fields_with_values(self):
         """有上下文时 log_fields 应包含对应字段"""
-        with RequestContext.scope(request_id="log-req", trace_id="log-trace", user_id="log-user"):
+        with RequestContext.scope(
+            request_id="log-req", trace_id="log-trace", user_id="log-user"
+        ):
             fields = RequestContext.log_fields()
             assert fields["request_id"] == "log-req"
             assert fields["trace_id"] == "log-trace"

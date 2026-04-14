@@ -115,11 +115,14 @@ class VLLMClient:
                 if not is_ready:
                     logger.debug(
                         "Model %s not ready yet, available models: %s",
-                        self.model_name, model_names,
+                        self.model_name,
+                        model_names,
                     )
                 return is_ready
             else:
-                logger.debug("vLLM server returned status code: %s", response.status_code)
+                logger.debug(
+                    "vLLM server returned status code: %s", response.status_code
+                )
                 return False
         except Exception as e:
             logger.warning("vLLM health check failed: %s", e)

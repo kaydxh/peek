@@ -10,9 +10,9 @@ Redis 模块
 
 from peek.database.redis.config import RedisConfig
 from peek.database.redis.redis import (
-    create_redis_client,
-    close_redis_client,
     check_redis_health,
+    close_redis_client,
+    create_redis_client,
     get_redis_pool_stats,
     redis_client_context,
 )

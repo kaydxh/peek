@@ -52,7 +52,6 @@ class Plugin(ABC):
         Args:
             ctx: 命令上下文（由上层框架定义具体类型）
         """
-        pass
 
     @abstractmethod
     async def uninstall(self, ctx: Any) -> None:
@@ -62,7 +61,6 @@ class Plugin(ABC):
         Args:
             ctx: 命令上下文（由上层框架定义具体类型）
         """
-        pass
 
     def should_install(self, ctx: Any) -> bool:
         """
@@ -104,7 +102,9 @@ class PluginManager:
             logger.warning("Plugin '%s' already registered, overwriting", plugin.name)
 
         self._plugins[plugin.name] = plugin
-        logger.debug("Plugin '%s' registered with priority %s", plugin.name, plugin.priority)
+        logger.debug(
+            "Plugin '%s' registered with priority %s", plugin.name, plugin.priority
+        )
         return self
 
     def unregister(self, name: str) -> Optional[Plugin]:

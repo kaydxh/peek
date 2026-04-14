@@ -71,9 +71,7 @@ async def create_mysql_engine(
             elapsed = asyncio.get_event_loop().time() - start_time
             if fail_after > 0 and elapsed >= fail_after:
                 await engine.dispose()
-                raise RuntimeError(
-                    f"MySQL 连接失败，已超过 {fail_after}s: {e}"
-                ) from e
+                raise RuntimeError(f"MySQL 连接失败，已超过 {fail_after}s: {e}") from e
             logger.warning("MySQL connection failed, retrying in %.1fs: %s", elapsed, e)
             await asyncio.sleep(min(wait_interval, max(fail_after - elapsed, 0.1)))
 
@@ -141,7 +139,7 @@ def get_mysql_pool_stats(engine: Any) -> Dict:
             "checked_in": pool.checkedin(),
             "checked_out": pool.checkedout(),
             "overflow": pool.overflow(),
-            "invalid": pool.invalidated if hasattr(pool, 'invalidated') else 0,
+            "invalid": pool.invalidated if hasattr(pool, "invalidated") else 0,
         }
     except Exception:
         return {}

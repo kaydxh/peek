@@ -32,8 +32,9 @@ def get_prometheus_registry():
     global _prometheus_registry
     if _prometheus_registry is None:
         try:
-            from prometheus_client import CollectorRegistry, REGISTRY
-            from prometheus_client import multiprocess, values
+            from prometheus_client import (
+                REGISTRY,
+            )
 
             # 使用默认 Registry
             _prometheus_registry = REGISTRY
@@ -73,6 +74,7 @@ def get_metrics_handler():
     """
     try:
         from prometheus_client import make_wsgi_app
+
         return make_wsgi_app(registry=get_prometheus_registry())
     except ImportError:
         logger.warning("prometheus_client not installed")

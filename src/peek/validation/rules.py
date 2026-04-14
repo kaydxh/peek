@@ -22,7 +22,7 @@
 """
 
 import re
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, Tuple, Union
 
 # 校验规则类型
 RuleFunc = Callable[[str, Any], Tuple[bool, str]]
@@ -41,10 +41,12 @@ def required() -> RuleFunc:
     验证字段值不为 None。
     对于字符串，空字符串被认为是"有值"的（使用 not_empty 来校验非空）。
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return False, f"'{field_name}' is required"
         return True, ""
+
     return _make_rule("required", _rule)
 
 
@@ -57,6 +59,7 @@ def not_empty() -> RuleFunc:
     - 列表/集合/字典：不为空
     - bytes：不为 b""
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return False, f"'{field_name}' must not be empty"
@@ -64,6 +67,7 @@ def not_empty() -> RuleFunc:
             if len(value) == 0:
                 return False, f"'{field_name}' must not be empty"
         return True, ""
+
     return _make_rule("not_empty", _rule)
 
 
@@ -76,15 +80,20 @@ def min_length(length: int) -> RuleFunc:
     Args:
         length: 最小长度
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return True, ""  # None 不校验长度，由 required 规则处理
         try:
             if len(value) < length:
-                return False, f"'{field_name}' must have at least {length} characters, got {len(value)}"
+                return (
+                    False,
+                    f"'{field_name}' must have at least {length} characters, got {len(value)}",
+                )
         except TypeError:
             return False, f"'{field_name}' does not support length check"
         return True, ""
+
     return _make_rule(f"min_length({length})", _rule)
 
 
@@ -97,15 +106,20 @@ def max_length(length: int) -> RuleFunc:
     Args:
         length: 最大长度
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return True, ""
         try:
             if len(value) > length:
-                return False, f"'{field_name}' must have at most {length} characters, got {len(value)}"
+                return (
+                    False,
+                    f"'{field_name}' must have at most {length} characters, got {len(value)}",
+                )
         except TypeError:
             return False, f"'{field_name}' does not support length check"
         return True, ""
+
     return _make_rule(f"max_length({length})", _rule)
 
 
@@ -118,6 +132,7 @@ def min_value(minimum: Union[int, float]) -> RuleFunc:
     Args:
         minimum: 最小值
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return True, ""
@@ -127,6 +142,7 @@ def min_value(minimum: Union[int, float]) -> RuleFunc:
         except TypeError:
             return False, f"'{field_name}' does not support value comparison"
         return True, ""
+
     return _make_rule(f"min_value({minimum})", _rule)
 
 
@@ -139,6 +155,7 @@ def max_value(maximum: Union[int, float]) -> RuleFunc:
     Args:
         maximum: 最大值
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return True, ""
@@ -148,6 +165,7 @@ def max_value(maximum: Union[int, float]) -> RuleFunc:
         except TypeError:
             return False, f"'{field_name}' does not support value comparison"
         return True, ""
+
     return _make_rule(f"max_value({maximum})", _rule)
 
 
@@ -170,6 +188,7 @@ def pattern(regex: str, description: str = "") -> RuleFunc:
             desc = description or f"pattern '{regex}'"
             return False, f"'{field_name}' must match {desc}"
         return True, ""
+
     return _make_rule(f"pattern({regex})", _rule)
 
 
@@ -180,12 +199,14 @@ def one_of(choices: list) -> RuleFunc:
     Args:
         choices: 允许的值列表
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return True, ""
         if value not in choices:
             return False, f"'{field_name}' must be one of {choices}, got '{value}'"
         return True, ""
+
     return _make_rule(f"one_of({choices})", _rule)
 
 
@@ -205,6 +226,7 @@ def email() -> RuleFunc:
         if not _pattern.match(value):
             return False, f"'{field_name}' must be a valid email address"
         return True, ""
+
     return _make_rule("email", _rule)
 
 
@@ -226,6 +248,7 @@ def uuid_format() -> RuleFunc:
         if not _pattern.match(value):
             return False, f"'{field_name}' must be a valid UUID format"
         return True, ""
+
     return _make_rule("uuid_format", _rule)
 
 
@@ -240,6 +263,7 @@ def custom(check: Callable[[Any], bool], message: str) -> RuleFunc:
     用法：
         FieldRule("age", custom(lambda v: v >= 18, "{field} must be at least 18"))
     """
+
     def _rule(field_name: str, value: Any) -> Tuple[bool, str]:
         if value is None:
             return True, ""
@@ -249,4 +273,5 @@ def custom(check: Callable[[Any], bool], message: str) -> RuleFunc:
         except Exception as e:
             return False, f"'{field_name}' validation failed: {e}"
         return True, ""
+
     return _make_rule("custom", _rule)

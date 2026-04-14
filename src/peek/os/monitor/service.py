@@ -488,9 +488,7 @@ def register_monitor_routes(app, service: MonitorService) -> None:
         if report is None:
             return JSONResponse(
                 status_code=404,
-                content={
-                    "error": "暂无监控数据，请先启动持续采集并等待一段时间"
-                },
+                content={"error": "暂无监控数据，请先启动持续采集并等待一段时间"},
             )
 
         if format == "json":

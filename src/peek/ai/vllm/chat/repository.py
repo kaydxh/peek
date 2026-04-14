@@ -25,7 +25,6 @@ class ChatRepository(ABC):
         Returns:
             ChatResponse: 聊天响应
         """
-        pass
 
     @abstractmethod
     async def health_check(self) -> bool:
@@ -34,4 +33,3 @@ class ChatRepository(ABC):
         Returns:
             bool: 服务是否健康
         """
-        pass

@@ -11,32 +11,29 @@ OpenTelemetry Service 服务类
 import logging
 from typing import Optional
 
+from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.metrics import MeterProvider
 
 from peek.opentelemetry.config import (
-    OpenTelemetryConfig,
     ExporterType,
     MetricExporterType,
-    OTLPProtocol,
-    TemporalityType,
+    OpenTelemetryConfig,
     load_config,
     load_config_from_file,
 )
-from peek.opentelemetry.resource.resource import create_resource_from_config
-from peek.opentelemetry.tracer.tracer import Tracer, TracerExporterBuilder
-from peek.opentelemetry.tracer.otlp.exporter import OTLPTraceExporterBuilder
-from peek.opentelemetry.tracer.stdout.exporter import StdoutTraceExporterBuilder
 from peek.opentelemetry.metric.meter import (
     Meter,
-    PushExporterBuilder,
     PullExporterBuilder,
-    set_app_meter_provider,
+    PushExporterBuilder,
 )
 from peek.opentelemetry.metric.otlp.exporter import OTLPMetricExporterBuilder
 from peek.opentelemetry.metric.prometheus.exporter import PrometheusExporterBuilder
 from peek.opentelemetry.metric.stdout.exporter import StdoutMetricExporterBuilder
+from peek.opentelemetry.resource.resource import create_resource_from_config
+from peek.opentelemetry.tracer.otlp.exporter import OTLPTraceExporterBuilder
+from peek.opentelemetry.tracer.stdout.exporter import StdoutTraceExporterBuilder
+from peek.opentelemetry.tracer.tracer import Tracer, TracerExporterBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +242,9 @@ class OpenTelemetryService:
             resource=resource,
             push_exporter_builder=push_builder,
             pull_exporter_builder=pull_builder,
-            collect_interval_ms=int(self._config.metric.collect_interval_seconds * 1000),
+            collect_interval_ms=int(
+                self._config.metric.collect_interval_seconds * 1000
+            ),
         )
 
         self._meter_provider = self._meter.install()
@@ -279,7 +278,9 @@ class OpenTelemetryService:
         self._app_meter = Meter(
             resource=resource,
             push_exporter_builder=push_builder,
-            collect_interval_ms=int(self._config.app_meter_provider.collect_interval_seconds * 1000),
+            collect_interval_ms=int(
+                self._config.app_meter_provider.collect_interval_seconds * 1000
+            ),
         )
 
         self._app_meter_provider = self._app_meter.install_as_app_provider()

@@ -19,16 +19,15 @@
 import pytest
 
 from peek.cv.video.info import (
-    VideoInfo,
     StreamInfo,
-    probe,
+    VideoInfo,
+    _parse_ffprobe_data,
+    _parse_rational,
+    _parse_stream,
     _safe_float,
     _safe_int,
-    _parse_rational,
-    _parse_ffprobe_data,
-    _parse_stream,
+    probe,
 )
-
 
 # =================== 工具函数测试 ===================
 
@@ -106,8 +105,12 @@ class TestStreamInfo:
 
     def test_custom_values(self):
         stream = StreamInfo(
-            index=1, codec_type="video", codec_name="h264",
-            width=1920, height=1080, fps=30.0,
+            index=1,
+            codec_type="video",
+            codec_name="h264",
+            width=1920,
+            height=1080,
+            fps=30.0,
         )
         assert stream.codec_type == "video"
         assert stream.width == 1920
@@ -149,9 +152,13 @@ class TestVideoInfo:
 
     def test_str_output(self):
         info = VideoInfo(
-            filename="test.mp4", duration=60.0,
-            width=1920, height=1080, fps=30.0,
-            video_codec="h264", format_name="mp4",
+            filename="test.mp4",
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            video_codec="h264",
+            format_name="mp4",
         )
         output = str(info)
         assert "test.mp4" in output
@@ -290,10 +297,15 @@ class TestProbe:
 
 import logging
 import sys
+
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
 from conftest import (
-    skip_no_video, skip_no_ffprobe, skip_no_opencv,
-    HAS_FFPROBE_CLI, HAS_OPENCV, integration,
+    HAS_FFPROBE_CLI,
+    HAS_OPENCV,
+    integration,
+    skip_no_ffprobe,
+    skip_no_opencv,
+    skip_no_video,
 )
 
 logger = logging.getLogger(__name__)

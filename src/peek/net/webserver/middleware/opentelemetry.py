@@ -8,7 +8,7 @@ OpenTelemetry 追踪中间件
 """
 
 import time
-from typing import Any, Awaitable, Callable, Optional
+from typing import Awaitable, Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -17,10 +17,12 @@ from starlette.types import ASGIApp
 # 尝试导入 OpenTelemetry
 try:
     from opentelemetry import trace
-    from opentelemetry.trace import SpanKind, Status, StatusCode
-    from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-    from opentelemetry.propagate import extract, inject
+    from opentelemetry.propagate import extract
     from opentelemetry.semconv.trace import SpanAttributes
+    from opentelemetry.trace import SpanKind, Status, StatusCode
+    from opentelemetry.trace.propagation.tracecontext import (
+        TraceContextTextMapPropagator,
+    )
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -110,7 +112,9 @@ class TraceMiddleware(BaseHTTPMiddleware):
                 response = await call_next(request)
 
                 # 设置响应状态码
-                span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, response.status_code)
+                span.set_attribute(
+                    SpanAttributes.HTTP_STATUS_CODE, response.status_code
+                )
 
                 # 根据状态码设置 Span 状态
                 if response.status_code >= 400:
@@ -203,7 +207,7 @@ class MetricMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             status_code = response.status_code
-        except Exception as e:
+        except Exception:
             status_code = 500
             raise
         finally:

@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import peek.cv.image.image as image_
 import numpy as np
-import torchvision.transforms as transforms
 import torch
+import torchvision.transforms as transforms
+
+import peek.cv.image.image as image_
 
 
 def normalize_img_float32(inp_img, target_width=256, target_height=256):
-    """ normalize_img normal distribution
-    """
+    """normalize_img normal distribution"""
     inp_img = inp_img.astype(np.float32)
     inp_img = image_.pad_resize_image(
         inp_img, target_width=target_width, target_height=target_height
@@ -26,8 +26,7 @@ def normalize_img_float32(inp_img, target_width=256, target_height=256):
 
 
 def normalize_img_uint8(inp_img, target_width=256, target_height=256):
-    """ normalize_img normal distribution
-    """
+    """normalize_img normal distribution"""
     inp_img = image_.pad_resize_image(
         inp_img, target_width=target_width, target_height=target_height
     )

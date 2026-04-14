@@ -15,11 +15,9 @@
 import io
 import logging
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
-
-from PIL import Image
+from typing import Callable, Dict, Generator, List, Optional
 
 from .base import BaseDecoder
 
@@ -144,7 +142,6 @@ class FFmpegDecoder(BaseDecoder):
         Returns:
             list: 帧图片列表
         """
-        import av
 
         container = None
         tmp_file = None
@@ -168,7 +165,9 @@ class FFmpegDecoder(BaseDecoder):
 
             logger.debug(
                 "ffmpeg 解码: total_frames=%s, video_fps=%.2f, duration=%.2fs",
-                total_frames, video_fps, duration,
+                total_frames,
+                video_fps,
+                duration,
             )
 
             # 计算采样帧索引
@@ -180,7 +179,9 @@ class FFmpegDecoder(BaseDecoder):
 
             logger.debug(
                 "采样计划: effective_total=%s, sample_frames=%s, frame_indices=%s",
-                effective_total, len(frame_indices), frame_indices,
+                effective_total,
+                len(frame_indices),
+                frame_indices,
             )
 
             # 可选 seek 到起始位置（对应 kingfisher InputFile::seek）
@@ -191,9 +192,7 @@ class FFmpegDecoder(BaseDecoder):
                 )
 
             # 计算结束帧号
-            end_frame = self._calculate_end_frame(
-                video_fps, total_frames, duration
-            )
+            end_frame = self._calculate_end_frame(video_fps, total_frames, duration)
 
             # 设置视频滤镜（对应 kingfisher init_filters + video_filter_spec_）
             graph = None
@@ -339,18 +338,20 @@ class FFmpegDecoder(BaseDecoder):
                     video_stream.codec_context.codec = hw_codec
                     logger.info(
                         "启用 GPU 硬件解码: %s -> %s, gpu_id=%s",
-                        codec_name, hw_codec_name, self._config.gpu_id,
+                        codec_name,
+                        hw_codec_name,
+                        self._config.gpu_id,
                     )
                     return
             except Exception as e:
-                logger.warning("GPU hardware decoder %s not available: %s", hw_codec_name, e)
+                logger.warning(
+                    "GPU hardware decoder %s not available: %s", hw_codec_name, e
+                )
 
         if self._config.auto_switch_to_soft_codec:
             logger.info("Falling back to software decoder: %s", codec_name)
         else:
-            raise RuntimeError(
-                f"GPU 硬件解码器不可用且未启用自动回退: {codec_name}"
-            )
+            raise RuntimeError(f"GPU 硬件解码器不可用且未启用自动回退: {codec_name}")
 
     @staticmethod
     def _get_frame_rate(video_stream) -> float:
@@ -463,7 +464,11 @@ class FFmpegDecoder(BaseDecoder):
             return total_frames
 
         effective_frames = int(effective_duration * video_fps)
-        return min(effective_frames, total_frames) if total_frames > 0 else effective_frames
+        return (
+            min(effective_frames, total_frames)
+            if total_frames > 0
+            else effective_frames
+        )
 
     def _seek_to_start(self, container, video_stream, start_time: float) -> int:
         """Seek 到起始时间位置
@@ -594,6 +599,8 @@ class FFmpegDecoder(BaseDecoder):
         frame_count = 0
         decoded_count = 0
 
+        import av  # noqa: F811
+
         for frame in container.decode(video_stream):
             # 取消检查（对应 kingfisher is_cancelled）
             if self._cancel_callback and self._cancel_callback():
@@ -606,7 +613,10 @@ class FFmpegDecoder(BaseDecoder):
             effective_idx = frame_count
 
             # 检查结束帧
-            if end_frame is not None and (start_frame_offset + effective_idx) >= end_frame:
+            if (
+                end_frame is not None
+                and (start_frame_offset + effective_idx) >= end_frame
+            ):
                 break
 
             # 按采样索引筛选
@@ -747,7 +757,10 @@ class FFmpegDecoder(BaseDecoder):
             logger.debug(
                 "ffmpeg 批量解码: total_frames=%s, video_fps=%.2f, "
                 "duration=%.2fs, batch_size=%s",
-                total_frames, video_fps, duration, batch_size,
+                total_frames,
+                video_fps,
+                duration,
+                batch_size,
             )
 
             # 计算采样帧索引
@@ -765,9 +778,7 @@ class FFmpegDecoder(BaseDecoder):
                 )
 
             # 计算结束帧号
-            end_frame = self._calculate_end_frame(
-                video_fps, total_frames, duration
-            )
+            end_frame = self._calculate_end_frame(video_fps, total_frames, duration)
 
             # 设置视频滤镜
             graph = None
@@ -791,7 +802,10 @@ class FFmpegDecoder(BaseDecoder):
                 effective_idx = frame_count
 
                 # 检查结束帧
-                if end_frame is not None and (start_frame_offset + effective_idx) >= end_frame:
+                if (
+                    end_frame is not None
+                    and (start_frame_offset + effective_idx) >= end_frame
+                ):
                     break
 
                 # 按采样索引筛选
@@ -831,7 +845,11 @@ class FFmpegDecoder(BaseDecoder):
                 if self._progress_callback and frame_count % 10 == 0:
                     if total_frames > 0:
                         progress = min(1.0, frame_count / total_frames)
-                    elif duration > 0 and frame.pts is not None and video_stream.time_base:
+                    elif (
+                        duration > 0
+                        and frame.pts is not None
+                        and video_stream.time_base
+                    ):
                         current_time = float(frame.pts * video_stream.time_base)
                         progress = min(1.0, current_time / duration)
                     else:
@@ -877,7 +895,6 @@ class FFmpegDecoder(BaseDecoder):
         Returns:
             dict: 视频信息字典
         """
-        import av
 
         container = None
         tmp_file = None
@@ -937,7 +954,6 @@ class FFmpegDecoder(BaseDecoder):
         Returns:
             list: 帧图片列表
         """
-        import av
 
         container = None
         tmp_file = None

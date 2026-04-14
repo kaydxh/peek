@@ -41,7 +41,9 @@ class VLLMConfig:
     timeout: int = 60
 
     # vLLM server 启动参数（仅当 auto_start=True 时有效）
-    runner: str = ""  # vLLM runner 类型，如 "pooling"（分类模型），留空则使用默认 generate runner
+    runner: str = (
+        ""  # vLLM runner 类型，如 "pooling"（分类模型），留空则使用默认 generate runner
+    )
     trust_remote_code: bool = False  # 是否信任远程代码
     hf_overrides: Optional[Dict[str, Any]] = None  # HuggingFace 模型配置覆盖
     gpu_memory_utilization: float = 0.9
@@ -50,7 +52,9 @@ class VLLMConfig:
     max_num_batched_tokens: int = 8192
     max_model_len: int = 4096
     dtype: str = "auto"
-    startup_timeout: int = 600  # vLLM server 启动超时时间（单位：秒），默认 600s（10 分钟）
+    startup_timeout: int = (
+        600  # vLLM server 启动超时时间（单位：秒），默认 600s（10 分钟）
+    )
     enable_prefix_caching: bool = True
     enable_chunked_prefill: bool = True
 
@@ -184,30 +188,54 @@ def parse_vllm_config(
         runner=data.get("runner", defs["runner"]),
         trust_remote_code=data.get("trust_remote_code", defs["trust_remote_code"]),
         hf_overrides=data.get("hf_overrides", defs["hf_overrides"]),
-        gpu_memory_utilization=data.get("gpu_memory_utilization", defs["gpu_memory_utilization"]),
-        tensor_parallel_size=data.get("tensor_parallel_size", defs["tensor_parallel_size"]),
+        gpu_memory_utilization=data.get(
+            "gpu_memory_utilization", defs["gpu_memory_utilization"]
+        ),
+        tensor_parallel_size=data.get(
+            "tensor_parallel_size", defs["tensor_parallel_size"]
+        ),
         max_num_seqs=data.get("max_num_seqs", defs["max_num_seqs"]),
-        max_num_batched_tokens=data.get("max_num_batched_tokens", defs["max_num_batched_tokens"]),
+        max_num_batched_tokens=data.get(
+            "max_num_batched_tokens", defs["max_num_batched_tokens"]
+        ),
         max_model_len=data.get("max_model_len", defs["max_model_len"]),
         dtype=data.get("dtype", defs["dtype"]),
         startup_timeout=data.get("startup_timeout", defs["startup_timeout"]),
-        enable_prefix_caching=data.get("enable_prefix_caching", defs["enable_prefix_caching"]),
-        enable_chunked_prefill=data.get("enable_chunked_prefill", defs["enable_chunked_prefill"]),
-        mm_processor_kwargs=data.get("mm_processor_kwargs", defs["mm_processor_kwargs"]),
+        enable_prefix_caching=data.get(
+            "enable_prefix_caching", defs["enable_prefix_caching"]
+        ),
+        enable_chunked_prefill=data.get(
+            "enable_chunked_prefill", defs["enable_chunked_prefill"]
+        ),
+        mm_processor_kwargs=data.get(
+            "mm_processor_kwargs", defs["mm_processor_kwargs"]
+        ),
         media_io_kwargs=data.get("media_io_kwargs", defs["media_io_kwargs"]),
         logprobs=data.get("logprobs", defs["logprobs"]),
         top_logprobs=data.get("top_logprobs", defs["top_logprobs"]),
         seed=data.get("seed", defs["seed"]),
-        scene_cls_threshold=data.get("scene_cls_threshold", defs["scene_cls_threshold"]),
-        max_concurrent_requests=data.get("max_concurrent_requests", defs["max_concurrent_requests"]),
+        scene_cls_threshold=data.get(
+            "scene_cls_threshold", defs["scene_cls_threshold"]
+        ),
+        max_concurrent_requests=data.get(
+            "max_concurrent_requests", defs["max_concurrent_requests"]
+        ),
         video_decode=data.get("video_decode", defs["video_decode"]),
         auto_restart=data.get("auto_restart", defs["auto_restart"]),
         watchdog_interval=data.get("watchdog_interval", defs["watchdog_interval"]),
-        max_restart_attempts=data.get("max_restart_attempts", defs["max_restart_attempts"]),
+        max_restart_attempts=data.get(
+            "max_restart_attempts", defs["max_restart_attempts"]
+        ),
         restart_cooldown=data.get("restart_cooldown", defs["restart_cooldown"]),
-        inference_probe_enabled=data.get("inference_probe_enabled", defs["inference_probe_enabled"]),
-        inference_probe_timeout=data.get("inference_probe_timeout", defs["inference_probe_timeout"]),
-        inference_probe_max_failures=data.get("inference_probe_max_failures", defs["inference_probe_max_failures"]),
+        inference_probe_enabled=data.get(
+            "inference_probe_enabled", defs["inference_probe_enabled"]
+        ),
+        inference_probe_timeout=data.get(
+            "inference_probe_timeout", defs["inference_probe_timeout"]
+        ),
+        inference_probe_max_failures=data.get(
+            "inference_probe_max_failures", defs["inference_probe_max_failures"]
+        ),
         nsys_enabled=data.get("nsys_enabled", defs["nsys_enabled"]),
         nsys_output=data.get("nsys_output", defs["nsys_output"]),
         nsys_trace=data.get("nsys_trace", defs["nsys_trace"]),

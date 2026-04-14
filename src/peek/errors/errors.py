@@ -28,6 +28,7 @@ class ErrorCode(enum.IntEnum):
 
     与 HTTP 状态码和 gRPC Status Code 对应。
     """
+
     # 客户端错误
     BAD_REQUEST = 400
     UNAUTHORIZED = 401
@@ -119,6 +120,7 @@ class AppError(Exception):
         """
         try:
             import grpc
+
             status_map = {
                 "INVALID_ARGUMENT": grpc.StatusCode.INVALID_ARGUMENT,
                 "UNAUTHENTICATED": grpc.StatusCode.UNAUTHENTICATED,

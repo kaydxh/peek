@@ -138,7 +138,9 @@ class HttpClient:
 
         return backoff.retry_sync(do_request)
 
-    def get(self, url: str, params: Any = None, headers: Any = None, **kwargs: Any) -> requests.Response:
+    def get(
+        self, url: str, params: Any = None, headers: Any = None, **kwargs: Any
+    ) -> requests.Response:
         """发送 GET 请求
 
         Args:
@@ -150,7 +152,9 @@ class HttpClient:
         Returns:
             requests.Response 响应对象
         """
-        return self._request_with_retry("GET", url, params=params, headers=headers, **kwargs)
+        return self._request_with_retry(
+            "GET", url, params=params, headers=headers, **kwargs
+        )
 
     def post(
         self,
@@ -172,7 +176,9 @@ class HttpClient:
         Returns:
             requests.Response 响应对象
         """
-        return self._request_with_retry("POST", url, data=data, json=json, headers=headers, **kwargs)
+        return self._request_with_retry(
+            "POST", url, data=data, json=json, headers=headers, **kwargs
+        )
 
     def post_json(self, url: str, data: Any = None, **kwargs: Any) -> requests.Response:
         """发送 JSON POST 请求
@@ -187,7 +193,9 @@ class HttpClient:
         """
         return self.post(url, json=data, **kwargs)
 
-    def put(self, url: str, data: Any = None, json: Any = None, **kwargs: Any) -> requests.Response:
+    def put(
+        self, url: str, data: Any = None, json: Any = None, **kwargs: Any
+    ) -> requests.Response:
         """发送 PUT 请求
 
         Args:
@@ -239,7 +247,9 @@ class HttpClient:
 _default_client = HttpClient()
 
 
-def get(url: str, params: Any = None, headers: Any = None, **kwargs: Any) -> requests.Response:
+def get(
+    url: str, params: Any = None, headers: Any = None, **kwargs: Any
+) -> requests.Response:
     """发送 GET 请求（模块级便捷函数）
 
     Args:
@@ -254,7 +264,9 @@ def get(url: str, params: Any = None, headers: Any = None, **kwargs: Any) -> req
     return _default_client.get(url, params=params, headers=headers, **kwargs)
 
 
-def post(url: str, data: Any = None, json: Any = None, **kwargs: Any) -> requests.Response:
+def post(
+    url: str, data: Any = None, json: Any = None, **kwargs: Any
+) -> requests.Response:
     """发送 POST 请求（模块级便捷函数）
 
     Args:

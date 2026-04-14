@@ -61,7 +61,7 @@ async def install_redis(
         return None
 
     try:
-        from peek.database.redis import create_redis_client, close_redis_client
+        from peek.database.redis import close_redis_client, create_redis_client
 
         client = await create_redis_client(config)
 

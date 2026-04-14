@@ -85,7 +85,9 @@ class GrpcConfig(BaseModel):
 class HttpConfig(BaseModel):
     """HTTP 配置"""
 
-    timeout: float = Field(default=0, ge=0, description="HTTP 超时时间（秒），0 表示不限制")
+    timeout: float = Field(
+        default=0, ge=0, description="HTTP 超时时间（秒），0 表示不限制"
+    )
     max_request_body_bytes: int = Field(
         default=0, ge=0, description="最大请求体大小（字节），0 表示不限制"
     )
@@ -193,7 +195,9 @@ class ShutdownConfig(BaseModel):
 class MethodQPSConfigItem(BaseModel):
     """方法/路径级 QPS 配置项"""
 
-    method: str = Field(default="*", description="HTTP 方法（GET, POST, *）或 gRPC 方法")
+    method: str = Field(
+        default="*", description="HTTP 方法（GET, POST, *）或 gRPC 方法"
+    )
     path: str = Field(default="/", description="路径，支持前缀匹配（以 * 结尾）")
     qps: float = Field(default=0, ge=0, description="QPS 限制")
     burst: int = Field(default=0, ge=0, description="突发容量")
@@ -205,7 +209,9 @@ class QPSLimitConfig(BaseModel):
 
     default_qps: float = Field(default=0, ge=0, description="默认 QPS（0 表示不限制）")
     default_burst: int = Field(default=0, ge=0, description="默认突发容量")
-    max_concurrency: int = Field(default=0, ge=0, description="最大并发数（0 表示不限制）")
+    max_concurrency: int = Field(
+        default=0, ge=0, description="最大并发数（0 表示不限制）"
+    )
     wait_timeout: float = Field(
         default=0, ge=0, description="等待超时时间（秒），0 表示不等待"
     )
@@ -356,9 +362,7 @@ class ConfigLoader:
         self._deep_merge(self._raw_config, env_config)
         return self
 
-    def _set_nested_value(
-        self, config: Dict, keys: List[str], value: str
-    ) -> None:
+    def _set_nested_value(self, config: Dict, keys: List[str], value: str) -> None:
         """设置嵌套字典值"""
         for key in keys[:-1]:
             config = config.setdefault(key, {})
@@ -498,7 +502,9 @@ class WebServerConfigBuilder:
     def __init__(self):
         self._config_dict: Dict[str, Any] = {"web": {}}
 
-    def with_bind_address(self, host: str = "0.0.0.0", port: int = 8080) -> "WebServerConfigBuilder":
+    def with_bind_address(
+        self, host: str = "0.0.0.0", port: int = 8080
+    ) -> "WebServerConfigBuilder":
         """设置绑定地址"""
         self._config_dict["web"]["bind_address"] = {"host": host, "port": port}
         return self

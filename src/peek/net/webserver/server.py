@@ -22,25 +22,22 @@ import traceback
 from abc import ABC, abstractmethod
 from concurrent import futures
 from contextlib import asynccontextmanager
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import uvicorn
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
-from peek.net.webserver.hooks import (
-    HookEntry,
-    PostStartHookFunc,
-    PreShutdownHookFunc,
-)
-from peek.net.webserver.healthz import HealthzController
 from peek.net.webserver.config import (
     WebConfig,
     load_config,
     load_config_from_file,
-    WebServerConfigBuilder,
+)
+from peek.net.webserver.healthz import HealthzController
+from peek.net.webserver.hooks import (
+    HookEntry,
+    PostStartHookFunc,
+    PreShutdownHookFunc,
 )
 
 # 尝试导入 gRPC 相关模块
@@ -286,23 +283,23 @@ class GenericWebServer:
 
     def _install_default_middleware(self) -> None:
         """安装默认中间件
-        
+
         默认安装以下中间件（按执行顺序）：
         1. CORS - 跨域支持
         2. RequestID - 请求ID生成/传递
         3. Recovery - 异常捕获恢复
         4. Timer - 请求耗时计时
         5. Logger - 请求/响应日志
-        
+
         注意：中间件按添加顺序的逆序执行，即最后添加的最先执行
         """
         from peek.logs.formatter import ShortFilenameFilter
         from peek.net.webserver.middleware import (
-            RequestIDMiddleware,
-            RecoveryMiddleware,
-            TimerMiddleware,
-            LoggerMiddleware,
             HttpTimerMiddleware,
+            LoggerMiddleware,
+            RecoveryMiddleware,
+            RequestIDMiddleware,
+            TimerMiddleware,
         )
 
         # 为根 logger 的所有 handler 安装短文件名过滤器，
@@ -318,7 +315,7 @@ class GenericWebServer:
             "/livez",
             "/metrics",
         ]
-        
+
         # CORS 中间件（最先执行）
         self.app.add_middleware(
             CORSMiddleware,
@@ -327,7 +324,7 @@ class GenericWebServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        
+
         # Logger 中间件 - 记录请求/响应日志（含请求体、响应体、请求头、响应头）
         # 注意：Logger 要在 Timer 之后添加，这样才能获取到耗时信息
         # log_request_headers/log_response_headers: 类似 Go 版 InOutputHeaderPrinter
@@ -341,7 +338,7 @@ class GenericWebServer:
             max_string_length=64,  # 大字符串只打印前64字节
             skip_paths=middleware_skip_paths,
         )
-        
+
         # HttpTimer 中间件 - 打印请求耗时日志（类似 Go 版 ServerInterceptorOfTimer）
         self.app.add_middleware(
             HttpTimerMiddleware,
@@ -351,16 +348,17 @@ class GenericWebServer:
 
         # Timer 中间件 - 计算请求耗时
         self.app.add_middleware(TimerMiddleware)
-        
+
         # Recovery 中间件 - 异常捕获恢复
         self.app.add_middleware(RecoveryMiddleware)
-        
+
         # RequestID 中间件 - 生成/传递请求ID（最后添加，最先执行）
         self.app.add_middleware(RequestIDMiddleware)
 
         # 安装统一错误处理器（处理 AppError、Pydantic ValidationError 等）
         try:
             from peek.errors.handler import install_error_handlers
+
             install_error_handlers(self.app)
             logger.debug("Installed unified error handlers (AppError, ValidationError)")
         except ImportError:
@@ -651,9 +649,7 @@ class GenericWebServer:
 
         # 注册健康检查服务
         self._grpc_health_servicer = health.HealthServicer()
-        health_pb2_grpc.add_HealthServicer_to_server(
-            self._grpc_health_servicer, server
-        )
+        health_pb2_grpc.add_HealthServicer_to_server(self._grpc_health_servicer, server)
 
         # 设置所有服务为 SERVING
         for service_name in self._grpc_service_names:
@@ -717,7 +713,6 @@ class GenericWebServer:
             self._grpc_health_servicer.set(service_name, status)
 
     # ======================== 运行相关方法 ========================
-
 
     def prepare_run(self) -> "GenericWebServer":
         """

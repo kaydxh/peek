@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+
 import cv2
+
 import peek.cv.image.image as image_
 
 

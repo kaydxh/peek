@@ -9,15 +9,15 @@ Metric Report 模块
 """
 
 from peek.opentelemetry.metric.report.report import (
+    CLIENT_REPORT_METER_NAME,
+    DURATION_METRIC_NAME,
+    FAILED_METRIC_NAME,
+    REQUESTS_METRIC_NAME,
+    SERVER_REPORT_METER_NAME,
+    SUCCESS_METRIC_NAME,
+    ClientDimension,
     MetricReporter,
     ServerDimension,
-    ClientDimension,
-    SERVER_REPORT_METER_NAME,
-    CLIENT_REPORT_METER_NAME,
-    REQUESTS_METRIC_NAME,
-    SUCCESS_METRIC_NAME,
-    FAILED_METRIC_NAME,
-    DURATION_METRIC_NAME,
 )
 
 __all__ = [

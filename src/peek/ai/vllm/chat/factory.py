@@ -5,15 +5,16 @@
 """
 
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import List, Optional
 
-from .entity import ChatEntity, ChatMessage, ChatRequest, ChatResponse, MessageRole
+from .entity import ChatEntity, ChatMessage, ChatRequest, ChatResponse
 from .repository import ChatRepository
 
 
 @dataclass
 class FactoryConfig:
     """工厂配置"""
+
     chat_repository: ChatRepository
 
 

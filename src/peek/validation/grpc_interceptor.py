@@ -29,11 +29,14 @@ gRPC 参数校验拦截器
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import grpc
 
 from peek.net.grpc.interceptor import UnaryServerInterceptor, get_request_id
+
+if TYPE_CHECKING:
+    from peek.validation.rules import FieldRule
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +87,7 @@ class ValidationInterceptor(UnaryServerInterceptor):
         rules = self._rules.get(method_name)
         if rules:
             from peek.validation.validator import validate_fields
+
             errors = validate_fields(request, rules)
             if errors:
                 request_id = get_request_id() or "unknown"

@@ -9,7 +9,7 @@ Metric Report 指标上报
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from peek.opentelemetry.metric.api.instrument import Counter, Histogram
@@ -33,13 +33,14 @@ class ServerDimension:
 
     用于描述被调请求的维度信息。
     """
-    service: str = ""           # 服务名
-    method: str = ""            # 方法名
-    protocol: str = ""          # 协议（http/grpc）
-    status_code: int = 0        # 状态码
-    caller: str = ""            # 调用方
-    caller_ip: str = ""         # 调用方 IP
-    success: bool = True        # 是否成功
+
+    service: str = ""  # 服务名
+    method: str = ""  # 方法名
+    protocol: str = ""  # 协议（http/grpc）
+    status_code: int = 0  # 状态码
+    caller: str = ""  # 调用方
+    caller_ip: str = ""  # 调用方 IP
+    success: bool = True  # 是否成功
 
     def to_attributes(self) -> Dict[str, Any]:
         """转换为属性字典"""
@@ -64,13 +65,14 @@ class ClientDimension:
 
     用于描述主调请求的维度信息。
     """
-    service: str = ""           # 目标服务名
-    method: str = ""            # 方法名
-    protocol: str = ""          # 协议（http/grpc）
-    status_code: int = 0        # 状态码
-    callee: str = ""            # 被调方
-    callee_ip: str = ""         # 被调方 IP
-    success: bool = True        # 是否成功
+
+    service: str = ""  # 目标服务名
+    method: str = ""  # 方法名
+    protocol: str = ""  # 协议（http/grpc）
+    status_code: int = 0  # 状态码
+    callee: str = ""  # 被调方
+    callee_ip: str = ""  # 被调方 IP
+    success: bool = True  # 是否成功
 
     def to_attributes(self) -> Dict[str, Any]:
         """转换为属性字典"""

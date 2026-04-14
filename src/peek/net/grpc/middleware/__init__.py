@@ -10,14 +10,14 @@ gRPC 中间件模块
 - 日志拦截器
 """
 
+from peek.net.grpc.middleware.opentelemetry import (
+    MetricInterceptor,
+    TraceInterceptor,
+)
 from peek.net.grpc.middleware.ratelimit import (
-    QPSLimitInterceptor,
     ConcurrencyLimitInterceptor,
     MethodQPSLimitInterceptor,
-)
-from peek.net.grpc.middleware.opentelemetry import (
-    TraceInterceptor,
-    MetricInterceptor,
+    QPSLimitInterceptor,
 )
 
 # 参数校验拦截器（延迟导入避免循环依赖）

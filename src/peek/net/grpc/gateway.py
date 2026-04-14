@@ -7,21 +7,19 @@ gRPC Gateway 模块
 提供 HTTP/gRPC 同端口复用能力，类似 Go 版本的 grpc-gateway。
 """
 
-import asyncio
 import logging
 import signal
 import threading
 from concurrent import futures
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
 
 try:
-    from fastapi import FastAPI, Request, Response
-    from starlette.middleware.base import BaseHTTPMiddleware
     import uvicorn
+    from fastapi import FastAPI, Request, Response
 
     HAS_FASTAPI = True
 except ImportError:
@@ -122,10 +120,12 @@ class GRPCGateway:
 
         # gRPC 选项
         self._grpc_options = grpc_options or []
-        self._grpc_options.extend([
-            ("grpc.max_send_message_length", max_message_length),
-            ("grpc.max_receive_message_length", max_message_length),
-        ])
+        self._grpc_options.extend(
+            [
+                ("grpc.max_send_message_length", max_message_length),
+                ("grpc.max_receive_message_length", max_message_length),
+            ]
+        )
 
         # HTTP 到 gRPC 的代理路由
         self._grpc_proxies: Dict[str, Callable] = {}
@@ -235,6 +235,7 @@ class GRPCGateway:
             )
             ```
         """
+
         async def proxy_handler(request: Request):
             try:
                 # 创建 gRPC channel 和 stub

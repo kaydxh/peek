@@ -24,18 +24,18 @@ OpenTelemetry 模块
 """
 
 from peek.opentelemetry.config import (
-    OpenTelemetryConfig,
-    TracerConfig,
     MetricConfig,
-    ResourceConfig,
+    OpenTelemetryConfig,
+    OpenTelemetryConfigBuilder,
     OTLPConfig,
     PrometheusConfig,
+    ResourceConfig,
+    TracerConfig,
     load_config,
     load_config_from_file,
-    OpenTelemetryConfigBuilder,
 )
-from peek.opentelemetry.service import OpenTelemetryService
 from peek.opentelemetry.resource import create_resource, get_k8s_attributes
+from peek.opentelemetry.service import OpenTelemetryService
 
 __all__ = [
     # Config

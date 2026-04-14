@@ -12,11 +12,11 @@ OpenTelemetry Metric 模块
 from peek.opentelemetry.metric.meter import (
     Meter,
     MeterExporterBuilder,
-    PushExporterBuilder,
     PullExporterBuilder,
-    install_meter,
-    get_meter,
+    PushExporterBuilder,
     get_app_meter_provider,
+    get_meter,
+    install_meter,
     set_app_meter_provider,
 )
 

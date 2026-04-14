@@ -27,8 +27,8 @@ from peek.validation.validator import (
     validate_fields,
 )
 
-
 # ============ 校验规则测试 ============
+
 
 class TestRequiredRule:
     """required 规则测试"""
@@ -280,24 +280,31 @@ class TestCustomRule:
 
 # ============ FieldRule 和 validate_fields 测试 ============
 
+
 class TestValidateFields:
     """validate_fields 集成测试"""
 
     def test_all_pass(self):
         """全部通过应返回空列表"""
         data = {"name": "Alice", "age": 25}
-        errors = validate_fields(data, [
-            FieldRule("name", required(), min_length(2)),
-            FieldRule("age", required(), min_value(0)),
-        ])
+        errors = validate_fields(
+            data,
+            [
+                FieldRule("name", required(), min_length(2)),
+                FieldRule("age", required(), min_value(0)),
+            ],
+        )
         assert errors == []
 
     def test_first_failure_stops_field(self):
         """一个字段的第一个失败规则应停止后续规则"""
         data = {"name": None}
-        errors = validate_fields(data, [
-            FieldRule("name", required(), min_length(2)),
-        ])
+        errors = validate_fields(
+            data,
+            [
+                FieldRule("name", required(), min_length(2)),
+            ],
+        )
         assert len(errors) == 1
         assert errors[0].field == "name"
         assert "required" in errors[0].message
@@ -305,30 +312,40 @@ class TestValidateFields:
     def test_multiple_field_errors(self):
         """多个字段同时失败"""
         data = {"name": None, "email": "bad"}
-        errors = validate_fields(data, [
-            FieldRule("name", required()),
-            FieldRule("email", email()),
-        ])
+        errors = validate_fields(
+            data,
+            [
+                FieldRule("name", required()),
+                FieldRule("email", email()),
+            ],
+        )
         assert len(errors) == 2
 
     def test_dict_input(self):
         """字典输入"""
         data = {"key": "value"}
-        errors = validate_fields(data, [
-            FieldRule("key", required(), not_empty()),
-        ])
+        errors = validate_fields(
+            data,
+            [
+                FieldRule("key", required(), not_empty()),
+            ],
+        )
         assert errors == []
 
     def test_object_input(self):
         """普通对象输入"""
+
         class Obj:
             name = "test"
             value = 42
 
-        errors = validate_fields(Obj(), [
-            FieldRule("name", required()),
-            FieldRule("value", min_value(0)),
-        ])
+        errors = validate_fields(
+            Obj(),
+            [
+                FieldRule("name", required()),
+                FieldRule("value", min_value(0)),
+            ],
+        )
         assert errors == []
 
 
@@ -343,6 +360,7 @@ class TestValidateFunction:
     def test_fails_raises_validation_error(self):
         """校验失败应抛出 ValidationError"""
         from peek.errors import ValidationError
+
         data = {"name": None}
         with pytest.raises(ValidationError) as exc_info:
             validate(data, [FieldRule("name", required())])
@@ -351,6 +369,7 @@ class TestValidateFunction:
 
 
 # ============ Validator 构建器测试 ============
+
 
 class TestValidatorBuilder:
     """Validator 构建器测试"""
@@ -366,6 +385,7 @@ class TestValidatorBuilder:
     def test_validate_or_raise(self):
         """validate_or_raise 失败时抛出异常"""
         from peek.errors import ValidationError
+
         v = Validator()
         v.field("name").required()
         with pytest.raises(ValidationError):

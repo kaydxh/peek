@@ -9,7 +9,7 @@ OpenTelemetry Resource 实现
 """
 
 import os
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes

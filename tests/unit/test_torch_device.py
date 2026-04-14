@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+
 import peek.cv.torch.device as device_
 
 # from peek.cv.torch.device import get_avaliable_devices

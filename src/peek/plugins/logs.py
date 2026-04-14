@@ -8,7 +8,6 @@
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +22,13 @@ def install_logs(config):
     """
     if config is None:
         from peek.plugins.base_options import LogConfig
+
         config = LogConfig()
 
     try:
         # 使用 peek 的日志库
-        from peek.logs import LogConfig as PeekLogConfig, install_logs as peek_install_logs
+        from peek.logs import LogConfig as PeekLogConfig
+        from peek.logs import install_logs as peek_install_logs
 
         # 转换为 peek 的日志配置
         peek_config = PeekLogConfig(
@@ -118,4 +119,9 @@ def _install_logs_fallback(config):
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
-    logger.info("Logging initialized, level: %s, formatter: %s, output: %s", config.level, config.formatter, config.redirect)
+    logger.info(
+        "Logging initialized, level: %s, formatter: %s, output: %s",
+        config.level,
+        config.formatter,
+        config.redirect,
+    )

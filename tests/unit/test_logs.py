@@ -6,22 +6,23 @@
 """
 
 import logging
+
 import pytest
 
 from peek.logs.config import (
     LEVEL_MAP,
     LogConfig,
     LogFormatter,
+    LoggerAdapter,
     LogLevel,
     LogRedirect,
-    LoggerAdapter,
     get_logger,
     install_logs,
 )
 from peek.time.parse import parse_duration
 
-
 # ============ LogConfig 测试 ============
+
 
 class TestLogConfig:
     """LogConfig 数据类测试"""
@@ -71,11 +72,13 @@ class TestLogConfig:
 
     def test_from_dict(self):
         """from_dict 应正确创建配置"""
-        config = LogConfig.from_dict({
-            "formatter": "json",
-            "level": "debug",
-            "redirect": "both",
-        })
+        config = LogConfig.from_dict(
+            {
+                "formatter": "json",
+                "level": "debug",
+                "redirect": "both",
+            }
+        )
         assert config.formatter == "json"
         assert config.level == "debug"
         assert config.redirect == "both"
@@ -88,6 +91,7 @@ class TestLogConfig:
 
 
 # ============ 枚举测试 ============
+
 
 class TestEnums:
     """日志枚举测试"""
@@ -114,6 +118,7 @@ class TestEnums:
 
 
 # ============ install_logs 测试 ============
+
 
 class TestInstallLogs:
     """install_logs 安装测试"""
@@ -163,6 +168,7 @@ class TestInstallLogs:
 
 
 # ============ get_logger / LoggerAdapter 测试 ============
+
 
 class TestGetLogger:
     """get_logger 测试"""

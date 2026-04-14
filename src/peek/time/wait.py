@@ -13,13 +13,13 @@ Wait/Retry 等待工具模块
 使用示例：
     # 带超时调用
     result = await call_with_timeout(async_func, timeout=5.0)
-    
+
     # 定时轮询（直到上下文取消）
     await until(check_status, period=1.0, timeout=60.0)
-    
+
     # 条件等待
     await poll(condition_func, interval=0.5, timeout=30.0)
-    
+
     # 带退避策略的重试
     await backoff_until(task_func, backoff, loop=False)
 """
@@ -28,7 +28,6 @@ import asyncio
 import functools
 import logging
 import time
-import traceback
 from dataclasses import dataclass
 from typing import (
     Any,
@@ -37,7 +36,6 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
-    Union,
 )
 
 from peek.time.backoff import ExponentialBackOff
@@ -54,8 +52,6 @@ class WaitTimeoutError(Exception):
     注意：命名为 WaitTimeoutError 而非 TimeoutError，避免遮蔽 Python 内置的 builtins.TimeoutError。
     """
 
-    pass
-
 
 # 向后兼容别名（已废弃，建议使用 WaitTimeoutError）
 TimeoutError = WaitTimeoutError
@@ -64,19 +60,13 @@ TimeoutError = WaitTimeoutError
 class ConditionNotMetError(Exception):
     """条件未满足错误"""
 
-    pass
-
 
 class MaxRetriesExceededError(Exception):
     """超过最大重试次数错误"""
 
-    pass
-
 
 class WaitCancelledError(Exception):
     """等待被取消错误"""
-
-    pass
 
 
 @dataclass
@@ -140,7 +130,9 @@ async def call_with_timeout(
         return result
     except asyncio.TimeoutError:
         elapsed = time.monotonic() - start_time
-        logger.warning("call_with_timeout: timed out, timeout=%ss, elapsed=%.3fs", timeout, elapsed)
+        logger.warning(
+            "call_with_timeout: timed out, timeout=%ss, elapsed=%.3fs", timeout, elapsed
+        )
         raise WaitTimeoutError(f"Execution timed out: timeout={timeout}s")
 
 
@@ -189,7 +181,11 @@ def call_with_timeout_sync(
             return result
         except concurrent.futures.TimeoutError:
             elapsed = time.monotonic() - start_time
-            logger.warning("call_with_timeout_sync: timed out, timeout=%ss, elapsed=%.3fs", timeout, elapsed)
+            logger.warning(
+                "call_with_timeout_sync: timed out, timeout=%ss, elapsed=%.3fs",
+                timeout,
+                elapsed,
+            )
             raise WaitTimeoutError(f"Execution timed out: timeout={timeout}s")
 
 
@@ -341,7 +337,11 @@ async def backoff_until(
             # 提前获取下一次等待时间
             wait_time, should_continue = backoff.next_backoff()
             if not should_continue:
-                msg = f"Max wait time or count limit reached: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
+                msg = (
+                    f"Max wait time or count limit reached: "
+                    f"count={backoff.elapsed_count}, "
+                    f"elapsed={backoff.elapsed_time:.2f}s"
+                )
                 logger.warning("backoff_until: %s", msg)
                 if last_error:
                     raise MaxRetriesExceededError(msg) from last_error
@@ -350,14 +350,21 @@ async def backoff_until(
         # 执行函数
         try:
             result = await func(*args, **kwargs)
-            logger.debug("backoff_until: function executed successfully, count=%s", backoff.elapsed_count)
+            logger.debug(
+                "backoff_until: function executed successfully, count=%s",
+                backoff.elapsed_count,
+            )
 
             if not loop:
                 return result
 
         except Exception as e:
             last_error = e
-            logger.debug("backoff_until: function execution error, count=%s, error=%s", backoff.elapsed_count, e)
+            logger.debug(
+                "backoff_until: function execution error, count=%s, error=%s",
+                backoff.elapsed_count,
+                e,
+            )
 
             if stop_on_error:
                 raise
@@ -366,7 +373,11 @@ async def backoff_until(
             # 函数执行完成后才获取等待时间
             wait_time, should_continue = backoff.next_backoff()
             if not should_continue:
-                msg = f"Max wait time or count limit reached: count={backoff.elapsed_count}, elapsed={backoff.elapsed_time:.2f}s"
+                msg = (
+                    f"Max wait time or count limit reached: "
+                    f"count={backoff.elapsed_count}, "
+                    f"elapsed={backoff.elapsed_time:.2f}s"
+                )
                 logger.warning("backoff_until: %s", msg)
                 if last_error:
                     raise MaxRetriesExceededError(msg) from last_error
@@ -472,7 +483,9 @@ async def poll_immediate(
         # 检查是否超时
         elapsed = time.monotonic() - start_time
         if timeout > 0 and elapsed >= timeout:
-            raise WaitTimeoutError(f"Condition wait timed out: timeout={timeout}s, elapsed={elapsed:.2f}s")
+            raise WaitTimeoutError(
+                f"Condition wait timed out: timeout={timeout}s, elapsed={elapsed:.2f}s"
+            )
 
         # 首次检查或等待间隔
         if first_check and immediate:
@@ -486,7 +499,10 @@ async def poll_immediate(
         try:
             done, result = await condition(*args, **kwargs)
             if done:
-                logger.debug("poll_immediate: condition met, elapsed=%.2fs", time.monotonic() - start_time)
+                logger.debug(
+                    "poll_immediate: condition met, elapsed=%.2fs",
+                    time.monotonic() - start_time,
+                )
                 return result
         except Exception as e:
             logger.debug("poll_immediate: condition check error, error=%s", e)
@@ -686,7 +702,9 @@ def wait_for_condition_sync(
         if timeout > 0 and elapsed >= timeout:
             if message:
                 raise WaitTimeoutError(message)
-            raise WaitTimeoutError(f"Condition wait timed out: timeout={timeout}s, elapsed={elapsed:.2f}s")
+            raise WaitTimeoutError(
+                f"Condition wait timed out: timeout={timeout}s, elapsed={elapsed:.2f}s"
+            )
 
         if condition():
             return
@@ -961,7 +979,9 @@ def with_retry(
     def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
-            return await retry(func, period=period, retry_times=retry_times, *args, **kwargs)
+            return await retry(
+                func, period=period, retry_times=retry_times, *args, **kwargs
+            )
 
         return wrapper
 
@@ -988,7 +1008,9 @@ def with_retry_sync(
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
-            return retry_sync(func, period=period, retry_times=retry_times, *args, **kwargs)
+            return retry_sync(
+                func, period=period, retry_times=retry_times, *args, **kwargs
+            )
 
         return wrapper
 

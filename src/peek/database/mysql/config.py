@@ -7,8 +7,6 @@ MySQL 配置模型
 对应 Go 版本 golang/pkg/database/mysql/mysql.proto 中的配置定义。
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 from peek.time.parse import parse_duration
@@ -31,16 +29,31 @@ class MySQLConfig(BaseModel):
     dial_timeout: float = Field(default=5.0, ge=0, description="连接超时时间（秒）")
     read_timeout: float = Field(default=0, ge=0, description="读取超时时间（秒）")
     write_timeout: float = Field(default=0, ge=0, description="写入超时时间（秒）")
-    max_life_time: float = Field(default=0, ge=0, description="连接最大生命周期（秒），0 表示不过期")
-    pool_timeout: float = Field(default=30.0, ge=0, description="连接获取超时时间（秒），0 表示不限制")
-    pool_pre_ping: bool = Field(default=True, description="每次获取连接前是否自动检测连接可用性")
-    max_wait_duration: float = Field(default=20.0, ge=0, description="等待连接最大时间（秒）")
-    fail_after_duration: float = Field(default=60.0, ge=0, description="超过此时间后放弃连接（秒）")
+    max_life_time: float = Field(
+        default=0, ge=0, description="连接最大生命周期（秒），0 表示不过期"
+    )
+    pool_timeout: float = Field(
+        default=30.0, ge=0, description="连接获取超时时间（秒），0 表示不限制"
+    )
+    pool_pre_ping: bool = Field(
+        default=True, description="每次获取连接前是否自动检测连接可用性"
+    )
+    max_wait_duration: float = Field(
+        default=20.0, ge=0, description="等待连接最大时间（秒）"
+    )
+    fail_after_duration: float = Field(
+        default=60.0, ge=0, description="超过此时间后放弃连接（秒）"
+    )
     interpolate_params: bool = Field(default=True, description="是否插值参数")
 
     @field_validator(
-        "dial_timeout", "read_timeout", "write_timeout",
-        "max_life_time", "pool_timeout", "max_wait_duration", "fail_after_duration",
+        "dial_timeout",
+        "read_timeout",
+        "write_timeout",
+        "max_life_time",
+        "pool_timeout",
+        "max_wait_duration",
+        "fail_after_duration",
         mode="before",
     )
     @classmethod

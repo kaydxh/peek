@@ -65,6 +65,7 @@ def validated(
         async def my_handler(self, request):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):

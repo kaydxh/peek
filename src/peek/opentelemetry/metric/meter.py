@@ -13,13 +13,11 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from opentelemetry import metrics
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import (
-    MetricExporter,
     MetricReader,
-    PeriodicExportingMetricReader,
 )
+from opentelemetry.sdk.resources import Resource
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +55,6 @@ class MeterExporterBuilder(ABC):
         Returns:
             MetricReader 实例
         """
-        pass
 
 
 class PushExporterBuilder(MeterExporterBuilder):
@@ -66,7 +63,6 @@ class PushExporterBuilder(MeterExporterBuilder):
 
     用于 OTLP、Stdout 等主动推送的导出器。
     """
-    pass
 
 
 class PullExporterBuilder(MeterExporterBuilder):
@@ -75,7 +71,6 @@ class PullExporterBuilder(MeterExporterBuilder):
 
     用于 Prometheus 等被动拉取的导出器。
     """
-    pass
 
 
 class Meter:

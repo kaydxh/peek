@@ -6,14 +6,15 @@
 """
 
 import os
-import pytest
 from pathlib import Path
 
+import pytest
 from pydantic import BaseModel
+
 from peek.config.loader import ConfigLoader, load_config, load_config_from_file
 
-
 # ============ 测试用 Pydantic 模型 ============
+
 
 class WebConfig(BaseModel):
     host: str = "0.0.0.0"
@@ -27,6 +28,7 @@ class AppConfig(BaseModel):
 
 
 # ============ ConfigLoader 测试 ============
+
 
 class TestConfigLoader:
     """ConfigLoader 核心功能测试"""
@@ -79,11 +81,7 @@ class TestConfigLoader:
     def test_get_nested_key(self, tmp_path):
         """get 应支持点分隔的嵌套键"""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            "a:\n"
-            "  b:\n"
-            "    c: deep_value\n"
-        )
+        config_file.write_text("a:\n" "  b:\n" "    c: deep_value\n")
         loader = ConfigLoader()
         loader.load_file(config_file)
         assert loader.get("a.b.c") == "deep_value"
@@ -92,18 +90,9 @@ class TestConfigLoader:
     def test_deep_merge(self, tmp_path):
         """多文件加载应深度合并"""
         file1 = tmp_path / "base.yaml"
-        file1.write_text(
-            "web:\n"
-            "  host: 0.0.0.0\n"
-            "  port: 8080\n"
-            "name: base\n"
-        )
+        file1.write_text("web:\n" "  host: 0.0.0.0\n" "  port: 8080\n" "name: base\n")
         file2 = tmp_path / "override.yaml"
-        file2.write_text(
-            "web:\n"
-            "  port: 9090\n"
-            "debug: true\n"
-        )
+        file2.write_text("web:\n" "  port: 9090\n" "debug: true\n")
         loader = ConfigLoader()
         loader.load_file(file1).load_file(file2)
         # port 被覆盖
@@ -230,12 +219,10 @@ class TestLoadConfigHelpers:
     def test_load_config_from_file(self, tmp_path):
         """从文件加载并转为模型"""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            "name: file-app\n"
-            "web:\n"
-            "  port: 7070\n"
+        config_file.write_text("name: file-app\n" "web:\n" "  port: 7070\n")
+        model = load_config_from_file(
+            config_file, model_class=AppConfig, load_env=False
         )
-        model = load_config_from_file(config_file, model_class=AppConfig, load_env=False)
         assert model.name == "file-app"
         assert model.web.port == 7070
 

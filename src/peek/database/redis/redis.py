@@ -57,8 +57,10 @@ async def create_redis_client(
         from redis.asyncio.sentinel import Sentinel
 
         sentinel = Sentinel(
-            [(addr.rsplit(":", 1)[0], int(addr.rsplit(":", 1)[1]))
-             for addr in config.addresses],
+            [
+                (addr.rsplit(":", 1)[0], int(addr.rsplit(":", 1)[1]))
+                for addr in config.addresses
+            ],
             socket_timeout=config.dial_timeout if config.dial_timeout > 0 else None,
             password=config.password or None,
         )
@@ -74,9 +76,13 @@ async def create_redis_client(
             password=config.password or None,
             db=config.db,
             max_connections=config.max_connections,
-            socket_connect_timeout=config.dial_timeout if config.dial_timeout > 0 else None,
+            socket_connect_timeout=(
+                config.dial_timeout if config.dial_timeout > 0 else None
+            ),
             socket_timeout=config.read_timeout if config.read_timeout > 0 else None,
-            health_check_interval=config.health_check_interval if config.health_check_interval > 0 else 0,
+            health_check_interval=(
+                config.health_check_interval if config.health_check_interval > 0 else 0
+            ),
         )
         if config.ssl:
             connect_kwargs["ssl"] = True
@@ -97,9 +103,7 @@ async def create_redis_client(
             elapsed = asyncio.get_event_loop().time() - start_time
             if fail_after > 0 and elapsed >= fail_after:
                 await client.close()
-                raise RuntimeError(
-                    f"Redis 连接失败，已超过 {fail_after}s: {e}"
-                ) from e
+                raise RuntimeError(f"Redis 连接失败，已超过 {fail_after}s: {e}") from e
             logger.warning("Redis connection failed, retrying in %.1fs: %s", elapsed, e)
             await asyncio.sleep(min(wait_interval, max(fail_after - elapsed, 0.1)))
 
@@ -164,9 +168,21 @@ def get_redis_pool_stats(client: Any) -> Dict:
         pool = client.connection_pool
         return {
             "max_connections": pool.max_connections,
-            "current_connections": len(pool._created_connections) if hasattr(pool, '_created_connections') else 0,
-            "available_connections": len(pool._available_connections) if hasattr(pool, '_available_connections') else 0,
-            "in_use_connections": len(pool._in_use_connections) if hasattr(pool, '_in_use_connections') else 0,
+            "current_connections": (
+                len(pool._created_connections)
+                if hasattr(pool, "_created_connections")
+                else 0
+            ),
+            "available_connections": (
+                len(pool._available_connections)
+                if hasattr(pool, "_available_connections")
+                else 0
+            ),
+            "in_use_connections": (
+                len(pool._in_use_connections)
+                if hasattr(pool, "_in_use_connections")
+                else 0
+            ),
         }
     except Exception:
         return {}

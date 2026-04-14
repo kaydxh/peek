@@ -15,11 +15,14 @@ from peek.os.file import (
     write_file,
 )
 
+
 # Lazy import for monitor to avoid dependency issues
 def get_monitor():
     """Get the monitor submodule."""
     from peek.os import monitor
+
     return monitor
+
 
 __all__ = [
     "ensure_dir",

@@ -16,13 +16,13 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any, TextIO
+from typing import Any, Dict, List, Optional, TextIO
 
 from peek.os.monitor.collector import (
-    ProcessStats,
-    ProcessMonitor,
-    MultiProcessStats,
     MultiProcessMonitor,
+    MultiProcessStats,
+    ProcessMonitor,
+    ProcessStats,
 )
 
 # Check for optional dependencies
@@ -30,8 +30,8 @@ try:
     import matplotlib
 
     matplotlib.use("Agg")  # Non-interactive backend
-    import matplotlib.pyplot as plt
     import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
     from matplotlib.figure import Figure
 
     HAS_MATPLOTLIB = True
@@ -127,9 +127,7 @@ class RealtimeChart:
 
         # Header
         lines.append("=" * 80)
-        lines.append(
-            f" 📊 Process Monitor - PID: {stats.pid} ({stats.name})"
-        )
+        lines.append(f" 📊 Process Monitor - PID: {stats.pid} ({stats.name})")
         lines.append(f" 🕐 {stats.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append("=" * 80)
         lines.append("")
@@ -155,9 +153,7 @@ class RealtimeChart:
             lines.append("🎮 GPU")
             for gpu in stats.gpu_stats:
                 lines.append(f"   [{gpu.index}] {gpu.name}")
-                lines.append(
-                    self._draw_bar(gpu.utilization_percent, 100, "Util", "%")
-                )
+                lines.append(self._draw_bar(gpu.utilization_percent, 100, "Util", "%"))
                 lines.append(
                     self._draw_bar(
                         gpu.memory_used_mb, gpu.memory_total_mb, "VRAM", "MB"
@@ -299,7 +295,9 @@ class MonitorVisualizer:
         colors = self._config.colors
 
         # Create figure with subplots
-        fig, axes = plt.subplots(2, 2, figsize=(self._config.width, self._config.height))
+        fig, axes = plt.subplots(
+            2, 2, figsize=(self._config.width, self._config.height)
+        )
         fig.suptitle(
             f"Process Monitor - PID: {self._history[0].pid} ({self._history[0].name})",
             fontsize=14,
@@ -672,7 +670,14 @@ class MonitorVisualizer:
                     borderWidth: 2
                 }}]
             }},
-            options: {{ ...chartOptions, scales: {{ ...chartOptions.scales, y: {{ ...chartOptions.scales.y, title: {{ display: true, text: 'CPU (%)' }} }} }} }}
+            options: {{
+                ...chartOptions,
+                scales: {{ ...chartOptions.scales,
+                    y: {{ ...chartOptions.scales.y,
+                        title: {{ display: true, text: 'CPU (%)' }}
+                    }}
+                }}
+            }}
         }});
 
         new Chart(document.getElementById('memoryChart'), {{
@@ -687,7 +692,14 @@ class MonitorVisualizer:
                     borderWidth: 2
                 }}]
             }},
-            options: {{ ...chartOptions, scales: {{ ...chartOptions.scales, y: {{ ...chartOptions.scales.y, title: {{ display: true, text: 'Memory (MB)' }} }} }} }}
+            options: {{
+                ...chartOptions,
+                scales: {{ ...chartOptions.scales,
+                    y: {{ ...chartOptions.scales.y,
+                        title: {{ display: true, text: 'Memory (MB)' }}
+                    }}
+                }}
+            }}
         }});
 
         new Chart(document.getElementById('gpuChart'), {{
@@ -702,7 +714,15 @@ class MonitorVisualizer:
                     borderWidth: 2
                 }}]
             }},
-            options: {{ ...chartOptions, scales: {{ ...chartOptions.scales, y: {{ ...chartOptions.scales.y, title: {{ display: true, text: 'GPU Utilization (%)' }}, max: 100 }} }} }}
+            options: {{
+                ...chartOptions,
+                scales: {{ ...chartOptions.scales,
+                    y: {{ ...chartOptions.scales.y,
+                        title: {{ display: true, text: 'GPU Utilization (%)' }},
+                        max: 100
+                    }}
+                }}
+            }}
         }});
 
         new Chart(document.getElementById('vramChart'), {{
@@ -717,7 +737,14 @@ class MonitorVisualizer:
                     borderWidth: 2
                 }}]
             }},
-            options: {{ ...chartOptions, scales: {{ ...chartOptions.scales, y: {{ ...chartOptions.scales.y, title: {{ display: true, text: 'GPU Memory (MB)' }} }} }} }}
+            options: {{
+                ...chartOptions,
+                scales: {{ ...chartOptions.scales,
+                    y: {{ ...chartOptions.scales.y,
+                        title: {{ display: true, text: 'GPU Memory (MB)' }}
+                    }}
+                }}
+            }}
         }});
     </script>
 </body>
@@ -889,13 +916,17 @@ class MultiProcessRealtimeChart:
 
         # Per-process stats
         for pid, proc_stats in stats.process_stats.items():
-            lines.append(f"")
+            lines.append("")
             lines.append(f"🔹 PID: {pid} ({proc_stats.name})")
             lines.append(
-                self._draw_bar(proc_stats.cpu_percent, 100 * proc_stats.cpu_count, "CPU", "%")
+                self._draw_bar(
+                    proc_stats.cpu_percent, 100 * proc_stats.cpu_count, "CPU", "%"
+                )
             )
             lines.append(self._draw_bar(proc_stats.memory_percent, 100, "Memory", "%"))
-            lines.append(f"   Memory: {proc_stats.memory_mb:.1f} MB | Threads: {proc_stats.num_threads}")
+            lines.append(
+                f"   Memory: {proc_stats.memory_mb:.1f} MB | Threads: {proc_stats.num_threads}"
+            )
 
             # GPU stats
             if proc_stats.gpu_stats:
@@ -1029,7 +1060,9 @@ class MultiProcessVisualizer:
                     per_process[pid]["name"] = proc_stats.name
                     per_process[pid]["cpu"].append(proc_stats.cpu_percent)
                     per_process[pid]["memory"].append(proc_stats.memory_mb)
-                    per_process[pid]["gpu_memory"].append(proc_stats.total_gpu_memory_mb)
+                    per_process[pid]["gpu_memory"].append(
+                        proc_stats.total_gpu_memory_mb
+                    )
                 else:
                     # Process not available at this timestamp
                     per_process[pid]["cpu"].append(0)
@@ -1112,33 +1145,51 @@ class MultiProcessVisualizer:
             proc_data = data["per_process"][pid]
             label = f"PID {pid} ({proc_data['name']})"
 
-            cpu_datasets.append({
-                "label": label,
-                "data": proc_data["cpu"],
-                "borderColor": color,
-                "backgroundColor": color.replace(")", ", 0.3)").replace("rgb", "rgba") if color.startswith("rgb") else color + "4D",
-                "fill": True,
-                "borderWidth": 2,
-            })
-
-            memory_datasets.append({
-                "label": label,
-                "data": proc_data["memory"],
-                "borderColor": color,
-                "backgroundColor": color.replace(")", ", 0.3)").replace("rgb", "rgba") if color.startswith("rgb") else color + "4D",
-                "fill": True,
-                "borderWidth": 2,
-            })
-
-            if any(v > 0 for v in proc_data["gpu_memory"]):
-                gpu_datasets.append({
+            cpu_datasets.append(
+                {
                     "label": label,
-                    "data": proc_data["gpu_memory"],
+                    "data": proc_data["cpu"],
                     "borderColor": color,
-                    "backgroundColor": color.replace(")", ", 0.3)").replace("rgb", "rgba") if color.startswith("rgb") else color + "4D",
+                    "backgroundColor": (
+                        color.replace(")", ", 0.3)").replace("rgb", "rgba")
+                        if color.startswith("rgb")
+                        else color + "4D"
+                    ),
                     "fill": True,
                     "borderWidth": 2,
-                })
+                }
+            )
+
+            memory_datasets.append(
+                {
+                    "label": label,
+                    "data": proc_data["memory"],
+                    "borderColor": color,
+                    "backgroundColor": (
+                        color.replace(")", ", 0.3)").replace("rgb", "rgba")
+                        if color.startswith("rgb")
+                        else color + "4D"
+                    ),
+                    "fill": True,
+                    "borderWidth": 2,
+                }
+            )
+
+            if any(v > 0 for v in proc_data["gpu_memory"]):
+                gpu_datasets.append(
+                    {
+                        "label": label,
+                        "data": proc_data["gpu_memory"],
+                        "borderColor": color,
+                        "backgroundColor": (
+                            color.replace(")", ", 0.3)").replace("rgb", "rgba")
+                            if color.startswith("rgb")
+                            else color + "4D"
+                        ),
+                        "fill": True,
+                        "borderWidth": 2,
+                    }
+                )
 
         # Build per-process summary cards HTML
         process_cards_html = ""
@@ -1241,7 +1292,7 @@ class MultiProcessVisualizer:
         .summary-card.cpu .value {{ color: #2196F3; }}
         .summary-card.memory .value {{ color: #4CAF50; }}
         .summary-card.vram .value {{ color: #E91E63; }}
-        
+
         .process-section {{
             background: white;
             border-radius: 12px;
@@ -1302,7 +1353,7 @@ class MultiProcessVisualizer:
             color: #aaa;
             font-size: 10px;
         }}
-        
+
         .charts-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
@@ -1468,14 +1519,28 @@ class MultiProcessVisualizer:
         new Chart(document.getElementById('cpuChart'), {{
             type: 'line',
             data: {{ labels: labels, datasets: cpuDatasets }},
-            options: {{ ...stackedOptions, scales: {{ ...stackedOptions.scales, y: {{ ...stackedOptions.scales.y, title: {{ display: true, text: 'CPU (%)' }} }} }} }}
+            options: {{
+                ...stackedOptions,
+                scales: {{ ...stackedOptions.scales,
+                    y: {{ ...stackedOptions.scales.y,
+                        title: {{ display: true, text: 'CPU (%)' }}
+                    }}
+                }}
+            }}
         }});
 
         // Stacked Memory chart
         new Chart(document.getElementById('memoryChart'), {{
             type: 'line',
             data: {{ labels: labels, datasets: memoryDatasets }},
-            options: {{ ...stackedOptions, scales: {{ ...stackedOptions.scales, y: {{ ...stackedOptions.scales.y, title: {{ display: true, text: 'Memory (MB)' }} }} }} }}
+            options: {{
+                ...stackedOptions,
+                scales: {{ ...stackedOptions.scales,
+                    y: {{ ...stackedOptions.scales.y,
+                        title: {{ display: true, text: 'Memory (MB)' }}
+                    }}
+                }}
+            }}
         }});
 
         // Total CPU chart
@@ -1491,14 +1556,33 @@ class MultiProcessVisualizer:
                     borderWidth: 2
                 }}]
             }},
-            options: {{ ...lineOptions, scales: {{ ...lineOptions.scales, y: {{ ...lineOptions.scales.y, title: {{ display: true, text: 'Total CPU (%)' }} }} }} }}
+            options: {{
+                ...lineOptions,
+                scales: {{ ...lineOptions.scales,
+                    y: {{ ...lineOptions.scales.y,
+                        title: {{ display: true, text: 'Total CPU (%)' }}
+                    }}
+                }}
+            }}
         }});
 
         // GPU Memory chart
         new Chart(document.getElementById('gpuChart'), {{
             type: 'line',
-            data: {{ labels: labels, datasets: gpuDatasets.length > 0 ? gpuDatasets : [{{ data: [], label: 'No GPU Data' }}] }},
-            options: {{ ...stackedOptions, scales: {{ ...stackedOptions.scales, y: {{ ...stackedOptions.scales.y, title: {{ display: true, text: 'GPU Memory (MB)' }} }} }} }}
+            data: {{
+                labels: labels,
+                datasets: gpuDatasets.length > 0
+                    ? gpuDatasets
+                    : [{{ data: [], label: 'No GPU Data' }}]
+            }},
+            options: {{
+                ...stackedOptions,
+                scales: {{ ...stackedOptions.scales,
+                    y: {{ ...stackedOptions.scales.y,
+                        title: {{ display: true, text: 'GPU Memory (MB)' }}
+                    }}
+                }}
+            }}
         }});
     </script>
 </body>

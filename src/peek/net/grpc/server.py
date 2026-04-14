@@ -7,10 +7,9 @@ gRPC 服务器模块
 提供 gRPC 服务器的核心实现。
 """
 
-import asyncio
 import logging
 from concurrent import futures
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple
 
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
@@ -73,10 +72,12 @@ class GRPCServer:
 
         # gRPC 选项
         self._options = options or []
-        self._options.extend([
-            ("grpc.max_send_message_length", max_message_length),
-            ("grpc.max_receive_message_length", max_message_length),
-        ])
+        self._options.extend(
+            [
+                ("grpc.max_send_message_length", max_message_length),
+                ("grpc.max_receive_message_length", max_message_length),
+            ]
+        )
 
     @property
     def address(self) -> str:
@@ -217,9 +218,7 @@ class GRPCServer:
             return True
         return self._server.wait_for_termination(timeout)
 
-    def set_service_status(
-        self, service_name: str, serving: bool
-    ) -> None:
+    def set_service_status(self, service_name: str, serving: bool) -> None:
         """设置服务健康状态
 
         Args:
@@ -280,10 +279,12 @@ class AsyncGRPCServer:
 
         # gRPC 选项
         self._options = options or []
-        self._options.extend([
-            ("grpc.max_send_message_length", max_message_length),
-            ("grpc.max_receive_message_length", max_message_length),
-        ])
+        self._options.extend(
+            [
+                ("grpc.max_send_message_length", max_message_length),
+                ("grpc.max_receive_message_length", max_message_length),
+            ]
+        )
 
     @property
     def address(self) -> str:
