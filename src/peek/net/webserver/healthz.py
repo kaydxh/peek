@@ -145,13 +145,13 @@ class VLLMInferenceHealthChecker(HealthChecker):
         """
         Args:
             checker_name: 检查器名称
-            api_url: vLLM API 地址（如 http://localhost:8001/v1）
+            api_url: vLLM API 基础地址（如 http://localhost:8001），不含 /v1 路径
             model_name: 模型名称
             timeout: 推理请求超时时间（秒），默认 10s，应远小于业务超时
             runner_type: vLLM runner 类型，如 "pooling"（分类模型），留空则使用默认 generate runner
         """
         self._name = checker_name
-        self.api_url = api_url
+        self.api_url = api_url.rstrip("/")
         self.model_name = model_name
         self.timeout = timeout
         self.runner_type = runner_type
@@ -172,19 +172,17 @@ class VLLMInferenceHealthChecker(HealthChecker):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 if is_pooling:
                     # pooling 模式（分类模型）使用 /classify 端点探活
-                    # 注意：/classify 端点不在 /v1 路径下，需要去掉 /v1 前缀
-                    base_url = self.api_url.removesuffix("/v1")
                     response = await client.post(
-                        f"{base_url}/classify",
+                        f"{self.api_url}/classify",
                         json={
                             "model": self.model_name,
                             "messages": [{"role": "user", "content": "hi"}],
                         },
                     )
                 else:
-                    # 默认 generate 模式使用 /chat/completions 端点探活
+                    # 默认 generate 模式使用 /v1/chat/completions 端点探活
                     response = await client.post(
-                        f"{self.api_url}/chat/completions",
+                        f"{self.api_url}/v1/chat/completions",
                         json={
                             "model": self.model_name,
                             "messages": [{"role": "user", "content": "hi"}],
