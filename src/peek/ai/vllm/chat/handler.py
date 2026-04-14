@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ChatCompletionRequest:
     """聊天补全请求"""
+
     request_id: str
     prompt: str
     system_prompt: Optional[str] = None
@@ -28,6 +29,7 @@ class ChatCompletionRequest:
 @dataclass
 class ChatCompletionResponse:
     """聊天补全响应"""
+
     request_id: str
     content: str
     model: str = ""
@@ -38,6 +40,7 @@ class ChatCompletionResponse:
 @dataclass
 class Commands:
     """命令集合"""
+
     chat_handler: "ChatHandler"
 
 
@@ -47,6 +50,7 @@ class Application:
 
     包含所有命令处理器
     """
+
     commands: Commands
 
 
@@ -82,16 +86,20 @@ class ChatHandler:
 
         # 添加系统提示词
         if request.system_prompt:
-            messages.append(ChatMessage(
-                role=MessageRole.SYSTEM,
-                content=request.system_prompt,
-            ))
+            messages.append(
+                ChatMessage(
+                    role=MessageRole.SYSTEM,
+                    content=request.system_prompt,
+                )
+            )
 
         # 添加用户消息
-        messages.append(ChatMessage(
-            role=MessageRole.USER,
-            content=request.prompt,
-        ))
+        messages.append(
+            ChatMessage(
+                role=MessageRole.USER,
+                content=request.prompt,
+            )
+        )
 
         # 创建领域请求
         domain_request = self._factory.create_request(

@@ -26,39 +26,32 @@ from peek.time.backoff import (
 )
 from peek.time.func_duration_controller import FunctionDurationController
 from peek.time.parse import parse_duration
-from peek.time.wait import (
-    # 异常类
+from peek.time.wait import TimeoutError  # 向后兼容别名，建议使用 WaitTimeoutError
+from peek.time.wait import (  # 异常类; 带超时调用; 定时轮询; 条件等待; 等待工具; 计时器; 装饰器
     ConditionNotMetError,
     MaxRetriesExceededError,
-    WaitTimeoutError,
-    TimeoutError,  # 向后兼容别名，建议使用 WaitTimeoutError
+    Timeout,
+    TimeoutSync,
+    Timer,
     WaitCancelledError,
     WaitResult,
-    # 带超时调用
+    WaitTimeoutError,
+    backoff_until,
     call_with_timeout,
     call_with_timeout_sync,
-    # 定时轮询
-    until,
     jitter_until,
-    backoff_until,
-    # 条件等待
     poll,
     poll_immediate,
     poll_until_context_done,
-    # 等待工具
-    wait_for_condition,
-    wait_for_condition_sync,
     sleep_with_jitter,
     sleep_with_jitter_sync,
-    # 计时器
-    Timer,
-    Timeout,
-    TimeoutSync,
-    # 装饰器
-    with_timeout,
-    with_timeout_sync,
+    until,
+    wait_for_condition,
+    wait_for_condition_sync,
     with_retry,
     with_retry_sync,
+    with_timeout,
+    with_timeout_sync,
 )
 
 __all__ = [

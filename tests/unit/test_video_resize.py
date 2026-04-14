@@ -24,7 +24,6 @@ from PIL import Image
 
 from peek.cv.video.resize import smart_resize, smart_resize_image
 
-
 # =================== smart_resize 测试 ===================
 
 
@@ -108,8 +107,9 @@ class TestSmartResizeImage:
 
 import logging
 import sys
+
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
-from conftest import skip_no_video, skip_no_av, integration
+from conftest import integration, skip_no_av, skip_no_video
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,7 @@ class TestSmartResizeWithRealFrames:
     def test_resize_decoded_frame(self, video_bytes):
         """对真实解码帧应用 smart_resize"""
         import io as _io
+
         from peek.cv.video.decoder.ffmpeg_decoder import FFmpegDecoder
 
         decoder = FFmpegDecoder(fps=0.5, max_frames=1)

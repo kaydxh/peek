@@ -11,8 +11,8 @@ OpenTelemetry Tracer 模块
 from peek.opentelemetry.tracer.tracer import (
     Tracer,
     TracerExporterBuilder,
-    install_tracer,
     get_tracer,
+    install_tracer,
 )
 
 __all__ = [

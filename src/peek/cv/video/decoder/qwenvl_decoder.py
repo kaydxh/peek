@@ -9,10 +9,9 @@
 详见：https://github.com/QwenLM/Qwen3-VL/tree/main/qwen-vl-utils
 """
 
-import io
 import logging
-import tempfile
 import os
+import tempfile
 from typing import Dict, Generator, List, Optional
 
 from PIL import Image
@@ -134,7 +133,6 @@ class QwenVLDecoder(BaseDecoder):
         Returns:
             list: 帧图片列表
         """
-        import torch
         from qwen_vl_utils.vision_process import fetch_video
 
         # 设置视频读取后端（如果指定了）
@@ -144,9 +142,7 @@ class QwenVLDecoder(BaseDecoder):
         # qwen-vl-utils 需要文件路径，将视频字节写入临时文件
         tmp_file = None
         try:
-            tmp_file = tempfile.NamedTemporaryFile(
-                suffix=".mp4", delete=False
-            )
+            tmp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
             tmp_file.write(video_bytes)
             tmp_file.flush()
             tmp_file.close()

@@ -53,6 +53,7 @@ _extra_var: contextvars.ContextVar[Dict[str, Any]] = contextvars.ContextVar(
 
 # ============ 便捷函数 ============
 
+
 def get_request_id() -> str:
     """获取当前请求的 Request ID"""
     return _request_id_var.get()
@@ -118,6 +119,7 @@ def set_extra(key: str, value: Any) -> contextvars.Token:
 
 
 # ============ RequestContext 类 ============
+
 
 class RequestContext:
     """

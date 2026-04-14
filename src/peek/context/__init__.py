@@ -13,14 +13,14 @@
 
 from peek.context.context import (
     RequestContext,
-    get_request_id,
-    set_request_id,
-    get_trace_id,
-    set_trace_id,
-    get_user_id,
-    set_user_id,
     get_extra,
+    get_request_id,
+    get_trace_id,
+    get_user_id,
     set_extra,
+    set_request_id,
+    set_trace_id,
+    set_user_id,
 )
 
 __all__ = [

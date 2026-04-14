@@ -11,13 +11,11 @@
 """
 
 import asyncio
-import json
 import logging
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from threading import Lock, RLock
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -625,7 +623,9 @@ class QPSLimiter:
         for method_config in config.method_qps:
             key = self._make_key(method_config.method, method_config.path)
             if method_config.qps > 0:
-                self._qps_limiter.add_method(key, method_config.qps, method_config.burst)
+                self._qps_limiter.add_method(
+                    key, method_config.qps, method_config.burst
+                )
             if method_config.max_concurrency > 0:
                 self._path_concurrency[key] = ConcurrencyLimiter(
                     method_config.max_concurrency
@@ -808,7 +808,9 @@ class QPSRateLimitMiddleware(BaseHTTPMiddleware):
         else:
             self.limiter = QPSLimiter(QPSLimitConfig())
         self.wait_timeout = wait_timeout
-        self.skip_paths = skip_paths if skip_paths is not None else self.DEFAULT_SKIP_PATHS
+        self.skip_paths = (
+            skip_paths if skip_paths is not None else self.DEFAULT_SKIP_PATHS
+        )
 
     def _should_skip(self, path: str) -> bool:
         """
@@ -841,14 +843,14 @@ class QPSRateLimitMiddleware(BaseHTTPMiddleware):
 
         # 检查 QPS 限制
         if self.wait_timeout > 0:
-            allowed = await self.limiter.allow_for_async(method, path, self.wait_timeout)
+            allowed = await self.limiter.allow_for_async(
+                method, path, self.wait_timeout
+            )
         else:
             allowed = self.limiter.allow(method, path)
 
         if not allowed:
-            logger.warning(
-                f"Request rejected by QPS rate limiter: {method} {path}"
-            )
+            logger.warning(f"Request rejected by QPS rate limiter: {method} {path}")
             return JSONResponse(
                 status_code=429,
                 headers={"Retry-After": "1"},
@@ -861,9 +863,7 @@ class QPSRateLimitMiddleware(BaseHTTPMiddleware):
 
         # 检查并发限制
         if not self.limiter.acquire_concurrency(method, path):
-            logger.warning(
-                f"Request rejected by concurrency limiter: {method} {path}"
-            )
+            logger.warning(f"Request rejected by concurrency limiter: {method} {path}")
             return JSONResponse(
                 status_code=429,
                 headers={"Retry-After": "1"},
@@ -911,7 +911,9 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self._limiter = ConcurrencyLimiter(max_concurrency)
-        self.skip_paths = skip_paths if skip_paths is not None else self.DEFAULT_SKIP_PATHS
+        self.skip_paths = (
+            skip_paths if skip_paths is not None else self.DEFAULT_SKIP_PATHS
+        )
 
     @property
     def max_concurrency(self) -> int:

@@ -12,10 +12,10 @@ import asyncio
 import socket
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, List, Optional
 
 import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -48,7 +48,6 @@ class HealthChecker(ABC):
     @abstractmethod
     def name(self) -> str:
         """检查器名称"""
-        pass
 
     @abstractmethod
     async def check(self) -> Optional[Exception]:
@@ -58,7 +57,6 @@ class HealthChecker(ABC):
         Returns:
             None 表示健康，Exception 表示不健康
         """
-        pass
 
 
 class PingHealthChecker(HealthChecker):

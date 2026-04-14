@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+
 import peek.git.git_info as git_
+
 
 # PYTHONPATH=$(pwd) python3 tests/test_git_info.py
 class TestGitInfo(unittest.TestCase):
@@ -15,6 +17,7 @@ class TestGitInfo(unittest.TestCase):
         file_path = "./tests/test_git_info.py"
         git_dir = git_.get_file_repo_dir(file_path)
         print(git_dir)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,10 +6,10 @@ Stdout Trace 导出器
 """
 
 import logging
-from typing import Optional, TextIO
 import sys
+from typing import Optional, TextIO
 
-from opentelemetry.sdk.trace.export import SpanExporter, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SpanExporter
 
 from peek.opentelemetry.tracer.tracer import TracerExporterBuilder
 
@@ -49,13 +49,15 @@ class StdoutTraceExporterBuilder(TracerExporterBuilder):
         if self._pretty_print:
             import json
 
-            def formatter(span):
+            def _fmt(span):
                 return json.dumps(
                     {
                         "name": span.name,
                         "trace_id": format(span.context.trace_id, "032x"),
                         "span_id": format(span.context.span_id, "016x"),
-                        "parent_id": format(span.parent.span_id, "016x") if span.parent else None,
+                        "parent_id": (
+                            format(span.parent.span_id, "016x") if span.parent else None
+                        ),
                         "start_time": span.start_time,
                         "end_time": span.end_time,
                         "status": str(span.status.status_code),
@@ -65,11 +67,15 @@ class StdoutTraceExporterBuilder(TracerExporterBuilder):
                     default=str,
                 )
 
+            formatter = _fmt
+
         exporter = ConsoleSpanExporter(
             out=self._out,
             formatter=formatter if self._pretty_print else None,
         )
 
-        logger.info("Stdout Trace exporter created: pretty_print=%s", self._pretty_print)
+        logger.info(
+            "Stdout Trace exporter created: pretty_print=%s", self._pretty_print
+        )
 
         return exporter

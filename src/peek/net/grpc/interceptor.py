@@ -9,17 +9,17 @@ gRPC 拦截器模块
 
 import logging
 import time
-import traceback
 import uuid
 from abc import ABC, abstractmethod
 from contextvars import ContextVar
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional
 
 import grpc
 
 # 尝试导入 OpenTelemetry
 try:
     from opentelemetry import trace as otel_trace
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -96,13 +96,10 @@ class UnaryServerInterceptor(grpc.ServerInterceptor, ABC):
         Returns:
             响应对象
         """
-        pass
 
     def intercept_service(
         self,
-        continuation: Callable[
-            [grpc.HandlerCallDetails], grpc.RpcMethodHandler
-        ],
+        continuation: Callable[[grpc.HandlerCallDetails], grpc.RpcMethodHandler],
         handler_call_details: grpc.HandlerCallDetails,
     ) -> grpc.RpcMethodHandler:
         """实现 grpc.ServerInterceptor 接口"""
@@ -115,9 +112,7 @@ class UnaryServerInterceptor(grpc.ServerInterceptor, ABC):
             # 非 Unary 方法，直接返回
             return next_handler
 
-        def wrapped_unary(
-            request: Any, context: grpc.ServicerContext
-        ) -> Any:
+        def wrapped_unary(request: Any, context: grpc.ServicerContext) -> Any:
             return self.intercept_unary(
                 request,
                 context,
@@ -146,13 +141,10 @@ class StreamServerInterceptor(grpc.ServerInterceptor, ABC):
         is_server_stream: bool,
     ) -> Any:
         """拦截 Stream 请求"""
-        pass
 
     def intercept_service(
         self,
-        continuation: Callable[
-            [grpc.HandlerCallDetails], grpc.RpcMethodHandler
-        ],
+        continuation: Callable[[grpc.HandlerCallDetails], grpc.RpcMethodHandler],
         handler_call_details: grpc.HandlerCallDetails,
     ) -> grpc.RpcMethodHandler:
         """实现 grpc.ServerInterceptor 接口"""
@@ -163,6 +155,7 @@ class StreamServerInterceptor(grpc.ServerInterceptor, ABC):
 
         # 根据方法类型包装不同的处理器
         if next_handler.unary_stream is not None:
+
             def wrapped_unary_stream(request, context):
                 return self.intercept_stream(
                     request,
@@ -180,6 +173,7 @@ class StreamServerInterceptor(grpc.ServerInterceptor, ABC):
             )
 
         elif next_handler.stream_unary is not None:
+
             def wrapped_stream_unary(request_iterator, context):
                 return self.intercept_stream(
                     request_iterator,
@@ -197,6 +191,7 @@ class StreamServerInterceptor(grpc.ServerInterceptor, ABC):
             )
 
         elif next_handler.stream_stream is not None:
+
             def wrapped_stream_stream(request_iterator, context):
                 return self.intercept_stream(
                     request_iterator,
@@ -240,9 +235,7 @@ class RequestIDInterceptor(UnaryServerInterceptor):
 
         # 如果请求对象有 request_id 字段，优先使用
         # （与 golang reflect_.RetrieveId(req, ...) 对应）
-        request_body_has_id = (
-            hasattr(request, "request_id") and request.request_id
-        )
+        request_body_has_id = hasattr(request, "request_id") and request.request_id
         if request_body_has_id:
             request_id = request.request_id
         elif not request_id:
@@ -266,9 +259,7 @@ class RequestIDInterceptor(UnaryServerInterceptor):
 
         try:
             # 设置响应 metadata
-            context.set_trailing_metadata([
-                (self.REQUEST_ID_METADATA_KEY, request_id)
-            ])
+            context.set_trailing_metadata([(self.REQUEST_ID_METADATA_KEY, request_id)])
 
             # 如果请求 body 没有 request_id，反写到 request（与 golang TrySetId 对应）
             if not request_body_has_id and hasattr(request, "request_id"):
@@ -327,6 +318,7 @@ class RecoveryInterceptor(UnaryServerInterceptor):
             # 检查是否是 AppError
             try:
                 from peek.errors.errors import AppError
+
                 if isinstance(e, AppError):
                     request_id = get_request_id() or "unknown"
                     logger.warning(
@@ -388,7 +380,7 @@ class LoggingInterceptor(UnaryServerInterceptor):
     def _truncate(self, text: str) -> str:
         """截断过长的文本"""
         if len(text) > self.max_log_length:
-            return text[:self.max_log_length] + "..."
+            return text[: self.max_log_length] + "..."
         return text
 
     def _format_prefix(self, request_id: str) -> str:
@@ -467,9 +459,7 @@ class TimerInterceptor(UnaryServerInterceptor):
                     f"{prefix} Slow gRPC request {method_name}: {elapsed_ms:.2f}ms"
                 )
             elif self.log_all:
-                logger.info(
-                    f"{prefix} gRPC request {method_name}: {elapsed_ms:.2f}ms"
-                )
+                logger.info(f"{prefix} gRPC request {method_name}: {elapsed_ms:.2f}ms")
 
             return response
         finally:
@@ -528,9 +518,7 @@ class QPSLimitInterceptor(UnaryServerInterceptor):
 
         if not limiter.allow():
             request_id = get_request_id() or "unknown"
-            logger.warning(
-                f"[{request_id}] Rate limit exceeded for {method_name}"
-            )
+            logger.warning(f"[{request_id}] Rate limit exceeded for {method_name}")
             context.abort(
                 grpc.StatusCode.RESOURCE_EXHAUSTED,
                 f"Rate limit exceeded for {method_name}",
@@ -576,9 +564,7 @@ class ConcurrencyLimitInterceptor(UnaryServerInterceptor):
 
         with self._lock:
             if method_name not in self._semaphores:
-                self._semaphores[method_name] = threading.Semaphore(
-                    self.max_concurrent
-                )
+                self._semaphores[method_name] = threading.Semaphore(self.max_concurrent)
             return self._semaphores[method_name]
 
     def intercept_unary(
@@ -690,6 +676,7 @@ def create_default_interceptor_chain(
     if enable_trace:
         try:
             from peek.net.grpc.middleware.opentelemetry import TraceInterceptor
+
             chain.add(TraceInterceptor())
         except ImportError:
             pass
@@ -698,12 +685,16 @@ def create_default_interceptor_chain(
         chain.add(RecoveryInterceptor())
 
     if enable_timer:
-        chain.add(TimerInterceptor(slow_threshold_ms=slow_threshold_ms, log_all=timer_log_all))
+        chain.add(
+            TimerInterceptor(slow_threshold_ms=slow_threshold_ms, log_all=timer_log_all)
+        )
 
     if enable_logging:
-        chain.add(LoggingInterceptor(
-            log_request=log_request,
-            log_response=log_response,
-        ))
+        chain.add(
+            LoggingInterceptor(
+                log_request=log_request,
+                log_response=log_response,
+            )
+        )
 
     return chain.build()

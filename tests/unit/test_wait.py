@@ -4,41 +4,34 @@ Wait/Retry 工具模块测试
 
 import asyncio
 import time
+
 import pytest
 
-from peek.time.wait import (
-    # 异常类
-    TimeoutError,
+from peek.time.backoff import ExponentialBackOff
+from peek.time.wait import (  # 异常类; 带超时调用; 定时轮询; 条件等待; 重试; 等待工具; 计时器; 装饰器
     ConditionNotMetError,
     MaxRetriesExceededError,
+    TimeoutError,
+    Timer,
     WaitCancelledError,
-    # 带超时调用
+    backoff_until,
     call_with_timeout,
     call_with_timeout_sync,
-    # 定时轮询
-    until,
     jitter_until,
-    backoff_until,
-    # 条件等待
     poll,
     poll_immediate,
-    # 重试
     retry,
     retry_sync,
-    # 等待工具
-    wait_for_condition,
-    wait_for_condition_sync,
     sleep_with_jitter,
     sleep_with_jitter_sync,
-    # 计时器
-    Timer,
-    # 装饰器
-    with_timeout,
-    with_timeout_sync,
+    until,
+    wait_for_condition,
+    wait_for_condition_sync,
     with_retry,
     with_retry_sync,
+    with_timeout,
+    with_timeout_sync,
 )
-from peek.time.backoff import ExponentialBackOff
 
 
 class TestCallWithTimeout:

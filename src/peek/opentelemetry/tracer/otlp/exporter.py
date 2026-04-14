@@ -14,8 +14,8 @@ from typing import Dict, Optional
 
 from opentelemetry.sdk.trace.export import SpanExporter
 
-from peek.opentelemetry.tracer.tracer import TracerExporterBuilder
 from peek.opentelemetry.config import OTLPProtocol
+from peek.opentelemetry.tracer.tracer import TracerExporterBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ class OTLPTraceExporterBuilder(TracerExporterBuilder):
         compression = None
         if self._compression:
             from opentelemetry.exporter.otlp.proto.http import Compression
+
             compression = Compression.Gzip
 
         exporter = OTLPSpanExporter(
@@ -113,6 +114,7 @@ class OTLPTraceExporterBuilder(TracerExporterBuilder):
         compression = None
         if self._compression:
             from grpc import Compression
+
             compression = Compression.Gzip
 
         exporter = OTLPSpanExporter(

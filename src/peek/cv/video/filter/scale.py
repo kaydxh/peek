@@ -19,6 +19,7 @@ def _ensure_ffmpeg():
     """确保 ffmpeg-python 已安装"""
     try:
         import ffmpeg
+
         return ffmpeg
     except ImportError:
         raise ImportError("需要安装 ffmpeg-python: pip install ffmpeg-python")
@@ -114,7 +115,9 @@ class ScaleFilter:
         if algorithm:
             filter_kwargs["flags"] = algorithm
         if config and config.force_original_aspect_ratio:
-            filter_kwargs["force_original_aspect_ratio"] = config.force_original_aspect_ratio
+            filter_kwargs["force_original_aspect_ratio"] = (
+                config.force_original_aspect_ratio
+            )
         if config and config.force_divisible_by > 0:
             filter_kwargs["force_divisible_by"] = config.force_divisible_by
 
@@ -129,11 +132,11 @@ class ScaleFilter:
         try:
             out.run(overwrite_output=overwrite, quiet=True)
         except ffmpeg.Error as e:
-            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
-            error_lines = stderr.strip().split("\n")[-5:]
-            raise RuntimeError(
-                f"视频缩放失败:\n" + "\n".join(error_lines)
+            stderr = (
+                e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
             )
+            error_lines = stderr.strip().split("\n")[-5:]
+            raise RuntimeError("视频缩放失败:\n" + "\n".join(error_lines))
 
         logger.info("Video scale completed: %s", output)
         return output
@@ -169,7 +172,9 @@ class ScaleFilter:
             parts.append(f"flags={algorithm}")
 
         if config and config.force_original_aspect_ratio:
-            parts.append(f"force_original_aspect_ratio={config.force_original_aspect_ratio}")
+            parts.append(
+                f"force_original_aspect_ratio={config.force_original_aspect_ratio}"
+            )
 
         if config and config.force_divisible_by > 0:
             parts.append(f"force_divisible_by={config.force_divisible_by}")

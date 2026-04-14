@@ -12,26 +12,26 @@
 - peek.validation.decorators: 校验装饰器
 """
 
-from peek.validation.validator import (
-    Validator,
-    FieldRule,
-    validate,
-    validate_fields,
-)
-from peek.validation.rules import (
-    required,
-    min_length,
-    max_length,
-    min_value,
-    max_value,
-    pattern,
-    one_of,
-    not_empty,
-    email,
-    uuid_format,
-)
 from peek.validation.decorators import (
     validated,
+)
+from peek.validation.rules import (
+    email,
+    max_length,
+    max_value,
+    min_length,
+    min_value,
+    not_empty,
+    one_of,
+    pattern,
+    required,
+    uuid_format,
+)
+from peek.validation.validator import (
+    FieldRule,
+    Validator,
+    validate,
+    validate_fields,
 )
 
 __all__ = [

@@ -71,7 +71,9 @@ class DecordDecoder(BaseDecoder):
 
         logger.debug(
             "decord 解码: total_frames=%s, video_fps=%.2f, sample_frames=%s",
-            total_frames, video_fps, len(frame_indices),
+            total_frames,
+            video_fps,
+            len(frame_indices),
         )
 
         frames = []
@@ -125,7 +127,10 @@ class DecordDecoder(BaseDecoder):
         logger.debug(
             "decord 批量解码: total_frames=%s, video_fps=%.2f, "
             "sample_frames=%s, batch_size=%s",
-            total_frames, video_fps, len(frame_indices), batch_size,
+            total_frames,
+            video_fps,
+            len(frame_indices),
+            batch_size,
         )
 
         batch = []

@@ -48,9 +48,12 @@ class RecoveryMiddleware(BaseHTTPMiddleware):
             request_id = getattr(request.state, "request_id", "-")
             logger.warning(
                 "[%s] AppError: code=%d, message=%s",
-                request_id, e.code, e.message,
+                request_id,
+                e.code,
+                e.message,
             )
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
                 status_code=e.http_status,
                 content=e.to_dict(),

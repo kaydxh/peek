@@ -101,7 +101,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             return value
 
         # 对于超长字符串，只显示前 N 个字节和总长度
-        truncated = value[:self.max_string_length]
+        truncated = value[: self.max_string_length]
         return f"{truncated}...(len:{len(value)} bytes)"
 
     def _truncate_value(self, value: Any, depth: int = 0) -> Any:
@@ -130,7 +130,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             if len(items) > self.max_truncate_items:
                 result = {
                     k: self._truncate_value(v, depth + 1)
-                    for k, v in items[:self.max_truncate_items]
+                    for k, v in items[: self.max_truncate_items]
                 }
                 result["..."] = f"<{len(items) - self.max_truncate_items} more keys>"
                 return result
@@ -140,7 +140,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             if len(value) > self.max_truncate_items:
                 result = [
                     self._truncate_value(item, depth + 1)
-                    for item in value[:self.max_truncate_items]
+                    for item in value[: self.max_truncate_items]
                 ]
                 result.append(f"<...{len(value) - self.max_truncate_items} more items>")
                 return tuple(result) if is_tuple else result
@@ -198,7 +198,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
 
         # 超过阈值，只记录大小
         if len(body) > self.max_body_log_bytes:
-            return f"<body too large: {len(body)} bytes, limit: {self.max_body_log_bytes}>"
+            return (
+                f"<body too large: {len(body)} bytes, limit: {self.max_body_log_bytes}>"
+            )
 
         try:
             body_json = json.loads(body)
@@ -224,7 +226,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
 
         # 获取 request_id（如果存在）
         # 优先从 request.state 获取，备选从 contextvars 获取
-        request_id = getattr(request.state, "request_id", "") or _ctx_get_request_id() or "-"
+        request_id = (
+            getattr(request.state, "request_id", "") or _ctx_get_request_id() or "-"
+        )
 
         # 获取 trace_id（如果存在），用于日志关联
         trace_id = _ctx_get_trace_id()
@@ -295,6 +299,7 @@ class LoggerMiddleware(BaseHTTPMiddleware):
 
             # 重新构建响应（因为 body_iterator 只能读取一次）
             from starlette.responses import Response as StarletteResponse
+
             return StarletteResponse(
                 content=response_body,
                 status_code=response.status_code,

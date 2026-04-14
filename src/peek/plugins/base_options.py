@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # 公共配置 dataclass
 # ============================================================
 
+
 @dataclass
 class WebConfig:
     """Web 服务器配置。"""
@@ -58,6 +59,7 @@ class LogConfig:
 # ============================================================
 # 公共配置解析函数
 # ============================================================
+
 
 def parse_web_config(data: Dict[str, Any], default_port: int = 10000) -> WebConfig:
     """解析 Web 配置。
@@ -100,6 +102,7 @@ def parse_monitor_config(data: Dict[str, Any]) -> MonitorConfig:
 # 公共配置加载基类
 # ============================================================
 
+
 class BaseServerRunOptions:
     """服务器运行选项基类。
 
@@ -131,28 +134,22 @@ class BaseServerRunOptions:
                 self.config.get("web", {}), self.default_port
             )
             self.log_config = parse_log_config(self.config.get("log", {}))
-            self.monitor_config = parse_monitor_config(
-                self.config.get("monitor", {})
-            )
+            self.monitor_config = parse_monitor_config(self.config.get("monitor", {}))
 
             # 加载业务特有配置（子类实现）
             self._load_business_config()
         else:
             logger.warning("Config file not found: %s", config_path)
-            self.web_config = WebConfig(
-                bind_address={"port": self.default_port}
-            )
+            self.web_config = WebConfig(bind_address={"port": self.default_port})
             self.log_config = LogConfig()
             self.monitor_config = MonitorConfig()
             self._init_default_business_config()
 
     def _load_business_config(self):
         """加载业务特有配置。子类覆写此方法。"""
-        pass
 
     def _init_default_business_config(self):
         """初始化业务默认配置（配置文件不存在时）。子类覆写此方法。"""
-        pass
 
     def complete(self) -> "BaseCompletedOptions":
         """完成设置并返回 CompletedOptions。子类应覆写此方法返回具体类型。"""
@@ -162,6 +159,7 @@ class BaseServerRunOptions:
 # ============================================================
 # 公共启动流程基类（模板方法模式）
 # ============================================================
+
 
 class BaseCompletedOptions(ABC):
     """已完成的服务器运行选项基类。
@@ -218,7 +216,7 @@ class BaseCompletedOptions(ABC):
         await self._install_monitor(web_server)
 
         # 8. 运行服务器（公共）
-        if hasattr(web_server, 'run_async'):
+        if hasattr(web_server, "run_async"):
             await web_server.run_async()
         else:
             await web_server.run()
@@ -241,10 +239,7 @@ class BaseCompletedOptions(ABC):
         """安装 OpenTelemetry（公共）。"""
         from peek.plugins.otel import install_opentelemetry
 
-        await install_opentelemetry(
-            self._options.web_config.open_telemetry,
-            web_server
-        )
+        await install_opentelemetry(self._options.web_config.open_telemetry, web_server)
 
     async def _install_monitor(self, web_server):
         """安装监控插件（公共）。"""

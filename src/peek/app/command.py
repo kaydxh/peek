@@ -9,7 +9,7 @@ Command - 命令和上下文
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 
 @dataclass

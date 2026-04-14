@@ -24,11 +24,12 @@ logger = logging.getLogger(__name__)
 
 class VideoDecodeMethod(str, Enum):
     """视频解码方式枚举"""
-    VLLM = "vllm"        # 不预解码，直接传视频给 vLLM
-    DECORD = "decord"    # 使用 decord 库解码
-    OPENCV = "opencv"    # 使用 OpenCV 解码
-    FFMPEG = "ffmpeg"    # 使用 PyAV/FFmpeg 解码
-    QWENVL = "qwenvl"   # 使用 qwen-vl-utils 解码（与 Qwen3-VL 预处理完全一致）
+
+    VLLM = "vllm"  # 不预解码，直接传视频给 vLLM
+    DECORD = "decord"  # 使用 decord 库解码
+    OPENCV = "opencv"  # 使用 OpenCV 解码
+    FFMPEG = "ffmpeg"  # 使用 PyAV/FFmpeg 解码
+    QWENVL = "qwenvl"  # 使用 qwen-vl-utils 解码（与 Qwen3-VL 预处理完全一致）
 
 
 class VideoDecoder:
@@ -53,17 +54,17 @@ class VideoDecoder:
     ):
         """初始化视频解码器
 
-        Args:
-            method: 解码方式，可选 vllm / decord / opencv / ffmpeg / qwenvl
-            fps: 抽帧频率（帧/秒），仅预解码模式有效
-            max_frames: 最大帧数，-1 表示不限制
-            image_format: 输出图片格式，JPEG 或 PNG
-            image_quality: 图片压缩质量（仅 JPEG 有效），范围 1-100
-            size: 分辨率缩放配置，包含 shortest_edge 和 longest_edge，
-用于控制帧图片的像素总数范围（与 Qwen3-VL 的 ViT patch 机制一致），
-                  仅 decord / opencv / ffmpeg 模式有效。为 None 时不进行缩放。
-                  示例: {"shortest_edge": 196608, "longest_edge": 524288}
-            **kwargs: 额外参数，ffmpeg 解码器支持 decode_config / progress_callback / cancel_callback
+                Args:
+                    method: 解码方式，可选 vllm / decord / opencv / ffmpeg / qwenvl
+                    fps: 抽帧频率（帧/秒），仅预解码模式有效
+                    max_frames: 最大帧数，-1 表示不限制
+                    image_format: 输出图片格式，JPEG 或 PNG
+                    image_quality: 图片压缩质量（仅 JPEG 有效），范围 1-100
+                    size: 分辨率缩放配置，包含 shortest_edge 和 longest_edge，
+        用于控制帧图片的像素总数范围（与 Qwen3-VL 的 ViT patch 机制一致），
+                          仅 decord / opencv / ffmpeg 模式有效。为 None 时不进行缩放。
+                          示例: {"shortest_edge": 196608, "longest_edge": 524288}
+                    **kwargs: 额外参数，ffmpeg 解码器支持 decode_config / progress_callback / cancel_callback
         """
         self._method = VideoDecodeMethod(method.lower())
         self._fps = fps
@@ -88,8 +89,11 @@ class VideoDecoder:
         logger.info(
             "视频解码器已初始化: method=%s, fps=%s, max_frames=%s, "
             "image_format=%s, image_quality=%s",
-            self._method.value, self._fps, self._max_frames,
-            self._image_format, self._image_quality,
+            self._method.value,
+            self._fps,
+            self._max_frames,
+            self._image_format,
+            self._image_quality,
         )
 
     @property
@@ -152,7 +156,11 @@ class VideoDecoder:
 
         video_bytes = base64.b64decode(base64_video)
         frames = self._decoder.decode(video_bytes)
-        logger.info("Video decode completed: method=%s, frames=%s", self._method.value, len(frames))
+        logger.info(
+            "Video decode completed: method=%s, frames=%s",
+            self._method.value,
+            len(frames),
+        )
         return frames
 
     def decode_to_bytes(self, base64_video: str) -> Optional[List[bytes]]:
@@ -206,9 +214,7 @@ class VideoDecoder:
         if not frames_b64:
             return None
 
-        logger.info(
-            f"预解码为 {len(frames_b64)} 帧，将重新编码为 mp4 视频"
-        )
+        logger.info(f"预解码为 {len(frames_b64)} 帧，将重新编码为 mp4 视频")
 
         # 重新编码为 mp4 视频
         return self.encode_frames_to_video(

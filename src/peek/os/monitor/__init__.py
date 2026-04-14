@@ -22,23 +22,23 @@ Example:
 """
 
 from peek.os.monitor.collector import (
-    ProcessMonitor,
-    ProcessStats,
     GPUStats,
     MonitorConfig,
     MultiProcessMonitor,
     MultiProcessStats,
-)
-from peek.os.monitor.visualizer import (
-    MonitorVisualizer,
-    RealtimeChart,
-    MultiProcessVisualizer,
-    MultiProcessRealtimeChart,
+    ProcessMonitor,
+    ProcessStats,
 )
 from peek.os.monitor.service import (
     MonitorService,
     MonitorServiceConfig,
     register_monitor_routes,
+)
+from peek.os.monitor.visualizer import (
+    MonitorVisualizer,
+    MultiProcessRealtimeChart,
+    MultiProcessVisualizer,
+    RealtimeChart,
 )
 
 __all__ = [

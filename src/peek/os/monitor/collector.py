@@ -8,21 +8,23 @@ CPU, memory, GPU, and VRAM usage.
 """
 
 import os
-import time
 import threading
+import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Callable
-from collections import deque
+from typing import Any, Callable, Dict, List, Optional
 
 try:
     import psutil
+
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False
 
 try:
     import pynvml
+
     HAS_PYNVML = True
 except ImportError:
     HAS_PYNVML = False
@@ -576,7 +578,9 @@ class MultiProcessStats:
     @property
     def avg_gpu_utilization(self) -> float:
         """Average GPU utilization (from all processes' perspective)."""
-        gpu_utils = [s.avg_gpu_utilization for s in self.process_stats.values() if s.gpu_stats]
+        gpu_utils = [
+            s.avg_gpu_utilization for s in self.process_stats.values() if s.gpu_stats
+        ]
         if not gpu_utils:
             return 0.0
         return sum(gpu_utils) / len(gpu_utils)
@@ -594,7 +598,9 @@ class MultiProcessStats:
             "total_memory_mb": self.total_memory_mb,
             "total_gpu_memory_mb": self.total_gpu_memory_mb,
             "avg_gpu_utilization": self.avg_gpu_utilization,
-            "processes": {pid: stats.to_dict() for pid, stats in self.process_stats.items()},
+            "processes": {
+                pid: stats.to_dict() for pid, stats in self.process_stats.items()
+            },
         }
 
 

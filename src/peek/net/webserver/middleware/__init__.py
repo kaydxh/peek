@@ -11,65 +11,59 @@ HTTP 中间件模块
 - OpenTelemetry 中间件：追踪、指标
 """
 
-from typing import Any, Awaitable, Callable, List, Optional
+from typing import Any, List
 
-from fastapi import Request, Response
+from peek.net.webserver.middleware.base_timer import TimerMiddleware
+from peek.net.webserver.middleware.body_size import MaxBodySizeMiddleware
 
 # 导出中间件链
 from peek.net.webserver.middleware.handler_chain import (
     HandlerChain,
     HandlerChainMiddleware,
     MiddlewareFunc,
-    PreHandlerFunc,
     PostHandlerFunc,
+    PreHandlerFunc,
 )
+from peek.net.webserver.middleware.logger import LoggerMiddleware
+
+# 导出 OpenTelemetry 中间件
+from peek.net.webserver.middleware.opentelemetry import (
+    MetricMiddleware,
+    TraceMiddleware,
+)
+
+# 导出限流中间件
+from peek.net.webserver.middleware.ratelimit import (  # 配置; 限流器; 中间件; 工厂函数; 统计处理器
+    ConcurrencyLimiter,
+    ConcurrencyLimitMiddleware,
+    MethodLimiter,
+    MethodQPSConfig,
+    MethodQPSLimiter,
+    QPSLimitConfig,
+    QPSLimiter,
+    QPSRateLimitMiddleware,
+    QPSStats,
+    RateLimitStatsHandler,
+    TokenBucketLimiter,
+    create_qps_limiter,
+    limit_all_concurrency,
+    limit_all_qps,
+)
+from peek.net.webserver.middleware.recovery import RecoveryMiddleware
 
 # 导出基础中间件
 from peek.net.webserver.middleware.requestid import RequestIDMiddleware
-from peek.net.webserver.middleware.base_timer import TimerMiddleware
-from peek.net.webserver.middleware.recovery import RecoveryMiddleware
-from peek.net.webserver.middleware.logger import LoggerMiddleware
-from peek.net.webserver.middleware.body_size import MaxBodySizeMiddleware
-
-# 导出限流中间件
-from peek.net.webserver.middleware.ratelimit import (
-    # 配置
-    MethodQPSConfig,
-    QPSLimitConfig,
-    QPSStats,
-    # 限流器
-    TokenBucketLimiter,
-    ConcurrencyLimiter,
-    MethodLimiter,
-    MethodQPSLimiter,
-    QPSLimiter,
-    # 中间件
-    QPSRateLimitMiddleware,
-    ConcurrencyLimitMiddleware,
-    # 工厂函数
-    create_qps_limiter,
-    limit_all_qps,
-    limit_all_concurrency,
-    # 统计处理器
-    RateLimitStatsHandler,
-)
 
 # 导出超时中间件
 from peek.net.webserver.middleware.timeout import (
-    TimeoutMiddleware,
     PathTimeoutMiddleware,
+    TimeoutMiddleware,
     timeout,
 )
 
 # 导出请求耗时中间件
 from peek.net.webserver.middleware.timer import (
     HttpTimerMiddleware,
-)
-
-# 导出 OpenTelemetry 中间件
-from peek.net.webserver.middleware.opentelemetry import (
-    TraceMiddleware,
-    MetricMiddleware,
 )
 
 __all__ = [

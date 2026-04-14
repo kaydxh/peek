@@ -12,40 +12,40 @@ gRPC 模块
 - 健康检查: gRPC Health Checking Protocol
 """
 
-from peek.net.grpc.server import GRPCServer, AsyncGRPCServer
+from peek.net.grpc.config import (
+    GRPCClientConfig,
+    GRPCConfig,
+    GRPCGatewayConfig,
+    GRPCServerConfig,
+)
 from peek.net.grpc.gateway import GRPCGateway
 from peek.net.grpc.interceptor import (
-    UnaryServerInterceptor,
-    StreamServerInterceptor,
-    InterceptorChain,
-    RequestIDInterceptor,
-    RecoveryInterceptor,
-    LoggingInterceptor,
-    TimerInterceptor,
-    QPSLimitInterceptor,
     ConcurrencyLimitInterceptor,
+    InterceptorChain,
+    LoggingInterceptor,
+    QPSLimitInterceptor,
+    RecoveryInterceptor,
+    RequestIDInterceptor,
+    StreamServerInterceptor,
+    TimerInterceptor,
+    UnaryServerInterceptor,
     create_default_interceptor_chain,
     get_request_id,
     get_start_time,
-    get_trace_id,
-)
-from peek.net.grpc.config import (
-    GRPCConfig,
-    GRPCServerConfig,
-    GRPCClientConfig,
-    GRPCGatewayConfig,
 )
 
 # 中间件模块
 from peek.net.grpc.middleware import (
-    # 限流
-    QPSLimitInterceptor as MiddlewareQPSLimitInterceptor,
-    ConcurrencyLimitInterceptor as MiddlewareConcurrencyLimitInterceptor,
     MethodQPSLimitInterceptor,
-    # OpenTelemetry
-    TraceInterceptor,
     MetricInterceptor,
 )
+from peek.net.grpc.middleware import (
+    QPSLimitInterceptor as MiddlewareQPSLimitInterceptor,  # 限流; OpenTelemetry
+)
+from peek.net.grpc.middleware import (
+    TraceInterceptor,
+)
+from peek.net.grpc.server import AsyncGRPCServer, GRPCServer
 
 __all__ = [
     # Server
@@ -67,6 +67,7 @@ __all__ = [
     "get_start_time",
     # Middleware
     "MethodQPSLimitInterceptor",
+    "MiddlewareQPSLimitInterceptor",
     "TraceInterceptor",
     "MetricInterceptor",
     # Config

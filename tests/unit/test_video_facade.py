@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from peek.cv.video.video_decoder import VideoDecoder, VideoDecodeMethod
+from peek.cv.video.video_decoder import VideoDecodeMethod, VideoDecoder
 
 
 class TestVideoDecodeMethod:
@@ -82,6 +82,7 @@ class TestVideoDecoder:
     def test_ffmpeg_mode(self, mock_check):
         """测试 ffmpeg 模式"""
         from peek.cv.video.decoder.ffmpeg_decoder import DecodeConfig
+
         config = DecodeConfig(start_time=5.0)
         vd = VideoDecoder(method="ffmpeg", fps=0.5, decode_config=config)
         assert vd.method == VideoDecodeMethod.FFMPEG
@@ -108,7 +109,6 @@ class TestVideoDecoder:
         assert vd.shortest_edge == 196608
         assert vd.longest_edge == 524288
 
-
         """测试方法名大小写不敏感"""
         vd = VideoDecoder(method="VLLM")
         assert vd.method == VideoDecodeMethod.VLLM
@@ -127,7 +127,9 @@ class TestEncodeFramesToVideo:
         """创建一个纯色帧图片的 base64 字符串"""
         import base64
         import io
+
         from PIL import Image
+
         img = Image.new("RGB", (width, height), color)
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=95)
@@ -150,6 +152,7 @@ class TestEncodeFramesToVideo:
 
         # 验证是有效的 base64
         import base64
+
         video_bytes = base64.b64decode(video_b64)
         assert len(video_bytes) > 0
 
@@ -198,9 +201,10 @@ class TestEncodeFramesToVideo:
 
     def test_encoded_video_decodable(self):
         """验证编码后的视频可以被 PyAV 正确解码"""
-        import av
         import base64
         import io
+
+        import av
 
         frames = [
             self._make_frame_b64(color=(255, 0, 0)),
@@ -236,9 +240,14 @@ class TestEncodeFramesToVideo:
 
 import logging
 import sys
+
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
 from conftest import (
-    skip_no_video, skip_no_decord, skip_no_opencv, skip_no_av, integration,
+    integration,
+    skip_no_av,
+    skip_no_decord,
+    skip_no_opencv,
+    skip_no_video,
 )
 
 logger = logging.getLogger(__name__)
@@ -315,9 +324,11 @@ class TestVideoDecoderFacadeReal:
         assert len(video_b64) > 0
 
         # 验证编码后的视频可以被解码
-        import av
         import base64
         import io
+
+        import av
+
         video_bytes = base64.b64decode(video_b64)
         container = av.open(io.BytesIO(video_bytes))
         decoded_frames = list(container.decode(video=0))

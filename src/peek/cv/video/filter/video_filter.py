@@ -31,6 +31,7 @@ def _ensure_ffmpeg():
     """确保 ffmpeg-python 已安装"""
     try:
         import ffmpeg
+
         return ffmpeg
     except ImportError:
         raise ImportError("需要安装 ffmpeg-python: pip install ffmpeg-python")
@@ -101,9 +102,15 @@ class VideoFilter:
             self: 支持链式调用
         """
         filter_str = CropFilter.build_filter(
-            x=x, y=y, width=width, height=height,
-            center_crop=center_crop, out_width=out_width, out_height=out_height,
-            keep_aspect=keep_aspect, target_aspect=target_aspect,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            center_crop=center_crop,
+            out_width=out_width,
+            out_height=out_height,
+            keep_aspect=keep_aspect,
+            target_aspect=target_aspect,
         )
         self._filters.append(filter_str)
         return self
@@ -203,7 +210,9 @@ class VideoFilter:
         ffmpeg = _ensure_ffmpeg()
 
         if not self._filters:
-            raise ValueError("没有添加任何滤镜，请先调用 scale() / crop() / rotate() 等方法")
+            raise ValueError(
+                "没有添加任何滤镜，请先调用 scale() / crop() / rotate() 等方法"
+            )
 
         filter_chain = self.build()
 
@@ -226,11 +235,11 @@ class VideoFilter:
         try:
             out.run(overwrite_output=overwrite, quiet=True)
         except ffmpeg.Error as e:
-            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
-            error_lines = stderr.strip().split("\n")[-5:]
-            raise RuntimeError(
-                f"滤镜执行失败:\n" + "\n".join(error_lines)
+            stderr = (
+                e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
             )
+            error_lines = stderr.strip().split("\n")[-5:]
+            raise RuntimeError("滤镜执行失败:\n" + "\n".join(error_lines))
 
         logger.info("Filter chain completed: %s", output_path)
         return output_path

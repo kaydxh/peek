@@ -17,19 +17,19 @@ from peek.config.loader import (
     load_config_from_file,
 )
 from peek.config.schema import (
-    NetConfig,
+    AppWebConfig,
+    DatabaseConfig,
+    DebugConfig,
     GrpcConfig,
     HttpConfig,
-    MethodQPSConfig,
-    QPSLimitConfig,
-    DebugConfig,
-    ShutdownConfig,
-    AppWebConfig,
-    WebConfig,
     LogConfig,
-    OpenTelemetryConfig,
+    MethodQPSConfig,
     MonitorConfig,
-    DatabaseConfig,
+    NetConfig,
+    OpenTelemetryConfig,
+    QPSLimitConfig,
+    ShutdownConfig,
+    WebConfig,
 )
 from peek.config.watcher import ConfigWatcher
 

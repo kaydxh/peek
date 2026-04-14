@@ -17,7 +17,7 @@ FastAPIInstrumentor 等工具兼容。
 import json
 import logging
 import uuid
-from typing import List, MutableMapping, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -66,6 +66,7 @@ class RequestIDMiddleware:
         trace_id = ""
         try:
             from opentelemetry import trace as otel_trace
+
             span = otel_trace.get_current_span()
             if span and span.get_span_context().trace_id:
                 trace_id = format(span.get_span_context().trace_id, "032x")
@@ -97,7 +98,7 @@ class RequestIDMiddleware:
             content_type = ""
 
             async def send_wrapper(message: Message) -> None:
-                nonlocal response_started, initial_message, body_parts, content_type
+                nonlocal response_started, initial_message, content_type
 
                 if message["type"] == "http.response.start":
                     # 暂存 response start 消息，稍后可能修改 headers
@@ -136,11 +137,13 @@ class RequestIDMiddleware:
                         # 发送 response start
                         await send(initial_message)
                         # 发送修改后的 body
-                        await send({
-                            "type": "http.response.body",
-                            "body": modified_body,
-                            "more_body": False,
-                        })
+                        await send(
+                            {
+                                "type": "http.response.body",
+                                "body": modified_body,
+                                "more_body": False,
+                            }
+                        )
                     # 如果还有更多 body chunk，继续收集
                 else:
                     await send(message)
@@ -240,9 +243,11 @@ def _update_headers(
             new_headers.append((k, v))
 
     if not found_request_id:
-        new_headers.append((
-            request_id_header.encode("latin-1"),
-            request_id.encode("latin-1"),
-        ))
+        new_headers.append(
+            (
+                request_id_header.encode("latin-1"),
+                request_id.encode("latin-1"),
+            )
+        )
 
     return new_headers

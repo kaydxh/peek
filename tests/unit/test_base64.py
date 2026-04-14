@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+
 import peek.encoding.base64.base64 as base64_
+
 
 class TestHttp(unittest.TestCase):
     def test_base_encode(self):

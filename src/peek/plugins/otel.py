@@ -178,7 +178,9 @@ def _convert_metric_config(
 
     if exporter_type == "otlp":
         # 转换 temporality_delta 为 temporality 枚举
-        temporality = "delta" if otlp_config.get("temporality_delta", False) else "cumulative"
+        temporality = (
+            "delta" if otlp_config.get("temporality_delta", False) else "cumulative"
+        )
 
         metric_config["otlp"] = {
             "endpoint": otlp_config.get("endpoint", "localhost:4317"),
@@ -254,7 +256,9 @@ async def install_opentelemetry(
                     exclude_spans=["receive", "send"],  # 禁用 http send/receive 子 span
                 )
 
-                logger.info("FastAPI integrated with OpenTelemetry (send/receive spans disabled)")
+                logger.info(
+                    "FastAPI integrated with OpenTelemetry (send/receive spans disabled)"
+                )
             except ImportError:
                 logger.debug("FastAPI instrumentation not available")
             except Exception as e:

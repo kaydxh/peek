@@ -26,8 +26,8 @@ from peek.errors.handler import (
     format_validation_errors,
 )
 
-
 # ============ ErrorCode 枚举测试 ============
+
 
 class TestErrorCode:
     """ErrorCode 枚举测试"""
@@ -49,6 +49,7 @@ class TestErrorCode:
 
 
 # ============ AppError 基类测试 ============
+
 
 class TestAppError:
     """AppError 基类测试"""
@@ -137,6 +138,7 @@ class TestAppError:
 
 # ============ 具名子类测试 ============
 
+
 class TestErrorSubclasses:
     """错误子类测试"""
 
@@ -193,6 +195,7 @@ class TestErrorSubclasses:
 
 
 # ============ 校验错误格式化工具测试 ============
+
 
 class TestValidationErrorFormatting:
     """校验错误格式化测试"""

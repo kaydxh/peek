@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 
+
 def exec_cmd(cmd):
     """
     execute command
@@ -16,14 +17,15 @@ def exec_cmd(cmd):
         return out_bytes.decode("utf-8")
     except subprocess.CalledProcessError as err:
         out_bytes = err.output
-        code = err.returncode
+        err.returncode
         return ""
+
 
 def get_repo_info(file_path):
     """
-     get repo info for file
-     :param file_path: file path
-     :return: repo info
+    get repo info for file
+    :param file_path: file path
+    :return: repo info
     """
     get_repo_cmd = "cd {}; git config core.quotepath false; git remote -v"
     if os.path.isdir(file_path):
@@ -36,17 +38,18 @@ def get_repo_info(file_path):
         shell_result = exec_cmd(cmd)
         if not shell_result:
             return ""
-        re_result = re.search("origin\s+(.*)\s+\(fetch\)", shell_result)
+        re_result = re.search(r"origin\s+(.*)\s+\(fetch\)", shell_result)
         if re_result:
             repo = re_result.group("url").split("://")[-1]
         else:
-            repo = re.search("(?P<url>@git[^\s]+)", shell_result).group("url")
+            repo = re.search(r"(?P<url>@git[^\s]+)", shell_result).group("url")
         git_repo = repo.split("@")[-1].replace(":", "/")
         return git_repo
     except Exception as err:
-        print("err:",err)
+        print("err:", err)
         return ""
-    
+
+
 def get_file_repo_dir(file_path):
     """
     get repo dir for file
@@ -73,6 +76,5 @@ def get_file_repo_dir(file_path):
             else:
                 return line
     except Exception as err:
-        print("err:",err)
+        print("err:", err)
         return ""
-    

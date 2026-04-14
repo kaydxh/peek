@@ -7,15 +7,16 @@ OpenTelemetry 配置模块
 
 import os
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from peek.time.parse import parse_duration
 
 
 class ExporterType(str, Enum):
     """导出器类型"""
+
     NONE = "none"
     STDOUT = "stdout"
     OTLP = "otlp"
@@ -23,6 +24,7 @@ class ExporterType(str, Enum):
 
 class MetricExporterType(str, Enum):
     """Metric 导出器类型"""
+
     NONE = "none"
     STDOUT = "stdout"
     OTLP = "otlp"
@@ -31,18 +33,21 @@ class MetricExporterType(str, Enum):
 
 class OTLPProtocol(str, Enum):
     """OTLP 协议类型"""
+
     HTTP = "http"
     GRPC = "grpc"
 
 
 class TemporalityType(str, Enum):
     """Metric Temporality 类型"""
+
     CUMULATIVE = "cumulative"
     DELTA = "delta"
 
 
 class OTLPConfig(BaseModel):
     """OTLP 导出器配置"""
+
     endpoint: str = Field(default="localhost:4317", description="OTLP 端点地址")
     protocol: OTLPProtocol = Field(default=OTLPProtocol.GRPC, description="协议类型")
     headers: Dict[str, str] = Field(default_factory=dict, description="请求头")
@@ -51,7 +56,7 @@ class OTLPConfig(BaseModel):
     timeout: str = Field(default="10s", description="超时时间")
     temporality: TemporalityType = Field(
         default=TemporalityType.CUMULATIVE,
-        description="Metric Temporality 类型（cumulative/delta）"
+        description="Metric Temporality 类型（cumulative/delta）",
     )
 
     @property
@@ -62,6 +67,7 @@ class OTLPConfig(BaseModel):
 
 class PrometheusConfig(BaseModel):
     """Prometheus 导出器配置"""
+
     url: str = Field(default="/metrics", description="Metrics 端点路径")
     namespace: str = Field(default="", description="指标命名空间前缀")
     enable_go_collector: bool = Field(default=True, description="启用 Go Runtime 采集")
@@ -70,15 +76,21 @@ class PrometheusConfig(BaseModel):
 
 class StdoutConfig(BaseModel):
     """Stdout 导出器配置"""
+
     pretty_print: bool = Field(default=True, description="是否格式化输出")
 
 
 class TracerConfig(BaseModel):
     """Tracer 配置"""
+
     enabled: bool = Field(default=False, description="是否启用 Tracer")
-    exporter_type: ExporterType = Field(default=ExporterType.NONE, description="导出器类型")
+    exporter_type: ExporterType = Field(
+        default=ExporterType.NONE, description="导出器类型"
+    )
     otlp: OTLPConfig = Field(default_factory=OTLPConfig, description="OTLP 配置")
-    stdout: StdoutConfig = Field(default_factory=StdoutConfig, description="Stdout 配置")
+    stdout: StdoutConfig = Field(
+        default_factory=StdoutConfig, description="Stdout 配置"
+    )
     sample_ratio: float = Field(default=1.0, description="采样率（0.0-1.0）")
     batch_timeout: str = Field(default="5s", description="批量导出超时时间")
 
@@ -90,17 +102,18 @@ class TracerConfig(BaseModel):
 
 class MetricConfig(BaseModel):
     """Metric 配置"""
+
     enabled: bool = Field(default=False, description="是否启用 Metric")
     exporter_type: MetricExporterType = Field(
-        default=MetricExporterType.NONE,
-        description="导出器类型"
+        default=MetricExporterType.NONE, description="导出器类型"
     )
     otlp: OTLPConfig = Field(default_factory=OTLPConfig, description="OTLP 配置")
     prometheus: PrometheusConfig = Field(
-        default_factory=PrometheusConfig,
-        description="Prometheus 配置"
+        default_factory=PrometheusConfig, description="Prometheus 配置"
     )
-    stdout: StdoutConfig = Field(default_factory=StdoutConfig, description="Stdout 配置")
+    stdout: StdoutConfig = Field(
+        default_factory=StdoutConfig, description="Stdout 配置"
+    )
     collect_interval: str = Field(default="60s", description="采集间隔")
 
     @property
@@ -115,10 +128,10 @@ class AppMeterProviderConfig(BaseModel):
 
     用于业务指标上报，独立于全局 MeterProvider。
     """
+
     enabled: bool = Field(default=False, description="是否启用 App MeterProvider")
     exporter_type: MetricExporterType = Field(
-        default=MetricExporterType.OTLP,
-        description="导出器类型"
+        default=MetricExporterType.OTLP, description="导出器类型"
     )
     otlp: OTLPConfig = Field(default_factory=OTLPConfig, description="OTLP 配置")
     collect_interval: str = Field(default="30s", description="采集间隔")
@@ -131,13 +144,17 @@ class AppMeterProviderConfig(BaseModel):
 
 class K8sConfig(BaseModel):
     """K8s 资源配置"""
+
     enabled: bool = Field(default=True, description="是否启用 K8s 属性")
 
 
 class ZhiYanConfig(BaseModel):
     """ZhiYan 平台配置"""
+
     app_mark: str = Field(default="", description="App 级别应用标识（业务指标）")
-    global_app_mark: str = Field(default="", description="Global 级别应用标识（基础设施指标）")
+    global_app_mark: str = Field(
+        default="", description="Global 级别应用标识（基础设施指标）"
+    )
     env: str = Field(default="", description="环境标识（prod/test/dev）")
     instance_mark: str = Field(default="", description="实例标识")
     expand_key: str = Field(default="no", description="是否扩展属性到维度（yes/no）")
@@ -148,26 +165,35 @@ class ZhiYanConfig(BaseModel):
 
 class ResourceConfig(BaseModel):
     """Resource 资源配置"""
+
     service_name: str = Field(default="unknown-service", description="服务名称")
     service_version: str = Field(default="", description="服务版本")
     service_namespace: str = Field(default="", description="服务命名空间")
     deployment_environment: str = Field(default="", description="部署环境")
     apm_token: str = Field(default="", description="APM Token（腾讯云）")
     k8s: K8sConfig = Field(default_factory=K8sConfig, description="K8s 配置")
-    zhiyan: ZhiYanConfig = Field(default_factory=ZhiYanConfig, description="ZhiYan 平台配置")
+    zhiyan: ZhiYanConfig = Field(
+        default_factory=ZhiYanConfig, description="ZhiYan 平台配置"
+    )
     attributes: Dict[str, str] = Field(default_factory=dict, description="自定义属性")
 
 
 class OpenTelemetryConfig(BaseModel):
     """OpenTelemetry 完整配置"""
+
     enabled: bool = Field(default=False, description="是否启用 OpenTelemetry")
-    tracer: TracerConfig = Field(default_factory=TracerConfig, description="Tracer 配置")
-    metric: MetricConfig = Field(default_factory=MetricConfig, description="Metric 配置")
-    app_meter_provider: AppMeterProviderConfig = Field(
-        default_factory=AppMeterProviderConfig,
-        description="App MeterProvider 配置"
+    tracer: TracerConfig = Field(
+        default_factory=TracerConfig, description="Tracer 配置"
     )
-    resource: ResourceConfig = Field(default_factory=ResourceConfig, description="Resource 配置")
+    metric: MetricConfig = Field(
+        default_factory=MetricConfig, description="Metric 配置"
+    )
+    app_meter_provider: AppMeterProviderConfig = Field(
+        default_factory=AppMeterProviderConfig, description="App MeterProvider 配置"
+    )
+    resource: ResourceConfig = Field(
+        default_factory=ResourceConfig, description="Resource 配置"
+    )
 
 
 def load_config(
@@ -194,16 +220,27 @@ def load_config(
     if config_file and os.path.exists(config_file):
         try:
             import yaml
+
             with open(config_file, "r", encoding="utf-8") as f:
                 file_data = yaml.safe_load(f) or {}
                 # 支持 open_telemetry 或 opentelemetry 作为根键
-                data = file_data.get("open_telemetry") or file_data.get("opentelemetry") or file_data
+                data = (
+                    file_data.get("open_telemetry")
+                    or file_data.get("opentelemetry")
+                    or file_data
+                )
         except ImportError:
-            raise ImportError("PyYAML is required for loading config files. Install with: pip install pyyaml")
+            raise ImportError(
+                "PyYAML is required for loading config files. Install with: pip install pyyaml"
+            )
 
     # 2. 合并字典配置
     if config_dict:
-        dict_data = config_dict.get("open_telemetry") or config_dict.get("opentelemetry") or config_dict
+        dict_data = (
+            config_dict.get("open_telemetry")
+            or config_dict.get("opentelemetry")
+            or config_dict
+        )
         _deep_merge(data, dict_data)
 
     # 3. 从环境变量覆盖（如果指定了前缀）
@@ -337,7 +374,9 @@ class OpenTelemetryConfigBuilder:
         }
         return self
 
-    def with_tracer_stdout(self, pretty_print: bool = True) -> "OpenTelemetryConfigBuilder":
+    def with_tracer_stdout(
+        self, pretty_print: bool = True
+    ) -> "OpenTelemetryConfigBuilder":
         """配置 Stdout Tracer"""
         self._config["tracer"] = {
             "enabled": True,
@@ -390,7 +429,9 @@ class OpenTelemetryConfigBuilder:
         }
         return self
 
-    def with_metric_stdout(self, pretty_print: bool = True) -> "OpenTelemetryConfigBuilder":
+    def with_metric_stdout(
+        self, pretty_print: bool = True
+    ) -> "OpenTelemetryConfigBuilder":
         """配置 Stdout Metric"""
         self._config["metric"] = {
             "enabled": True,

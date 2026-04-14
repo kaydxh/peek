@@ -61,7 +61,7 @@ async def install_mysql(
         return None
 
     try:
-        from peek.database.mysql import create_mysql_engine, close_mysql_engine
+        from peek.database.mysql import close_mysql_engine, create_mysql_engine
 
         engine = await create_mysql_engine(config)
 

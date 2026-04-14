@@ -15,12 +15,12 @@
     # 基础使用
     backoff = ExponentialBackOff()
     result = await backoff.retry_async(async_function, arg1, arg2)
-    
+
     # 使用装饰器
     @retry(max_retries=3, initial_interval=0.5)
     async def my_async_func():
         ...
-    
+
     @retry_sync(max_retries=3)
     def my_sync_func():
         ...
@@ -36,12 +36,10 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Generic,
     Optional,
     Tuple,
     Type,
     TypeVar,
-    Union,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,7 +76,9 @@ class BackOffOptions:
     # 最大重试次数，-1 表示不限制
     max_elapsed_count: int = DEFAULT_MAX_ELAPSED_COUNT
     # 需要重试的异常类型列表，为空则重试所有异常
-    retry_exceptions: Tuple[Type[Exception], ...] = field(default_factory=lambda: (Exception,))
+    retry_exceptions: Tuple[Type[Exception], ...] = field(
+        default_factory=lambda: (Exception,)
+    )
     # 不需要重试的异常类型列表
     ignore_exceptions: Tuple[Type[Exception], ...] = field(default_factory=tuple)
     # 自定义重试条件函数，返回 True 则重试
@@ -261,7 +261,10 @@ class ExponentialBackOff:
             return next_interval, False
 
         # 检查是否超过最大重试次数
-        if self.opts.max_elapsed_count > -1 and self._elapsed_count > self.opts.max_elapsed_count:
+        if (
+            self.opts.max_elapsed_count > -1
+            and self._elapsed_count > self.opts.max_elapsed_count
+        ):
             return next_interval, False
 
         return next_interval, True
@@ -365,7 +368,6 @@ class ExponentialBackOff:
             最后一次执行的异常
         """
         self.reset()
-        last_exception: Optional[Exception] = None
 
         while True:
             try:
@@ -376,7 +378,7 @@ class ExponentialBackOff:
                 return result
 
             except Exception as e:
-                last_exception = e
+                pass
 
                 # 检查是否应该重试
                 if not self._should_retry(e):
@@ -389,9 +391,11 @@ class ExponentialBackOff:
 
                 if not should_continue:
                     logger.warning(
-                    "Retry exhausted, limit reached: elapsed_count=%s, "
-                    "elapsed_time=%.2fs, error=%s",
-                    self._elapsed_count, self.elapsed_time, e
+                        "Retry exhausted, limit reached: elapsed_count=%s, "
+                        "elapsed_time=%.2fs, error=%s",
+                        self._elapsed_count,
+                        self.elapsed_time,
+                        e,
                     )
                     if self.opts.on_failure:
                         self.opts.on_failure(e, self._elapsed_count)
@@ -402,9 +406,10 @@ class ExponentialBackOff:
                     self.opts.on_retry(e, self._elapsed_count, wait_time)
 
                 logger.debug(
-                    "Retrying: attempt=%s, "
-                    "wait=%.3fs, error=%s",
-                    self._elapsed_count, wait_time, e
+                    "Retrying: attempt=%s, " "wait=%.3fs, error=%s",
+                    self._elapsed_count,
+                    wait_time,
+                    e,
                 )
 
                 await asyncio.sleep(wait_time)
@@ -430,7 +435,6 @@ class ExponentialBackOff:
             最后一次执行的异常
         """
         self.reset()
-        last_exception: Optional[Exception] = None
 
         while True:
             try:
@@ -441,7 +445,7 @@ class ExponentialBackOff:
                 return result
 
             except Exception as e:
-                last_exception = e
+                pass
 
                 # 检查是否应该重试
                 if not self._should_retry(e):
@@ -454,9 +458,11 @@ class ExponentialBackOff:
 
                 if not should_continue:
                     logger.warning(
-                    "Retry exhausted, limit reached: elapsed_count=%s, "
-                    "elapsed_time=%.2fs, error=%s",
-                    self._elapsed_count, self.elapsed_time, e
+                        "Retry exhausted, limit reached: elapsed_count=%s, "
+                        "elapsed_time=%.2fs, error=%s",
+                        self._elapsed_count,
+                        self.elapsed_time,
+                        e,
                     )
                     if self.opts.on_failure:
                         self.opts.on_failure(e, self._elapsed_count)
@@ -467,9 +473,10 @@ class ExponentialBackOff:
                     self.opts.on_retry(e, self._elapsed_count, wait_time)
 
                 logger.debug(
-                    "Retrying: attempt=%s, "
-                    "wait=%.3fs, error=%s",
-                    self._elapsed_count, wait_time, e
+                    "Retrying: attempt=%s, " "wait=%.3fs, error=%s",
+                    self._elapsed_count,
+                    wait_time,
+                    e,
                 )
 
                 time.sleep(wait_time)

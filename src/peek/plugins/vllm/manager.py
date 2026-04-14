@@ -82,7 +82,9 @@ class VLLMServerManager:
                 logger.info(
                     "[nsys] Estimated collection completion: %ds "
                     "(delay=%ds + duration=%ds)",
-                    nsys_total, self.config.nsys_delay, self.config.nsys_duration,
+                    nsys_total,
+                    self.config.nsys_delay,
+                    self.config.nsys_duration,
                 )
 
             self.process = subprocess.Popen(
@@ -125,11 +127,14 @@ class VLLMServerManager:
             logger.info(
                 "[nsys] Enabling nsys profile wrapper for vLLM process: "
                 "trace=%s, delay=%ds, duration=%ds, output=%s",
-                self.config.nsys_trace, self.config.nsys_delay,
-                self.config.nsys_duration, self.config.nsys_output,
+                self.config.nsys_trace,
+                self.config.nsys_delay,
+                self.config.nsys_duration,
+                self.config.nsys_output,
             )
             cmd += [
-                "nsys", "profile",
+                "nsys",
+                "profile",
                 f"--trace={self.config.nsys_trace}",
                 "--sample=none",
                 "--cpuctxsw=none",
@@ -143,12 +148,18 @@ class VLLMServerManager:
             "vllm",
             "serve",
             self.config.model_path,
-            "--host", self.config.host,
-            "--port", str(self.config.port),
-            "--served-model-name", self.config.model_name,
-            "--gpu-memory-utilization", str(self.config.gpu_memory_utilization),
-            "--max-model-len", str(self.config.max_model_len),
-            "--tensor-parallel-size", str(self.config.tensor_parallel_size),
+            "--host",
+            self.config.host,
+            "--port",
+            str(self.config.port),
+            "--served-model-name",
+            self.config.model_name,
+            "--gpu-memory-utilization",
+            str(self.config.gpu_memory_utilization),
+            "--max-model-len",
+            str(self.config.max_model_len),
+            "--tensor-parallel-size",
+            str(self.config.tensor_parallel_size),
         ]
 
         # runner 类型（如 pooling 用于分类模型）
@@ -162,10 +173,14 @@ class VLLMServerManager:
         # HuggingFace 模型配置覆盖
         if self.config.hf_overrides:
             try:
-                hf_overrides_str = json.dumps(self.config.hf_overrides, separators=(",", ":"))
+                hf_overrides_str = json.dumps(
+                    self.config.hf_overrides, separators=(",", ":")
+                )
                 cmd += ["--hf-overrides", hf_overrides_str]
             except (TypeError, ValueError) as e:
-                logger.error("Invalid hf_overrides: %s, error: %s", self.config.hf_overrides, e)
+                logger.error(
+                    "Invalid hf_overrides: %s, error: %s", self.config.hf_overrides, e
+                )
 
         if self.config.dtype and self.config.dtype != "auto":
             cmd += ["--dtype", self.config.dtype]
@@ -175,26 +190,40 @@ class VLLMServerManager:
 
         if not is_pooling:
             cmd += [
-                "--max-num-batched-tokens", str(self.config.max_num_batched_tokens),
-                "--max-num-seqs", str(self.config.max_num_seqs),
+                "--max-num-batched-tokens",
+                str(self.config.max_num_batched_tokens),
+                "--max-num-seqs",
+                str(self.config.max_num_seqs),
             ]
 
         # 多模态处理器参数（视频帧采样等）
         if self.config.mm_processor_kwargs:
             try:
-                mm_kwargs_str = json.dumps(self.config.mm_processor_kwargs, separators=(",", ":"))
+                mm_kwargs_str = json.dumps(
+                    self.config.mm_processor_kwargs, separators=(",", ":")
+                )
                 cmd += ["--mm-processor-kwargs", mm_kwargs_str]
             except (TypeError, ValueError) as e:
-                logger.error("Invalid mm_processor_kwargs: %s, error: %s", self.config.mm_processor_kwargs, e)
+                logger.error(
+                    "Invalid mm_processor_kwargs: %s, error: %s",
+                    self.config.mm_processor_kwargs,
+                    e,
+                )
 
         # 媒体IO参数（视频帧数控制等），仅在非 pooling 模式下添加
         if not is_pooling:
             if self.config.media_io_kwargs:
                 try:
-                    media_io_str = json.dumps(self.config.media_io_kwargs, separators=(",", ":"))
+                    media_io_str = json.dumps(
+                        self.config.media_io_kwargs, separators=(",", ":")
+                    )
                     cmd += ["--media-io-kwargs", media_io_str]
                 except (TypeError, ValueError) as e:
-                    logger.error("Invalid media_io_kwargs: %s, error: %s", self.config.media_io_kwargs, e)
+                    logger.error(
+                        "Invalid media_io_kwargs: %s, error: %s",
+                        self.config.media_io_kwargs,
+                        e,
+                    )
             else:
                 # 默认：使用所有视频帧（-1 表示不限制帧数）
                 cmd += ["--media-io-kwargs", '{"video":{"num_frames":-1}}']
@@ -258,8 +287,13 @@ class VLLMServerManager:
         while time.time() - start_time < timeout:
             if self.process and self.process.poll() is not None:
                 exit_code = self.process.returncode
-                logger.error("vLLM server process terminated unexpectedly, exit code: %s", exit_code)
-                raise RuntimeError(f"vLLM server process terminated, exit code: {exit_code}")
+                logger.error(
+                    "vLLM server process terminated unexpectedly, exit code: %s",
+                    exit_code,
+                )
+                raise RuntimeError(
+                    f"vLLM server process terminated, exit code: {exit_code}"
+                )
 
             try:
                 if await self._check_server_ready():
@@ -276,7 +310,8 @@ class VLLMServerManager:
                 logger.info(
                     "Still waiting for vLLM server... "
                     "(elapsed: %.0fs, remaining: %.0fs)",
-                    elapsed, remaining,
+                    elapsed,
+                    remaining,
                 )
                 last_log_time = current_time
 
@@ -297,11 +332,14 @@ class VLLMServerManager:
                     if not is_ready:
                         logger.debug(
                             "Model %s not ready yet, available models: %s",
-                            self.config.model_name, model_names,
+                            self.config.model_name,
+                            model_names,
                         )
                     return is_ready
                 else:
-                    logger.debug("vLLM server returned status code: %s", response.status_code)
+                    logger.debug(
+                        "vLLM server returned status code: %s", response.status_code
+                    )
                     return False
         except Exception as e:
             logger.debug("Failed to check vLLM server readiness: %s", e)
@@ -310,7 +348,9 @@ class VLLMServerManager:
     async def health_check(self) -> bool:
         """Health check"""
         if self.process and self.process.poll() is not None:
-            logger.warning("vLLM process has terminated, exit code: %s", self.process.returncode)
+            logger.warning(
+                "vLLM process has terminated, exit code: %s", self.process.returncode
+            )
             return False
 
         # 如果进程为 None 且 auto_start 为 True，也视为不健康
@@ -362,7 +402,9 @@ class VLLMServerManager:
             return False
         except Exception as e:
             logger.warning(
-                "[InferenceProbe] Probe error: %s: %s", type(e).__name__, e,
+                "[InferenceProbe] Probe error: %s: %s",
+                type(e).__name__,
+                e,
             )
             return False
 
@@ -396,8 +438,10 @@ class VLLMServerManager:
         logger.info(
             "vLLM watchdog started (interval: %ds, max_restarts: %d, "
             "cooldown: %ds, ready: %s)",
-            self.config.watchdog_interval, self.config.max_restart_attempts,
-            self.config.restart_cooldown, self._ready,
+            self.config.watchdog_interval,
+            self.config.max_restart_attempts,
+            self.config.restart_cooldown,
+            self._ready,
         )
 
     def mark_as_ready(self) -> None:
@@ -427,7 +471,9 @@ class VLLMServerManager:
         # 等待 vLLM 首次就绪后再开始检查
         while self._watchdog_enabled and not self._ready:
             await asyncio.sleep(self.config.watchdog_interval)
-            logger.debug("[Watchdog] vLLM not ready yet, skipping check (startup phase)")
+            logger.debug(
+                "[Watchdog] vLLM not ready yet, skipping check (startup phase)"
+            )
 
         logger.info("[Watchdog] vLLM is ready, starting process monitoring")
         self._inference_probe_failures = 0
@@ -443,7 +489,9 @@ class VLLMServerManager:
 
                 # ---- 第 1 层：进程级别检查 ----
                 if self.process is None:
-                    logger.warning("[Watchdog] vLLM process is None, attempting auto-restart...")
+                    logger.warning(
+                        "[Watchdog] vLLM process is None, attempting auto-restart..."
+                    )
                     await self._try_restart()
                     continue
 
@@ -482,7 +530,10 @@ class VLLMServerManager:
                             self._inference_probe_failures,
                             self.config.inference_probe_max_failures,
                         )
-                        if self._inference_probe_failures >= self.config.inference_probe_max_failures:
+                        if (
+                            self._inference_probe_failures
+                            >= self.config.inference_probe_max_failures
+                        ):
                             logger.error(
                                 "[Watchdog] Inference probe failed %d consecutive times, "
                                 "engine may be stuck, force-restarting vLLM server...",
@@ -522,7 +573,9 @@ class VLLMServerManager:
             logger.warning(
                 "[Watchdog][nsys] vLLM process terminated during nsys collection "
                 "(ran %.0fs / expected %ds), exit code: %s",
-                elapsed, nsys_total, exit_code,
+                elapsed,
+                nsys_total,
+                exit_code,
             )
             return False
 
@@ -532,7 +585,8 @@ class VLLMServerManager:
         logger.info(
             "[Watchdog][nsys] Collection finished (%.0fs), "
             "waiting for report file: %s",
-            elapsed, nsys_report_path,
+            elapsed,
+            nsys_report_path,
         )
         await asyncio.sleep(15)
 
@@ -540,7 +594,8 @@ class VLLMServerManager:
             file_size = os.path.getsize(nsys_report_path)
             logger.info(
                 "[Watchdog][nsys] Report generated: %s (%.1f MB)",
-                nsys_report_path, file_size / 1024 / 1024,
+                nsys_report_path,
+                file_size / 1024 / 1024,
             )
         else:
             logger.warning(
@@ -561,9 +616,7 @@ class VLLMServerManager:
         await self.wait_for_ready()
         self._ready = True
         self._restart_count = 0
-        logger.info(
-            "[Watchdog][nsys] vLLM server restarted (normal mode, no nsys)"
-        )
+        logger.info("[Watchdog][nsys] vLLM server restarted (normal mode, no nsys)")
         return True
 
     async def _try_restart(self) -> None:
@@ -593,7 +646,8 @@ class VLLMServerManager:
 
         logger.info(
             "[Watchdog] Restart attempt %d/%d for vLLM server...",
-            self._restart_count, self.config.max_restart_attempts,
+            self._restart_count,
+            self.config.max_restart_attempts,
         )
 
         try:

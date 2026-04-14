@@ -3,10 +3,10 @@
 
 """File operation utilities."""
 
-import os
 import json
+import os
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 
 def make_dir_all(name: str) -> None:
@@ -86,4 +86,3 @@ def dump_json(output_file: Union[str, Path], json_data: dict, indent: int = 4) -
 
 # Keep old name for backward compatibility
 DumpJson = dump_json
-    

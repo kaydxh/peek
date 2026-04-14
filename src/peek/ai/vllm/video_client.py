@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 # ========== Response 对象类定义 ==========
 
+
 class LogprobToken:
     """Logprob token 数据结构"""
 
@@ -26,7 +27,8 @@ class LogprobToken:
         self.logprob: float = data.get("logprob", 0.0)
         self.top_logprobs: Optional[List["LogprobToken"]] = (
             [LogprobToken(t) for t in data.get("top_logprobs", [])]
-            if "top_logprobs" in data else None
+            if "top_logprobs" in data
+            else None
         )
 
 
@@ -37,8 +39,7 @@ class Logprobs:
 
     def __init__(self, data: Optional[Dict]):
         self.content: Optional[List[LogprobToken]] = (
-            [LogprobToken(item) for item in data.get("content", [])]
-            if data else None
+            [LogprobToken(item) for item in data.get("content", [])] if data else None
         )
 
 
@@ -76,6 +77,7 @@ class ChatCompletionResponse:
 
 
 # ========== 客户端 ==========
+
 
 @dataclass
 class VLLMVideoClient:
@@ -179,12 +181,13 @@ class VLLMVideoClient:
             error_detail = response.text
             logger.error(
                 "vLLM request failed: status=%s, detail=%s",
-                response.status_code, error_detail,
+                response.status_code,
+                error_detail,
             )
         response.raise_for_status()
         result = response.json()
 
-        logger.debug("vLLM response: model=%s", result.get('model', ''))
+        logger.debug("vLLM response: model=%s", result.get("model", ""))
         return ChatCompletionResponse(result)
 
     async def health_check(self) -> bool:
@@ -204,11 +207,14 @@ class VLLMVideoClient:
                 if not is_ready:
                     logger.debug(
                         "Model %s not ready yet, available models: %s",
-                        self.model_name, model_names,
+                        self.model_name,
+                        model_names,
                     )
                 return is_ready
             else:
-                logger.debug("vLLM server returned status code: %s", response.status_code)
+                logger.debug(
+                    "vLLM server returned status code: %s", response.status_code
+                )
                 return False
         except Exception as e:
             logger.warning("vLLM health check failed: %s", e)

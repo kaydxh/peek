@@ -11,12 +11,12 @@ Provides:
 """
 
 from peek.plugins.vllm.config import VLLMConfig, parse_vllm_config
-from peek.plugins.vllm.manager import VLLMServerManager
 from peek.plugins.vllm.health import (
+    get_vllm_server_manager,
     install_vllm,
     uninstall_vllm,
-    get_vllm_server_manager,
 )
+from peek.plugins.vllm.manager import VLLMServerManager
 
 __all__ = [
     "VLLMConfig",

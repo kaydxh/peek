@@ -4,6 +4,7 @@
 
 import asyncio
 import time
+
 import pytest
 
 from peek.time.backoff import (
@@ -134,7 +135,9 @@ class TestExponentialBackOff:
         # 范围应该是 [0.5, 1.5]
         # 注意：由于 next_backoff 会递增间隔，只能验证第一个
         first_interval = intervals[0]
-        assert 0.5 <= first_interval <= 1.5, f"第一个间隔应在 [0.5, 1.5] 范围内，实际值: {first_interval}"
+        assert (
+            0.5 <= first_interval <= 1.5
+        ), f"第一个间隔应在 [0.5, 1.5] 范围内，实际值: {first_interval}"
 
 
 class TestRetryAsync:

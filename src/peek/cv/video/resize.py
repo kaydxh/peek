@@ -94,6 +94,7 @@ def smart_resize_image(
 
     if new_width != width or new_height != height:
         from PIL import Image as PILImage
+
         img = img.resize((new_width, new_height), PILImage.LANCZOS)
         frame_info = f"frame_index={frame_index}, " if frame_index >= 0 else ""
         logger.debug(

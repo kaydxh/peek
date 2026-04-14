@@ -17,9 +17,8 @@ HTTP/gRPC 错误处理器
 """
 
 import logging
-import traceback
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List
 
 from peek.errors.errors import AppError
 
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # ============ 校验错误格式化工具 ============
+
 
 def format_validation_error(
     raw_error: Dict[str, Any],
@@ -60,7 +60,9 @@ def format_validation_error(
     # 提取字段路径
     loc = raw_error.get("loc", [])
     # 过滤掉 "body"/"query"/"path" 等前缀
-    field_parts = [str(p) for p in loc if p not in ("body", "query", "path", "header", "cookie")]
+    field_parts = [
+        str(p) for p in loc if p not in ("body", "query", "path", "header", "cookie")
+    ]
     field = ".".join(field_parts) if field_parts else "unknown"
 
     result = {
@@ -135,6 +137,7 @@ def build_validation_response(
 
 # ============ HTTP 错误处理器 ============
 
+
 def install_error_handlers(app: Any) -> None:
     """
     在 FastAPI 应用上安装统一错误处理器
@@ -157,7 +160,9 @@ def install_error_handlers(app: Any) -> None:
         request_id = getattr(request.state, "request_id", "-")
         logger.warning(
             "[%s] AppError: code=%d, message=%s",
-            request_id, exc.code, exc.message,
+            request_id,
+            exc.code,
+            exc.message,
         )
         return JSONResponse(
             status_code=exc.http_status,
@@ -178,12 +183,14 @@ def install_error_handlers(app: Any) -> None:
             response_body = build_validation_response(raw_errors, "Validation failed")
             logger.warning(
                 "[%s] ValidationError: %s",
-                request_id, response_body["message"],
+                request_id,
+                response_body["message"],
             )
             return JSONResponse(
                 status_code=400,
                 content=response_body,
             )
+
     except ImportError:
         pass
 
@@ -203,17 +210,20 @@ def install_error_handlers(app: Any) -> None:
             )
             logger.warning(
                 "[%s] RequestValidationError: %s",
-                request_id, response_body["message"],
+                request_id,
+                response_body["message"],
             )
             return JSONResponse(
                 status_code=400,
                 content=response_body,
             )
+
     except ImportError:
         pass
 
 
 # ============ gRPC 错误处理器 ============
+
 
 class ErrorHandlerInterceptor:
     """
@@ -235,7 +245,9 @@ class ErrorHandlerInterceptor:
         except AppError as e:
             logger.warning(
                 "gRPC AppError in %s: code=%d, message=%s",
-                method_name, e.code, e.message,
+                method_name,
+                e.code,
+                e.message,
             )
             grpc_code = e.grpc_status_code
             if grpc_code is not None:
@@ -266,7 +278,8 @@ class ErrorHandlerInterceptor:
 
         def wrapped_unary(request, context):
             return self.intercept_unary(
-                request, context,
+                request,
+                context,
                 handler_call_details.method,
                 original_handler,
             )

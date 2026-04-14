@@ -63,6 +63,7 @@ def _has_module(name: str) -> bool:
 def _has_cli(cmd: str) -> bool:
     """检测 CLI 可执行文件是否可用"""
     import subprocess
+
     try:
         subprocess.run([cmd, "-version"], capture_output=True, timeout=5)
         return True
@@ -82,7 +83,9 @@ VIDEO_PATH = ROOT_DIR / "tests" / "testdata" / "bodyhead.text.mp4"
 VIDEO_EXISTS = VIDEO_PATH.exists()
 
 # 通用 skip 标记
-skip_no_video = pytest.mark.skipif(not VIDEO_EXISTS, reason=f"测试视频文件不存在: {VIDEO_PATH}")
+skip_no_video = pytest.mark.skipif(
+    not VIDEO_EXISTS, reason=f"测试视频文件不存在: {VIDEO_PATH}"
+)
 skip_no_decord = pytest.mark.skipif(not HAS_DECORD, reason="decord 未安装")
 skip_no_opencv = pytest.mark.skipif(not HAS_OPENCV, reason="opencv-python 未安装")
 skip_no_av = pytest.mark.skipif(not HAS_AV, reason="av (PyAV) 未安装")

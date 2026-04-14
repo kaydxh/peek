@@ -67,9 +67,7 @@ async def install_monitor(
                 register_monitor_routes,
             )
         except ImportError:
-            logger.error(
-                "peek.os.monitor.service 模块未安装，监控插件需要 peek 库"
-            )
+            logger.error("peek.os.monitor.service 模块未安装，监控插件需要 peek 库")
             return None
 
         # 将 peek MonitorConfig 转换为 peek MonitorServiceConfig

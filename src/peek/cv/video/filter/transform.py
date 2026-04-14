@@ -21,6 +21,7 @@ def _ensure_ffmpeg():
     """确保 ffmpeg-python 已安装"""
     try:
         import ffmpeg
+
         return ffmpeg
     except ImportError:
         raise ImportError("需要安装 ffmpeg-python: pip install ffmpeg-python")
@@ -123,7 +124,9 @@ class TransformFilter:
 
         if not filter_str:
             # 没有变换操作，直接复制
-            logger.info("No transform needed, copying directly: %s -> %s", source, output)
+            logger.info(
+                "No transform needed, copying directly: %s -> %s", source, output
+            )
             shutil.copy2(source, output)
             return output
 
@@ -136,11 +139,11 @@ class TransformFilter:
         try:
             out.run(overwrite_output=overwrite, quiet=True)
         except ffmpeg.Error as e:
-            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
-            error_lines = stderr.strip().split("\n")[-5:]
-            raise RuntimeError(
-                f"视频变换失败:\n" + "\n".join(error_lines)
+            stderr = (
+                e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
             )
+            error_lines = stderr.strip().split("\n")[-5:]
+            raise RuntimeError("视频变换失败:\n" + "\n".join(error_lines))
 
         logger.info("Video transform completed: %s", output)
         return output

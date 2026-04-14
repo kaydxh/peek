@@ -16,17 +16,14 @@ from pydantic import BaseModel
 
 # 导入 webserver 模块
 from peek.net.webserver import (
+    Config,
+    FuncHealthChecker,
     GenericWebServer,
     WebHandler,
-    Config,
-    with_title,
     with_description,
+    with_title,
     with_version,
-    HealthzController,
-    FuncHealthChecker,
-    create_default_handler_chain,
 )
-
 
 # ==================== 数据模型 ====================
 
@@ -132,7 +129,7 @@ def example_simple():
 
 def example_with_config():
     """使用配置文件示例"""
-    from peek.net.webserver import WebServerConfig, WebConfig, BindAddress
+    from peek.net.webserver import BindAddress, WebConfig, WebServerConfig
 
     # 创建配置（也可以从 YAML 文件加载）
     proto = WebServerConfig(
@@ -201,8 +198,8 @@ web:
 
 def example_with_yaml_config():
     """从 YAML 配置文件加载示例"""
-    import tempfile
     import os
+    import tempfile
 
     # 创建临时配置文件
     with tempfile.NamedTemporaryFile(
@@ -242,15 +239,15 @@ def example_advanced():
     """高级自定义示例"""
     from peek.net.webserver import (
         HandlerChain,
-        RequestIDMiddleware,
-        TimerMiddleware,
-        RecoveryMiddleware,
         LoggerMiddleware,
         QPSRateLimitMiddleware,
+        RecoveryMiddleware,
+        RequestIDMiddleware,
+        TimerMiddleware,
     )
     from peek.net.webserver.middleware.ratelimit import (
-        QPSLimitConfig,
         MethodQPSConfig,
+        QPSLimitConfig,
     )
 
     # 创建服务器

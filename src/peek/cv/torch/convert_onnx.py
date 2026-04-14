@@ -7,11 +7,12 @@ from torchvision import models
 # 1. 模型加载配置
 # ======================
 # MODEL_PATH = "your_model.pt"  # 替换为你的模型路径
-MODEL_PATH = "/data/model/resnet18_imagenet.pt" 
+MODEL_PATH = "/data/model/resnet18_imagenet.pt"
 # OUTPUT_ONNX_PATH = "exported_model.onnx"
 OUTPUT_ONNX_PATH = "/data/model/resnet18_imagenet.onnx"
 INPUT_SHAPE = (1, 3, 224, 224)  # 根据你的模型输入形状修改
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 # ======================
 # 2. 定义模型类（必须与原模型结构完全一致）
@@ -28,23 +29,28 @@ class YourModelClass(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+
 # ======================
 # 3. 加载模型权重
 # ======================
 def load_model():
     # 直接加载resnet18
-    #model = models.resnet18(num_classes=1000)  # 或你的类别数
-    #model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-    #model = model.to(DEVICE)
-    #model.eval()
+    # model = models.resnet18(num_classes=1000)  # 或你的类别数
+    # model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+    # model = model.to(DEVICE)
+    # model.eval()
 
     model = YourModelClass(num_classes=1000).to(DEVICE)
     state_dict = torch.load(MODEL_PATH, map_location=DEVICE)
     # 给所有key加上'model.'前缀
-    new_state_dict = {"model." + k if not k.startswith("model.") else k: v for k, v in state_dict.items()}
+    new_state_dict = {
+        "model." + k if not k.startswith("model.") else k: v
+        for k, v in state_dict.items()
+    }
     model.load_state_dict(new_state_dict)
     model.eval()
     return model
+
 
 # ======================
 # 4. 导出ONNX主函数
@@ -52,16 +58,16 @@ def load_model():
 def export_to_onnx():
     # 加载模型
     model = load_model()
-    
+
     # 创建虚拟输入（重要：需要与实际输入尺寸一致）
     dummy_input = torch.randn(*INPUT_SHAPE, device=DEVICE)
-    
+
     # 动态轴配置（可选）
     dynamic_axes = {
         "input": {0: "batch_size"},  # 允许动态batch维度
-        "output": {0: "batch_size"}
+        "output": {0: "batch_size"},
     }
-    
+
     # 执行导出
     torch.onnx.export(
         model,
@@ -73,7 +79,7 @@ def export_to_onnx():
         dynamic_axes=dynamic_axes,
         opset_version=13,  # 推荐opset 13+以获得更好支持
         do_constant_folding=True,  # 优化常量折叠
-        export_params=True  # 导出训练参数
+        export_params=True,  # 导出训练参数
     )
     print(f"Successfully exported to {OUTPUT_ONNX_PATH}")
 
@@ -81,9 +87,9 @@ def export_to_onnx():
     # 5. 验证导出结果（可选）
     # ======================
     try:
+        import numpy as np
         import onnx
         from onnxruntime import InferenceSession
-        import numpy as np
 
         # 验证ONNX模型格式
         onnx_model = onnx.load(OUTPUT_ONNX_PATH)
@@ -111,9 +117,12 @@ def export_to_onnx():
         assert diff < 1e-5, "输出结果差异过大！"
 
     except ImportError:
-        print("验证需要安装onnx, onnxruntime, numpy: pip install onnx onnxruntime numpy")
+        print(
+            "验证需要安装onnx, onnxruntime, numpy: pip install onnx onnxruntime numpy"
+        )
     except Exception as e:
         print(f"ONNX导出验证失败: {e}")
+
 
 # ======================
 # 执行导出

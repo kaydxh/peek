@@ -13,13 +13,13 @@ import logging
 from typing import Dict, Optional
 
 from opentelemetry.sdk.metrics.export import (
+    AggregationTemporality,
     MetricReader,
     PeriodicExportingMetricReader,
-    AggregationTemporality,
 )
 
-from peek.opentelemetry.metric.meter import PushExporterBuilder
 from peek.opentelemetry.config import OTLPProtocol, TemporalityType
+from peek.opentelemetry.metric.meter import PushExporterBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +149,7 @@ class OTLPMetricExporterBuilder(PushExporterBuilder):
         compression = None
         if self._compression:
             from opentelemetry.exporter.otlp.proto.http import Compression
+
             compression = Compression.Gzip
 
         exporter = OTLPMetricExporter(
@@ -181,6 +182,7 @@ class OTLPMetricExporterBuilder(PushExporterBuilder):
         compression = None
         if self._compression:
             from grpc import Compression
+
             compression = Compression.Gzip
 
         exporter = OTLPMetricExporter(

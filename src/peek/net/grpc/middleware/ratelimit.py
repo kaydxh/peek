@@ -160,9 +160,7 @@ class UnaryServerInterceptor(grpc.ServerInterceptor):
 
     def intercept_service(
         self,
-        continuation: Callable[
-            [grpc.HandlerCallDetails], grpc.RpcMethodHandler
-        ],
+        continuation: Callable[[grpc.HandlerCallDetails], grpc.RpcMethodHandler],
         handler_call_details: grpc.HandlerCallDetails,
     ) -> grpc.RpcMethodHandler:
         next_handler = continuation(handler_call_details)
@@ -324,9 +322,9 @@ class MethodQPSLimitInterceptor(UnaryServerInterceptor):
                     method_config.qps, method_config.burst
                 )
             if method_config.max_concurrency > 0:
-                self._method_concurrency_semaphores[
-                    method_config.method
-                ] = threading.Semaphore(method_config.max_concurrency)
+                self._method_concurrency_semaphores[method_config.method] = (
+                    threading.Semaphore(method_config.max_concurrency)
+                )
 
     def _get_qps_limiter(self, method_name: str) -> Optional[TokenBucketLimiter]:
         """获取 QPS 限流器"""

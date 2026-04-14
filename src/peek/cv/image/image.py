@@ -6,7 +6,7 @@ import numpy as np
 
 
 def pad_resize_image(inp_img, target_width=None, target_height=None):
-    """ pad_resize_image to resize and pad image to a given target size"""
+    """pad_resize_image to resize and pad image to a given target size"""
     h, w, c = inp_img.shape
     size = max(h, w)
     padding_h = (size - h) // 2

@@ -55,8 +55,10 @@ class HttpTimerMiddleware(BaseHTTPMiddleware):
         self.log = log or logger
         self.header_name = header_name
         self.skip_paths = skip_paths or [
-            "/healthz", "/readyz",
-            "/livez", "/metrics",
+            "/healthz",
+            "/readyz",
+            "/livez",
+            "/metrics",
         ]
 
     async def dispatch(
@@ -86,7 +88,9 @@ class HttpTimerMiddleware(BaseHTTPMiddleware):
 
         # 获取 request_id（如果存在），用于日志关联
         # 优先从 request.state 获取，备选从 contextvars 获取
-        request_id = getattr(request.state, "request_id", "") or _ctx_get_request_id() or "-"
+        request_id = (
+            getattr(request.state, "request_id", "") or _ctx_get_request_id() or "-"
+        )
 
         # 获取 trace_id（如果存在），用于日志关联
         trace_id = _ctx_get_trace_id()

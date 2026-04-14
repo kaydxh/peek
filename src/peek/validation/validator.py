@@ -33,7 +33,7 @@
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ RuleFunc = Callable[[str, Any], Tuple[bool, str]]
 @dataclass
 class FieldError:
     """单个字段的校验错误"""
+
     field: str
     message: str
     value: Any = None
@@ -70,6 +71,7 @@ class FieldRule:
         field_name: 字段名称
         *rules: 校验规则函数列表
     """
+
     field_name: str
     rules: List[RuleFunc] = field(default_factory=list)
 
@@ -98,6 +100,7 @@ def _get_field_value(obj: Any, field_name: str) -> Any:
     # Pydantic BaseModel
     try:
         from pydantic import BaseModel
+
         if isinstance(obj, BaseModel):
             return getattr(obj, field_name, None)
     except ImportError:
@@ -106,6 +109,7 @@ def _get_field_value(obj: Any, field_name: str) -> Any:
     # protobuf Message
     try:
         from google.protobuf.message import Message
+
         if isinstance(obj, Message):
             if obj.HasField(field_name):
                 return getattr(obj, field_name)
@@ -141,12 +145,14 @@ def validate_fields(
         for rule in field_rule.rules:
             ok, msg = rule(field_rule.field_name, value)
             if not ok:
-                errors.append(FieldError(
-                    field=field_rule.field_name,
-                    message=msg,
-                    value=value,
-                    rule=getattr(rule, "__rule_name__", ""),
-                ))
+                errors.append(
+                    FieldError(
+                        field=field_rule.field_name,
+                        message=msg,
+                        value=value,
+                        rule=getattr(rule, "__rule_name__", ""),
+                    )
+                )
                 break  # 一个字段的第一个失败规则就停止
 
     return errors
@@ -171,6 +177,7 @@ def validate(
     errors = validate_fields(obj, field_rules)
     if errors:
         from peek.errors import ValidationError
+
         raise ValidationError(
             message=message,
             details={
@@ -192,42 +199,52 @@ class _FieldBuilder:
 
     def required(self) -> "_FieldBuilder":
         from peek.validation.rules import required as _required
+
         return self.add_rule(_required())
 
     def not_empty(self) -> "_FieldBuilder":
         from peek.validation.rules import not_empty as _not_empty
+
         return self.add_rule(_not_empty())
 
     def min_length(self, length: int) -> "_FieldBuilder":
         from peek.validation.rules import min_length as _min_length
+
         return self.add_rule(_min_length(length))
 
     def max_length(self, length: int) -> "_FieldBuilder":
         from peek.validation.rules import max_length as _max_length
+
         return self.add_rule(_max_length(length))
 
     def min_value(self, value: Union[int, float]) -> "_FieldBuilder":
         from peek.validation.rules import min_value as _min_value
+
         return self.add_rule(_min_value(value))
 
     def max_value(self, value: Union[int, float]) -> "_FieldBuilder":
         from peek.validation.rules import max_value as _max_value
+
         return self.add_rule(_max_value(value))
 
     def pattern(self, regex: str, description: str = "") -> "_FieldBuilder":
         from peek.validation.rules import pattern as _pattern
+
         return self.add_rule(_pattern(regex, description))
 
     def one_of(self, choices: list) -> "_FieldBuilder":
         from peek.validation.rules import one_of as _one_of
+
         return self.add_rule(_one_of(choices))
 
     def email(self) -> "_FieldBuilder":
         from peek.validation.rules import email as _email
+
         return self.add_rule(_email())
 
     def uuid_format(self) -> "_FieldBuilder":
         from peek.validation.rules import uuid_format as _uuid_format
+
         return self.add_rule(_uuid_format())
 
     def custom(self, rule: RuleFunc) -> "_FieldBuilder":

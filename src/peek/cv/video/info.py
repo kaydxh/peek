@@ -12,7 +12,7 @@ get_duration / get_frame_rate / get_total_frames 等方法。
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 logger = logging.getLogger(__name__)
 
@@ -181,8 +181,7 @@ def _probe_ffprobe(source: str) -> VideoInfo:
         raise RuntimeError(f"ffprobe 探测失败: {stderr}")
     except FileNotFoundError:
         raise RuntimeError(
-            "未找到 ffprobe，请安装 ffmpeg。"
-            "也可使用 backend='opencv' 作为备选方案。"
+            "未找到 ffprobe，请安装 ffmpeg。" "也可使用 backend='opencv' 作为备选方案。"
         )
 
     return _parse_ffprobe_data(data, source)
@@ -242,7 +241,12 @@ def _parse_ffprobe_data(data: Dict[str, Any], source: str) -> VideoInfo:
         info.channels = first_audio.channels
         info.channel_layout = first_audio.channel_layout
 
-        logger.debug("Video info probed: %s, %s, %.2fs", info.filename, info.resolution, info.duration)
+        logger.debug(
+            "Video info probed: %s, %s, %.2fs",
+            info.filename,
+            info.resolution,
+            info.duration,
+        )
     return info
 
 
@@ -296,7 +300,9 @@ def _probe_opencv(source: str) -> VideoInfo:
     try:
         import cv2
     except ImportError:
-        raise ImportError("使用 opencv 后端需要安装 opencv-python: pip install opencv-python")
+        raise ImportError(
+            "使用 opencv 后端需要安装 opencv-python: pip install opencv-python"
+        )
 
     cap = cv2.VideoCapture(source)
     if not cap.isOpened():

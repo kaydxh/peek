@@ -19,6 +19,7 @@ def _ensure_ffmpeg():
     """确保 ffmpeg-python 已安装"""
     try:
         import ffmpeg
+
         return ffmpeg
     except ImportError:
         raise ImportError("需要安装 ffmpeg-python: pip install ffmpeg-python")
@@ -130,9 +131,15 @@ class CropFilter:
 
         # 构建 crop filter 字符串（使用 ffmpeg 表达式）
         filter_str = CropFilter.build_filter(
-            x=x, y=y, width=width, height=height,
-            center_crop=center_crop, out_width=out_width, out_height=out_height,
-            keep_aspect=keep_aspect, target_aspect=target_aspect,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+            center_crop=center_crop,
+            out_width=out_width,
+            out_height=out_height,
+            keep_aspect=keep_aspect,
+            target_aspect=target_aspect,
         )
 
         Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -145,11 +152,11 @@ class CropFilter:
         try:
             out.run(overwrite_output=overwrite, quiet=True)
         except ffmpeg.Error as e:
-            stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
-            error_lines = stderr.strip().split("\n")[-5:]
-            raise RuntimeError(
-                f"视频裁剪失败:\n" + "\n".join(error_lines)
+            stderr = (
+                e.stderr.decode("utf-8", errors="replace") if e.stderr else "未知错误"
             )
+            error_lines = stderr.strip().split("\n")[-5:]
+            raise RuntimeError("视频裁剪失败:\n" + "\n".join(error_lines))
 
         logger.info("Video crop completed: %s", output)
         return output
@@ -192,7 +199,9 @@ class CropFilter:
 
         if center_crop and out_width > 0 and out_height > 0:
             # 居中裁剪：使用 ffmpeg 的 (iw-ow)/2 表达式自动居中
-            return f"crop={out_width}:{out_height}:(iw-{out_width})/2:(ih-{out_height})/2"
+            return (
+                f"crop={out_width}:{out_height}:(iw-{out_width})/2:(ih-{out_height})/2"
+            )
 
         # 普通坐标裁剪
         w = width if width > 0 else f"iw-{x}" if x > 0 else "iw"

@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import unittest
 import os
+import unittest
+
 import cv2
 import numpy as np
 import torch
-from peek.cv.torch.device import get_avaliable_devices
+
+import peek.cv.image.image as image_
+import peek.cv.torch.inference as inference_
 import peek.cv.torch.model as model_
 import peek.cv.torch.transform as transform_
-import peek.cv.torch.inference as inference_
-import peek.cv.image.image as image_
+from peek.cv.torch.device import get_avaliable_devices
 
 
 class TestTorchInference(unittest.TestCase):
