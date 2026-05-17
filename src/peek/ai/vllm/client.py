@@ -19,10 +19,15 @@ class VLLMClient:
 
     通过 HTTP 与 vLLM 服务器通信，使用 OpenAI 兼容的 API 格式。
     内部复用 httpx.AsyncClient 连接池以提升性能。
+
+    支持两种初始化方式：
+    1. host + port: 适用于本地 vLLM 服务
+    2. base_url: 适用于远程 OpenAI 兼容 API（如 Hunyuan、DeepSeek 等）
     """
 
     host: str = "localhost"
     port: int = 8000
+    base_url: str = ""
     api_key: str = ""
     model_name: str = "Qwen/Qwen2.5-7B-Instruct"
     max_tokens: int = 2048
@@ -32,7 +37,11 @@ class VLLMClient:
 
     def __post_init__(self):
         """初始化客户端"""
-        self._base_url = f"http://{self.host}:{self.port}"
+        # 优先使用 base_url，否则用 host:port 拼接
+        if self.base_url:
+            self._base_url = self.base_url.rstrip("/")
+        else:
+            self._base_url = f"http://{self.host}:{self.port}"
         self._headers = {
             "Content-Type": "application/json",
         }
@@ -40,10 +49,13 @@ class VLLMClient:
             self._headers["Authorization"] = f"Bearer {self.api_key}"
         # 复用 httpx 连接池，避免每次请求创建新连接
         self._http_client: Optional[httpx.AsyncClient] = None
+        logger.info(
+            "VLLMClient 初始化: model=%s, base_url=%s",
+            self.model_name, self._base_url,
+        )
 
-    @property
-    def base_url(self) -> str:
-        """获取基础 URL"""
+    def get_base_url(self) -> str:
+        """获取处理后的基础 URL"""
         return self._base_url
 
     async def chat_completion(
@@ -70,7 +82,11 @@ class VLLMClient:
         Returns:
             Dict: API 响应
         """
-        url = f"{self._base_url}/v1/chat/completions"
+        # 如果 base_url 已包含 /v1，则直接拼接 /chat/completions
+        if "/v1" in self._base_url:
+            url = f"{self._base_url}/chat/completions"
+        else:
+            url = f"{self._base_url}/v1/chat/completions"
 
         payload = {
             "model": model or self.model_name,
@@ -160,6 +176,99 @@ class VLLMClient:
             # 对于不同超时的请求，创建临时客户端
             return httpx.AsyncClient(timeout=timeout)
         return self._http_client
+
+    async def chat(
+        self,
+        system_prompt: str,
+        user_message: str,
+        context: str = "",
+        image_base64: Optional[str] = None,
+    ) -> tuple:
+        """高层便捷聊天接口，支持 system_prompt 和多模态输入。
+
+        自动组装 messages 并调用 chat_completion，返回回复文本和 token 用量。
+
+        Args:
+            system_prompt: 系统提示词
+            user_message: 用户消息
+            context: 附加上下文（对话历史摘要等）
+            image_base64: 可选的 base64 编码图片（用于多模态识别）
+
+        Returns:
+            (reply, usage) 元组:
+            - reply: LLM 回答文本
+            - usage: {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int}
+        """
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": system_prompt}
+        ]
+
+        if context:
+            messages.append({"role": "user", "content": f"Context:\n{context}"})
+            messages.append(
+                {"role": "assistant", "content": "Got it. What would you like to practice?"}
+            )
+
+        # 构建用户消息：纯文本或多模态（文字 + 图片）
+        if image_base64:
+            user_content: List[Dict[str, Any]] = [
+                {"type": "text", "text": user_message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}",
+                    },
+                },
+            ]
+            messages.append({"role": "user", "content": user_content})
+        else:
+            messages.append({"role": "user", "content": user_message})
+
+        # 打印请求日志
+        logger.info(
+            "[LLM] 请求 model=%s, temperature=%.2f, max_tokens=%d",
+            self.model_name, self.temperature, self.max_tokens,
+        )
+        for i, msg in enumerate(messages):
+            content_preview = msg.get("content", "")
+            if isinstance(content_preview, list):
+                text_parts = [
+                    p.get("text", "[image]")
+                    for p in content_preview
+                    if isinstance(p, dict)
+                ]
+                content_preview = " | ".join(text_parts)
+            content_preview = str(content_preview)[:200]
+            logger.info("[LLM] messages[%d] role=%s: %s", i, msg.get("role"), content_preview)
+
+        try:
+            result = await self.chat_completion(messages=messages)
+
+            reply = result["choices"][0]["message"]["content"] or ""
+            logger.info("[LLM] 回复(前300字): %s", reply[:300])
+
+            # 提取 token 用量
+            usage = result.get("usage", {})
+            token_usage = {
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "completion_tokens": usage.get("completion_tokens", 0),
+                "total_tokens": usage.get("total_tokens", 0),
+            }
+
+            logger.info(
+                "LLM API token 用量: prompt=%d, completion=%d, total=%d",
+                token_usage["prompt_tokens"],
+                token_usage["completion_tokens"],
+                token_usage["total_tokens"],
+            )
+            return (reply, token_usage)
+
+        except Exception as e:
+            logger.error("LLM API 调用失败: %s", e)
+            return (
+                "I'm sorry, I encountered an error. Please try again.",
+                {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            )
 
     async def close(self) -> None:
         """关闭 HTTP 客户端，释放连接池资源"""
