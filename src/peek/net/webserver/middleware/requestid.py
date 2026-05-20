@@ -112,7 +112,24 @@ class RequestIDMiddleware:
                             content_type = v.decode("latin-1")
                             break
 
+                    # 对于 SSE 流式响应，直接发送 start（添加 X-Request-ID header）
+                    # 不缓冲 body，避免破坏流式传输
+                    if "text/event-stream" in content_type:
+                        new_headers = _update_headers(
+                            initial_message.get("headers", []),
+                            self.header_name,
+                            request_id,
+                            0,  # SSE 不需要 content-length
+                        )
+                        initial_message["headers"] = new_headers
+                        await send(initial_message)
+
                 elif message["type"] == "http.response.body":
+                    # 对于 SSE 流式响应，直接透传每个 chunk
+                    if "text/event-stream" in content_type:
+                        await send(message)
+                        return
+
                     body = message.get("body", b"")
                     more_body = message.get("more_body", False)
 

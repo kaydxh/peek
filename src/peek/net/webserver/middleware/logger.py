@@ -263,6 +263,20 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             # 需要捕获响应体，使用自定义的响应包装
             response = await call_next(request)
 
+            # 对于 SSE 流式响应，不缓冲 body，直接透传
+            content_type = response.headers.get("content-type", "")
+            if "text/event-stream" in content_type:
+                log_msg = (
+                    f"{prefix} <-- {request.method} {request.url.path} "
+                    f"{response.status_code}"
+                )
+                if self.log_response_headers:
+                    resp_headers_dict = dict(response.headers)
+                    log_msg += f" | headers: {resp_headers_dict}"
+                log_msg += " | body: <streaming: text/event-stream>"
+                self._log(log_msg)
+                return response
+
             # 使用 bytearray 避免 O(n²) 的 bytes 拼接
             body_buffer = bytearray()
             body_exceeded = False
