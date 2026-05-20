@@ -5,6 +5,7 @@
 """
 
 import logging
+import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -82,8 +83,9 @@ class VLLMClient:
         Returns:
             Dict: API 响应
         """
-        # 如果 base_url 已包含 /v1，则直接拼接 /chat/completions
-        if "/v1" in self._base_url:
+        # 如果 base_url 已包含版本路径（如 /v1、/v2 等），则直接拼接 /chat/completions
+        import re
+        if re.search(r"/v\d+", self._base_url):
             url = f"{self._base_url}/chat/completions"
         else:
             url = f"{self._base_url}/v1/chat/completions"
@@ -244,7 +246,9 @@ class VLLMClient:
         try:
             result = await self.chat_completion(messages=messages)
 
-            reply = result["choices"][0]["message"]["content"] or ""
+            message = result["choices"][0]["message"]
+            # 兼容深度思考模型：content 为空时回退到 reasoning_content
+            reply = message.get("content") or message.get("reasoning_content") or ""
             logger.info("[LLM] 回复(前300字): %s", reply[:300])
 
             # 提取 token 用量
@@ -269,6 +273,130 @@ class VLLMClient:
                 "I'm sorry, I encountered an error. Please try again.",
                 {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
             )
+
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_message: str,
+        context: str = "",
+        image_base64: Optional[str] = None,
+    ):
+        """高层流式聊天接口，逐 chunk 返回生成内容。
+
+        与 chat() 接口参数一致，但返回 AsyncGenerator，
+        每次 yield 一个 dict：
+        - {"type": "chunk", "content": "..."} — 增量文本
+        - {"type": "done", "usage": {...}} — 结束标记 + token 用量
+
+        Args:
+            system_prompt: 系统提示词
+            user_message: 用户消息
+            context: 附加上下文
+            image_base64: 可选的 base64 编码图片
+
+        Yields:
+            dict: chunk 或 done 事件
+        """
+        import re
+
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": system_prompt}
+        ]
+
+        if context:
+            messages.append({"role": "user", "content": f"Context:\n{context}"})
+            messages.append(
+                {"role": "assistant", "content": "Got it. What would you like to practice?"}
+            )
+
+        # 构建用户消息：纯文本或多模态
+        if image_base64:
+            user_content: List[Dict[str, Any]] = [
+                {"type": "text", "text": user_message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}",
+                    },
+                },
+            ]
+            messages.append({"role": "user", "content": user_content})
+        else:
+            messages.append({"role": "user", "content": user_message})
+
+        logger.info(
+            "[LLM-Stream] 请求 model=%s, temperature=%.2f, max_tokens=%d",
+            self.model_name, self.temperature, self.max_tokens,
+        )
+
+        # 构建请求
+        if re.search(r"/v\d+", self._base_url):
+            url = f"{self._base_url}/chat/completions"
+        else:
+            url = f"{self._base_url}/v1/chat/completions"
+
+        payload = {
+            "model": self.model_name,
+            "messages": messages,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "stream": True,
+        }
+
+        try:
+            client = await self._get_client()
+            async with client.stream(
+                "POST", url, json=payload, headers=self._headers
+            ) as response:
+                response.raise_for_status()
+                usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+                full_content = ""
+
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]  # 去掉 "data: " 前缀
+                    if data_str.strip() == "[DONE]":
+                        break
+
+                    try:
+                        chunk = json.loads(data_str)
+                        # 提取增量内容
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            full_content += content
+                            yield {"type": "chunk", "content": content}
+
+                        # 部分 API 在最后一个 chunk 中返回 usage
+                        if "usage" in chunk and chunk["usage"]:
+                            usage = {
+                                "prompt_tokens": chunk["usage"].get("prompt_tokens", 0),
+                                "completion_tokens": chunk["usage"].get("completion_tokens", 0),
+                                "total_tokens": chunk["usage"].get("total_tokens", 0),
+                            }
+                    except (json.JSONDecodeError, IndexError, KeyError):
+                        continue
+
+                # 如果 API 没有在 stream 中返回 usage，估算 completion tokens
+                if usage["total_tokens"] == 0 and full_content:
+                    estimated_completion = len(full_content) // 4
+                    usage["completion_tokens"] = estimated_completion
+                    usage["total_tokens"] = usage["prompt_tokens"] + estimated_completion
+
+                logger.info(
+                    "[LLM-Stream] 流式完成, 总长度=%d, tokens: prompt=%d, completion=%d, total=%d",
+                    len(full_content),
+                    usage["prompt_tokens"],
+                    usage["completion_tokens"],
+                    usage["total_tokens"],
+                )
+                yield {"type": "done", "usage": usage}
+
+        except Exception as e:
+            logger.error("[LLM-Stream] 流式调用失败: %s", e)
+            yield {"type": "error", "message": str(e)}
 
     async def close(self) -> None:
         """关闭 HTTP 客户端，释放连接池资源"""
