@@ -11,8 +11,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from peek.database.mysql.config import MySQLConfig
-from peek.database.redis.config import RedisConfig
+from peek.database.mysql.config import MySQLConfig  # noqa: 仅导入 config 模型，不触发 sqlalchemy
+from peek.database.redis.config import RedisConfig  # noqa: 仅导入 config 模型，不触发 redis
 from peek.time.parse import parse_duration
 
 

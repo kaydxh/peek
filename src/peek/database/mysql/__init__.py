@@ -5,23 +5,19 @@
 MySQL 模块
 
 对应 Go 版本 golang/pkg/database/mysql。
-提供 MySQL 配置模型和异步连接工厂函数。
+
+子模块：
+- peek.database.mysql.config: MySQL 配置模型（纯 pydantic，无外部依赖）
+- peek.database.mysql.engine: MySQL 异步连接工厂（依赖 sqlalchemy）
+
+设计原则：
+    本模块只导出纯配置类，不触发 sqlalchemy 依赖。
+    需要实际连接 MySQL 时，请显式导入：
+        from peek.database.mysql.engine import create_mysql_engine
 """
 
 from peek.database.mysql.config import MySQLConfig
-from peek.database.mysql.mysql import (
-    check_mysql_health,
-    close_mysql_engine,
-    create_mysql_engine,
-    get_mysql_pool_stats,
-    mysql_engine_context,
-)
 
 __all__ = [
     "MySQLConfig",
-    "create_mysql_engine",
-    "close_mysql_engine",
-    "check_mysql_health",
-    "get_mysql_pool_stats",
-    "mysql_engine_context",
 ]

@@ -61,7 +61,7 @@ async def install_mysql(
         return None
 
     try:
-        from peek.database.mysql import close_mysql_engine, create_mysql_engine
+        from peek.database.mysql.engine import close_mysql_engine, create_mysql_engine
 
         engine = await create_mysql_engine(config)
 
@@ -98,7 +98,7 @@ async def uninstall_mysql() -> None:
 
     if _mysql_engine is not None:
         try:
-            from peek.database.mysql import close_mysql_engine
+            from peek.database.mysql.engine import close_mysql_engine
 
             await close_mysql_engine(_mysql_engine)
         except Exception as e:

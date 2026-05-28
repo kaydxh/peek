@@ -61,7 +61,7 @@ async def install_redis(
         return None
 
     try:
-        from peek.database.redis import close_redis_client, create_redis_client
+        from peek.database.redis.client import close_redis_client, create_redis_client
 
         client = await create_redis_client(config)
 
@@ -96,7 +96,7 @@ async def uninstall_redis() -> None:
 
     if _redis_client is not None:
         try:
-            from peek.database.redis import close_redis_client
+            from peek.database.redis.client import close_redis_client
 
             await close_redis_client(_redis_client)
         except Exception as e:

@@ -4,41 +4,25 @@
 """
 数据库模块
 
-提供通用的数据库连接创建能力，对应 Go 版本 golang/pkg/database。
+提供通用的数据库配置模型，对应 Go 版本 golang/pkg/database。
 
 子模块：
-- peek.database.mysql: MySQL 异步连接工厂
-- peek.database.redis: Redis 异步连接工厂
+- peek.database.mysql.config: MySQL 配置模型（纯 pydantic，无外部依赖）
+- peek.database.mysql.engine: MySQL 异步连接工厂（依赖 sqlalchemy）
+- peek.database.redis.config: Redis 配置模型（纯 pydantic，无外部依赖）
+- peek.database.redis.client: Redis 异步连接工厂（依赖 redis）
+
+设计原则：
+    本模块只导出纯配置类（pydantic 模型），不触发任何外部依赖（sqlalchemy/redis）。
+    需要实际连接数据库时，请显式导入实现模块：
+        from peek.database.mysql.engine import create_mysql_engine
+        from peek.database.redis.client import create_redis_client
 """
 
-from peek.database.mysql import (
-    MySQLConfig,
-    check_mysql_health,
-    close_mysql_engine,
-    create_mysql_engine,
-    get_mysql_pool_stats,
-    mysql_engine_context,
-)
-from peek.database.redis import (
-    RedisConfig,
-    check_redis_health,
-    close_redis_client,
-    create_redis_client,
-    get_redis_pool_stats,
-    redis_client_context,
-)
+from peek.database.mysql.config import MySQLConfig
+from peek.database.redis.config import RedisConfig
 
 __all__ = [
     "MySQLConfig",
-    "create_mysql_engine",
-    "close_mysql_engine",
-    "check_mysql_health",
-    "get_mysql_pool_stats",
-    "mysql_engine_context",
     "RedisConfig",
-    "create_redis_client",
-    "close_redis_client",
-    "check_redis_health",
-    "get_redis_pool_stats",
-    "redis_client_context",
 ]
