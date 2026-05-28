@@ -78,7 +78,7 @@ def extract_binary_logprobs(
     """从 Choice 对象中提取二分类 logprobs，计算负类概率。
 
     Args:
-        choice: peek.ai.vllm.video_client.Choice 对象
+        choice: peek.ai.vllm.types.Choice 对象
         positive_label: 正类标签
         negative_label: 负类标签
 
@@ -132,7 +132,7 @@ def parse_binary_classification(
     """解析 ChatCompletionResponse，提取二分类预测结果。
 
     Args:
-        response: peek.ai.vllm.video_client.ChatCompletionResponse 对象
+        response: peek.ai.vllm.types.ChatCompletionResponse 对象
         positive_label: 正类标签
         negative_label: 负类标签
 

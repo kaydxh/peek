@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""vLLM Client - vLLM 通用文本聊天客户端
+"""vLLM Client - vLLM 统一客户端
 
 实现与 vLLM 服务器的 HTTP 通信，使用 OpenAI 兼容的 API 格式。
+支持文本聊天、多模态输入（图片/视频）、logprobs 返回等全部能力。
 """
 
 import logging
@@ -11,14 +12,17 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
+from peek.ai.vllm.types import ChatCompletionResponse
+
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class VLLMClient:
-    """vLLM 文本聊天客户端
+    """vLLM 统一客户端
 
     通过 HTTP 与 vLLM 服务器通信，使用 OpenAI 兼容的 API 格式。
+    支持文本聊天、多模态输入（图片/视频）、logprobs 返回。
     内部复用 httpx.AsyncClient 连接池以提升性能。
 
     支持两种初始化方式：
@@ -61,46 +65,71 @@ class VLLMClient:
 
     async def chat_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: List[Dict[str, Any]],
         model: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        seed: Optional[int] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
+        skip_special_tokens: Optional[bool] = None,
+        repetition_penalty: Optional[float] = None,
         stream: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> ChatCompletionResponse:
         """发送聊天补全请求
 
-        使用 OpenAI 兼容的 /v1/chat/completions 端点
+        使用 OpenAI 兼容的 /v1/chat/completions 端点。
+        支持文本聊天、多模态输入（图片/视频）、logprobs 返回。
 
         Args:
-            messages: 消息列表，格式为 [{"role": "user", "content": "..."}]
+            messages: 消息列表，支持纯文本和多模态格式
             model: 模型名称，默认使用配置的模型
             max_tokens: 最大生成 token 数
             temperature: 温度参数
             top_p: top_p 参数
+            seed: 随机种子
+            logprobs: 是否返回 logprobs
+            top_logprobs: 返回 top-k 个 logprobs
+            skip_special_tokens: 是否跳过特殊 token
+            repetition_penalty: 重复惩罚系数
             stream: 是否流式输出
 
         Returns:
-            Dict: API 响应
+            ChatCompletionResponse: 完整响应对象
         """
+        # 将 0.0.0.0 替换为 127.0.0.1 以便客户端连接
+        base_url = self._base_url.replace("0.0.0.0", "127.0.0.1")
         # 如果 base_url 已包含版本路径（如 /v1、/v2 等），则直接拼接 /chat/completions
         import re
-        if re.search(r"/v\d+", self._base_url):
-            url = f"{self._base_url}/chat/completions"
+        if re.search(r"/v\d+", base_url):
+            url = f"{base_url}/chat/completions"
         else:
-            url = f"{self._base_url}/v1/chat/completions"
+            url = f"{base_url}/v1/chat/completions"
 
         payload = {
             "model": model or self.model_name,
             "messages": messages,
             "max_tokens": max_tokens or self.max_tokens,
             "temperature": temperature if temperature is not None else self.temperature,
-            "top_p": top_p if top_p is not None else self.top_p,
             "stream": stream,
         }
 
+        # 可选参数：仅在显式传入时添加
+        if top_p is not None:
+            payload["top_p"] = top_p
+        if seed is not None:
+            payload["seed"] = seed
+        if logprobs is not None:
+            payload["logprobs"] = logprobs
+        if top_logprobs is not None:
+            payload["top_logprobs"] = top_logprobs
+        if skip_special_tokens is not None:
+            payload["skip_special_tokens"] = skip_special_tokens
+        if repetition_penalty is not None:
+            payload["repetition_penalty"] = repetition_penalty
+
         logger.debug("Sending request to vLLM: %s", url)
-        logger.debug("Request payload: %s", payload)
 
         client = await self._get_client()
         response = await client.post(
@@ -108,22 +137,30 @@ class VLLMClient:
             json=payload,
             headers=self._headers,
         )
+        if response.status_code != 200:
+            error_detail = response.text
+            logger.error(
+                "vLLM request failed: status=%s, detail=%s",
+                response.status_code,
+                error_detail,
+            )
         response.raise_for_status()
         result = response.json()
 
-        logger.debug("vLLM response: %s", result)
-        return result
+        logger.debug("vLLM response: model=%s", result.get("model", ""))
+        return ChatCompletionResponse(result)
 
     async def health_check(self) -> bool:
         """健康检查
 
-        检查 vLLM 服务器是否可用并且模型已就绪
+        检查 vLLM 服务器是否可用并且模型已就绪。
 
         Returns:
             bool: 服务是否健康
         """
         try:
-            url = f"{self._base_url}/v1/models"
+            base_url = self._base_url.replace("0.0.0.0", "127.0.0.1")
+            url = f"{base_url}/v1/models"
             client = await self._get_client(timeout=5)
             response = await client.get(url, headers=self._headers)
             if response.status_code == 200:
@@ -153,7 +190,8 @@ class VLLMClient:
             List[str]: 模型名称列表
         """
         try:
-            url = f"{self._base_url}/v1/models"
+            base_url = self._base_url.replace("0.0.0.0", "127.0.0.1")
+            url = f"{base_url}/v1/models"
             client = await self._get_client(timeout=10)
             response = await client.get(url, headers=self._headers)
             response.raise_for_status()
