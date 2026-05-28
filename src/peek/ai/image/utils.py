@@ -50,7 +50,7 @@ def normalize_image_bytes(
         from PIL import Image
     except ImportError:
         # 如果没有 PIL，直接返回原始 base64
-        logger.warning("PIL 未安装，跳过图像预处理")
+        logger.warning("PIL not installed, skipping image preprocessing")
         return base64.b64encode(image_bytes).decode("utf-8"), "image/jpeg"
 
     image = Image.open(io.BytesIO(image_bytes))

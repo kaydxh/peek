@@ -55,7 +55,7 @@ class VLLMClient:
         # 复用 httpx 连接池，避免每次请求创建新连接
         self._http_client: Optional[httpx.AsyncClient] = None
         logger.info(
-            "VLLMClient 初始化: model=%s, base_url=%s",
+            "VLLMClient initialized: model=%s, base_url=%s",
             self.model_name, self._base_url,
         )
 
@@ -266,7 +266,7 @@ class VLLMClient:
 
         # 打印请求日志
         logger.info(
-            "[LLM] 请求 model=%s, temperature=%.2f, max_tokens=%d",
+            "[LLM] request model=%s, temperature=%.2f, max_tokens=%d",
             self.model_name, self.temperature, self.max_tokens,
         )
         for i, msg in enumerate(messages):
@@ -287,7 +287,7 @@ class VLLMClient:
             message = result["choices"][0]["message"]
             # 兼容深度思考模型：content 为空时回退到 reasoning_content
             reply = message.get("content") or message.get("reasoning_content") or ""
-            logger.info("[LLM] 回复(前300字): %s", reply[:300])
+            logger.info("[LLM] reply (first 300 chars): %s", reply[:300])
 
             # 提取 token 用量
             usage = result.get("usage", {})
@@ -298,7 +298,7 @@ class VLLMClient:
             }
 
             logger.info(
-                "LLM API token 用量: prompt=%d, completion=%d, total=%d",
+                "LLM API token usage: prompt=%d, completion=%d, total=%d",
                 token_usage["prompt_tokens"],
                 token_usage["completion_tokens"],
                 token_usage["total_tokens"],
@@ -306,7 +306,7 @@ class VLLMClient:
             return (reply, token_usage)
 
         except Exception as e:
-            logger.error("LLM API 调用失败: %s", e)
+            logger.error("LLM API call failed: %s", e)
             return (
                 "I'm sorry, I encountered an error. Please try again.",
                 {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
@@ -363,7 +363,7 @@ class VLLMClient:
             messages.append({"role": "user", "content": user_message})
 
         logger.info(
-            "[LLM-Stream] 请求 model=%s, temperature=%.2f, max_tokens=%d",
+            "[LLM-Stream] request model=%s, temperature=%.2f, max_tokens=%d",
             self.model_name, self.temperature, self.max_tokens,
         )
 
@@ -424,7 +424,7 @@ class VLLMClient:
                     usage["total_tokens"] = usage["prompt_tokens"] + estimated_completion
 
                 logger.info(
-                    "[LLM-Stream] 流式完成, 总长度=%d, tokens: prompt=%d, completion=%d, total=%d",
+                    "[LLM-Stream] stream completed, total_length=%d, tokens: prompt=%d, completion=%d, total=%d",
                     len(full_content),
                     usage["prompt_tokens"],
                     usage["completion_tokens"],
@@ -433,7 +433,7 @@ class VLLMClient:
                 yield {"type": "done", "usage": usage}
 
         except Exception as e:
-            logger.error("[LLM-Stream] 流式调用失败: %s", e)
+            logger.error("[LLM-Stream] stream call failed: %s", e)
             yield {"type": "error", "message": str(e)}
 
     async def close(self) -> None:

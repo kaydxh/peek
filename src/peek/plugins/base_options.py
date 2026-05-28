@@ -200,20 +200,39 @@ class BaseCompletedOptions(ABC):
         # 3. 创建 Web 服务器（公共）
         web_server = await self._create_web_server()
 
-        # 4. 安装业务组件（子类实现：vLLM / MySQL / Redis 等）
-        await self._install_business(web_server)
+        # 4. Install infrastructure components (subclass: vLLM / MySQL / Redis etc.)
+        # Fault-tolerant: infrastructure failure should not block server startup
+        try:
+            await self._install_infrastructure(web_server)
+        except Exception as e:
+            logger.error(
+                "Infrastructure installation failed (server will continue, connectivity reported by health check): %s", e,
+                exc_info=True,
+            )
 
         # 5. 安装 OpenTelemetry（公共）
-        await self._install_opentelemetry(web_server)
+        # 非致命：链路追踪不可用不应阻止服务启动
+        try:
+            await self._install_opentelemetry(web_server)
+        except Exception as e:
+            logger.error("OpenTelemetry installation failed (server will continue): %s", e, exc_info=True)
 
         # 5.5 安装健康检查控制器（公共，子类可覆写添加自定义检查器）
-        self._install_healthz(web_server)
+        # 非致命：健康检查不可用不应阻止服务启动
+        try:
+            self._install_healthz(web_server)
+        except Exception as e:
+            logger.error("Health check controller installation failed (server will continue): %s", e, exc_info=True)
 
         # 6. 安装 Web 处理器（子类实现）
         self._install_web_handler(web_server)
 
         # 7. 安装监控插件（公共）
-        await self._install_monitor(web_server)
+        # 非致命：监控不可用不应阻止服务启动
+        try:
+            await self._install_monitor(web_server)
+        except Exception as e:
+            logger.error("Monitor plugin installation failed (server will continue): %s", e, exc_info=True)
 
         # 8. 运行服务器（公共）
         if hasattr(web_server, "run_async"):
@@ -267,7 +286,7 @@ class BaseCompletedOptions(ABC):
         ...
 
     @abstractmethod
-    async def _install_business(self, web_server):
+    async def _install_infrastructure(self, web_server):
         """安装业务组件（子类实现：vLLM / MySQL / Redis 等）。"""
         ...
 
