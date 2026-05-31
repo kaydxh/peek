@@ -402,7 +402,8 @@ class VLLMClient:
                         chunk = json.loads(data_str)
                         # 提取增量内容
                         delta = chunk.get("choices", [{}])[0].get("delta", {})
-                        content = delta.get("content", "")
+                        # 兼容深度思考模型：content 为空时回退到 reasoning_content
+                        content = delta.get("content") or delta.get("reasoning_content") or ""
                         if content:
                             full_content += content
                             yield {"type": "chunk", "content": content}
