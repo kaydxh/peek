@@ -39,6 +39,7 @@ class VLLMClient:
     temperature: float = 0.7
     top_p: float = 0.9
     timeout: int = 60
+    thinking: bool = False  # 是否启用深度思考模式
 
     def __post_init__(self):
         """初始化客户端"""
@@ -76,6 +77,7 @@ class VLLMClient:
         skip_special_tokens: Optional[bool] = None,
         repetition_penalty: Optional[float] = None,
         stream: bool = False,
+        thinking: Optional[bool] = None,
     ) -> ChatCompletionResponse:
         """发送聊天补全请求
 
@@ -128,6 +130,13 @@ class VLLMClient:
             payload["skip_special_tokens"] = skip_special_tokens
         if repetition_penalty is not None:
             payload["repetition_penalty"] = repetition_penalty
+
+        # 深度思考模式控制
+        enable_thinking = thinking if thinking is not None else self.thinking
+        if enable_thinking:
+            payload["thinking"] = {"type": "enabled"}
+        else:
+            payload["thinking"] = {"type": "disabled"}
 
         logger.debug("Sending request to vLLM: %s", url)
 
@@ -223,6 +232,7 @@ class VLLMClient:
         user_message: str,
         context: str = "",
         image_base64: Optional[str] = None,
+        thinking: Optional[bool] = None,
     ) -> tuple:
         """高层便捷聊天接口，支持 system_prompt 和多模态输入。
 
@@ -282,7 +292,7 @@ class VLLMClient:
             logger.info("[LLM] messages[%d] role=%s: %s", i, msg.get("role"), content_preview)
 
         try:
-            result = await self.chat_completion(messages=messages)
+            result = await self.chat_completion(messages=messages, thinking=thinking)
 
             message = result["choices"][0]["message"]
             # 兼容深度思考模型：content 为空时回退到 reasoning_content
@@ -318,6 +328,7 @@ class VLLMClient:
         user_message: str,
         context: str = "",
         image_base64: Optional[str] = None,
+        thinking: Optional[bool] = None,
     ):
         """高层流式聊天接口，逐 chunk 返回生成内容。
 
@@ -382,6 +393,13 @@ class VLLMClient:
             "stream": True,
         }
 
+        # 深度思考模式控制
+        enable_thinking = thinking if thinking is not None else self.thinking
+        if enable_thinking:
+            payload["thinking"] = {"type": "enabled"}
+        else:
+            payload["thinking"] = {"type": "disabled"}
+
         try:
             client = await self._get_client()
             async with client.stream(
@@ -390,6 +408,7 @@ class VLLMClient:
                 response.raise_for_status()
                 usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
                 full_content = ""
+                full_reasoning = ""
 
                 async for line in response.aiter_lines():
                     if not line.startswith("data: "):
@@ -402,11 +421,15 @@ class VLLMClient:
                         chunk = json.loads(data_str)
                         # 提取增量内容
                         delta = chunk.get("choices", [{}])[0].get("delta", {})
-                        # 兼容深度思考模型：content 为空时回退到 reasoning_content
-                        content = delta.get("content") or delta.get("reasoning_content") or ""
+                        # 深度思考模型：优先用 content（最终答案），
+                        # reasoning_content 是思考过程，单独收集作为 fallback
+                        content = delta.get("content") or ""
+                        reasoning = delta.get("reasoning_content") or ""
                         if content:
                             full_content += content
                             yield {"type": "chunk", "content": content}
+                        elif reasoning:
+                            full_reasoning += reasoning
 
                         # 部分 API 在最后一个 chunk 中返回 usage
                         if "usage" in chunk and chunk["usage"]:
@@ -417,6 +440,11 @@ class VLLMClient:
                             }
                     except (json.JSONDecodeError, IndexError, KeyError):
                         continue
+
+                # 如果 content 为空但有 reasoning_content，fallback 输出思考过程
+                if not full_content and full_reasoning:
+                    full_content = full_reasoning
+                    yield {"type": "chunk", "content": full_reasoning}
 
                 # 如果 API 没有在 stream 中返回 usage，估算 completion tokens
                 if usage["total_tokens"] == 0 and full_content:
