@@ -179,6 +179,10 @@ class BaseCompletedOptions(ABC):
     # 子类必须设置服务名
     _service_name: str = "app"
 
+    # 基础设施安装失败是否终止启动（默认 True：严格模式）
+    # 子类可覆写为 False 以允许降级启动
+    _infrastructure_required: bool = True
+
     def __init__(self, options: BaseServerRunOptions):
         self._options = options
 
@@ -201,14 +205,20 @@ class BaseCompletedOptions(ABC):
         web_server = await self._create_web_server()
 
         # 4. Install infrastructure components (subclass: vLLM / MySQL / Redis etc.)
-        # Fault-tolerant: infrastructure failure should not block server startup
         try:
             await self._install_infrastructure(web_server)
         except Exception as e:
-            logger.error(
-                "Infrastructure installation failed (server will continue, connectivity reported by health check): %s", e,
-                exc_info=True,
-            )
+            if self._infrastructure_required:
+                logger.critical(
+                    "Infrastructure installation failed, aborting startup: %s", e,
+                    exc_info=True,
+                )
+                raise SystemExit(1) from e
+            else:
+                logger.error(
+                    "Infrastructure installation failed (server will continue, connectivity reported by health check): %s", e,
+                    exc_info=True,
+                )
 
         # 5. 安装 OpenTelemetry（公共）
         # 非致命：链路追踪不可用不应阻止服务启动

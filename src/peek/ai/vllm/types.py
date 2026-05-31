@@ -57,11 +57,23 @@ class Choice:
 
 
 class ChatCompletionResponse:
-    """Chat completion 响应数据结构"""
+    """Chat completion 响应数据结构
 
-    __slots__ = ("choices", "model", "usage")
+    同时支持属性访问和字典访问（向后兼容）。
+    """
+
+    __slots__ = ("choices", "model", "usage", "_raw")
 
     def __init__(self, data: Dict[str, Any]):
+        self._raw: Dict[str, Any] = data
         self.choices: List[Choice] = [Choice(c) for c in data.get("choices", [])]
         self.model: str = data.get("model", "")
         self.usage: Dict[str, Any] = data.get("usage", {})
+
+    def __getitem__(self, key: str) -> Any:
+        """支持字典式访问 result["choices"] 等（向后兼容）。"""
+        return self._raw[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """支持 result.get("usage", {}) 式访问（向后兼容）。"""
+        return self._raw.get(key, default)
