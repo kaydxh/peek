@@ -106,3 +106,105 @@ async def uninstall_mysql() -> None:
         finally:
             _mysql_engine = None
             logger.info("MySQL connection closed")
+
+
+# ============================================================
+# 同步 MySQL 安装（用于 FastAPI 同步 handler、Celery 等场景）
+# ============================================================
+
+# 全局同步 MySQL engine 实例
+_sync_mysql_engine = None
+# 全局 session factory 实例
+_sync_session_factory = None
+
+
+def get_sync_mysql_engine():
+    """获取全局同步 MySQL engine 实例。
+
+    Returns:
+        SQLAlchemy Engine 实例，如果未初始化则返回 None
+    """
+    return _sync_mysql_engine
+
+
+def get_session_factory():
+    """获取全局 session factory 实例。
+
+    Returns:
+        sessionmaker 实例，如果未初始化则返回 None
+    """
+    return _sync_session_factory
+
+
+def install_sync_mysql(
+    config: Dict[str, Any],
+    create_tables_base=None,
+) -> Optional[Any]:
+    """安装同步 MySQL 连接（函数式接口）。
+
+    创建同步 engine + session_factory，适用于 FastAPI 同步 handler、
+    Celery worker 等场景。上层服务无需关心连接池配置细节。
+
+    Args:
+        config: MySQL 配置字典
+        create_tables_base: 可选，SQLAlchemy declarative Base 类。
+                           如果传入，会自动调用 create_all 创建表（开发模式）。
+
+    Returns:
+        sessionmaker 实例，未启用则返回 None
+
+    使用示例：
+        from peek.plugins.mysql import install_sync_mysql, get_session_factory
+
+        session_factory = install_sync_mysql(config.database.mysql.model_dump())
+        # 或者自动建表（开发模式）：
+        session_factory = install_sync_mysql(config, create_tables_base=Base)
+    """
+    global _sync_mysql_engine, _sync_session_factory
+
+    if not config or not config.get("enabled", False):
+        logger.debug("MySQL is disabled, skipping sync installation")
+        return None
+
+    try:
+        from peek.database.mysql.engine import create_sync_mysql_engine
+        from peek.database.mysql.session import create_session_factory
+
+        engine = create_sync_mysql_engine(config)
+
+        if engine is not None:
+            _sync_mysql_engine = engine
+
+            # 自动建表（开发模式）
+            if create_tables_base is not None:
+                create_tables_base.metadata.create_all(bind=engine)
+                logger.info("Database tables created/verified")
+
+            session_factory = create_session_factory(config, engine=engine)
+            _sync_session_factory = session_factory
+            return session_factory
+
+    except ImportError:
+        logger.warning("MySQL sync dependencies not installed, skipping")
+    except Exception as e:
+        logger.error("Failed to install sync MySQL: %s", e)
+        raise
+
+    return None
+
+
+def uninstall_sync_mysql() -> None:
+    """卸载同步 MySQL（关闭连接池）。"""
+    global _sync_mysql_engine, _sync_session_factory
+
+    if _sync_mysql_engine is not None:
+        try:
+            from peek.database.mysql.engine import close_sync_mysql_engine
+
+            close_sync_mysql_engine(_sync_mysql_engine)
+        except Exception as e:
+            logger.error("Failed to uninstall sync MySQL: %s", e)
+        finally:
+            _sync_mysql_engine = None
+            _sync_session_factory = None
+            logger.info("MySQL sync connection closed")

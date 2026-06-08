@@ -170,3 +170,88 @@ async def mysql_engine_context(
         yield engine
     finally:
         await close_mysql_engine(engine)
+
+
+# ============================================================
+# 同步 Engine 支持（用于 FastAPI 同步 handler 等场景）
+# ============================================================
+
+
+def create_sync_mysql_engine(
+    config: Union[MySQLConfig, Dict[str, Any]],
+) -> Optional[Any]:
+    """
+    创建 MySQL 同步引擎
+
+    适用于 FastAPI 同步 handler、Celery worker 等不需要异步的场景。
+    使用 pymysql 驱动，自动配置连接池参数。
+
+    Args:
+        config: MySQLConfig 实例或 dict 配置
+
+    Returns:
+        SQLAlchemy Engine 实例，未启用时返回 None
+
+    Raises:
+        ImportError: 缺少 sqlalchemy 或 pymysql 依赖
+        RuntimeError: 超过重试时间仍无法连接
+    """
+    import time
+
+    from sqlalchemy import create_engine, text
+
+    # 支持 dict 或 MySQLConfig
+    if isinstance(config, dict):
+        config = MySQLConfig.model_validate(config)
+
+    if not config.enabled:
+        logger.debug("MySQL is disabled, skipping")
+        return None
+
+    engine = create_engine(
+        config.sync_dsn,
+        pool_size=config.max_idle_connections,
+        max_overflow=max(config.max_connections - config.max_idle_connections, 0),
+        pool_recycle=int(config.max_life_time) if config.max_life_time > 0 else -1,
+        pool_pre_ping=config.pool_pre_ping,
+        pool_timeout=config.pool_timeout if config.pool_timeout > 0 else 30,
+        echo=False,
+    )
+
+    # 重试等待连接，对应 Go 版本的 GetDatabaseUntil
+    fail_after = config.fail_after_duration
+    wait_interval = config.max_wait_duration
+    start_time = time.monotonic()
+
+    while True:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            break
+        except Exception as e:
+            elapsed = time.monotonic() - start_time
+            if fail_after > 0 and elapsed >= fail_after:
+                engine.dispose()
+                raise RuntimeError(
+                    f"MySQL sync connection failed after {fail_after}s: {e}"
+                ) from e
+            logger.warning(
+                "MySQL sync connection failed, retrying in %.1fs: %s",
+                wait_interval, e,
+            )
+            time.sleep(min(wait_interval, max(fail_after - elapsed, 0.1)))
+
+    logger.info("MySQL sync connected: %s/%s", config.address, config.db_name)
+    return engine
+
+
+def close_sync_mysql_engine(engine: Any) -> None:
+    """
+    关闭 MySQL 同步引擎
+
+    Args:
+        engine: SQLAlchemy Engine 实例
+    """
+    if engine is not None:
+        engine.dispose()
+        logger.info("MySQL sync connection closed")

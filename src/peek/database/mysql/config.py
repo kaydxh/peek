@@ -74,5 +74,10 @@ class MySQLConfig(BaseModel):
 
     @property
     def dsn(self) -> str:
-        """生成 SQLAlchemy 异步 DSN"""
+        """生成 SQLAlchemy 异步 DSN（mysql+aiomysql://）"""
         return f"mysql+aiomysql://{self.username}:{self.password}@{self.host}:{self.port}/{self.db_name}"
+
+    @property
+    def sync_dsn(self) -> str:
+        """生成 SQLAlchemy 同步 DSN（mysql+pymysql://）"""
+        return f"mysql+pymysql://{self.username}:{self.password}@{self.host}:{self.port}/{self.db_name}"
