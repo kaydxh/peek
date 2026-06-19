@@ -10,6 +10,7 @@
 
 import json
 import logging
+import time
 from typing import Any, Awaitable, Callable, List, Optional
 
 from fastapi import Request, Response
@@ -224,6 +225,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         if request.url.path in self.skip_paths:
             return await call_next(request)
 
+        # 记录开始时间
+        start_time = time.perf_counter()
+
         # 获取 request_id（如果存在）
         # 优先从 request.state 获取，备选从 contextvars 获取
         request_id = (
@@ -266,9 +270,10 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             # 对于 SSE 流式响应，不缓冲 body，直接透传
             content_type = response.headers.get("content-type", "")
             if "text/event-stream" in content_type:
+                duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 log_msg = (
                     f"{prefix} <-- {request.method} {request.url.path} "
-                    f"{response.status_code}"
+                    f"{response.status_code} | cost: {duration_ms}ms"
                 )
                 if self.log_response_headers:
                     resp_headers_dict = dict(response.headers)
@@ -298,9 +303,12 @@ class LoggerMiddleware(BaseHTTPMiddleware):
                 )
             else:
                 response_body_str = self._format_response_body(response_body)
+            # 计算耗时
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
             log_msg = (
                 f"{prefix} <-- {request.method} {request.url.path} "
-                f"{response.status_code}"
+                f"{response.status_code} | cost: {duration_ms}ms"
             )
 
             # 记录响应头（类似 Go 版 InOutputHeaderPrinter 的 send headers）
@@ -323,10 +331,13 @@ class LoggerMiddleware(BaseHTTPMiddleware):
         else:
             response = await call_next(request)
 
+            # 计算耗时
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
             # 记录响应
             log_msg = (
                 f"{prefix} <-- {request.method} {request.url.path} "
-                f"{response.status_code}"
+                f"{response.status_code} | cost: {duration_ms}ms"
             )
 
             # 记录响应头
