@@ -10,6 +10,7 @@ MySQL Session 管理
 """
 
 import logging
+from contextlib import contextmanager
 from typing import Any, Callable, Dict, Generator, Optional, Type, TypeVar, Union
 
 from peek.database.mysql.config import MySQLConfig
@@ -140,3 +141,47 @@ def create_repo_dependency(
             session.close()
 
     return _dependency
+
+
+@contextmanager
+def session_scope(
+    session_factory: Callable,
+    commit: bool = False,
+) -> Generator:
+    """短事务上下文管理器：每次进入打开新 session，退出自动 commit/rollback/close。
+
+    适用场景：长耗时后台任务（如评测/批处理）中需要在不同时间点零散写库的回调，
+    每个回调用一个独立的短事务 session，避免长期持有同一条连接被 MySQL 服务端
+    主动断开（典型表现：``ValueError: read of closed file``）。
+
+    与 :func:`get_db_session` 的区别：
+    - ``get_db_session`` 是 FastAPI Depends 生成器，仅负责 close。
+    - ``session_scope`` 是普通 ``with`` 上下文，发生异常会自动 rollback；
+      ``commit=True`` 时无异常退出会自动 commit，方便业务侧少写一行。
+
+    Args:
+        session_factory: sessionmaker 实例
+        commit: 退出时是否自动 commit（默认 False，由调用方在内部显式 commit）
+
+    Yields:
+        SQLAlchemy Session 实例
+
+    使用示例（业务回调里使用短事务）::
+
+        from peek.database.mysql.session import session_scope
+
+        def on_progress(...):
+            with session_scope(session_factory, commit=True) as db:
+                repo = EvalRepository(db)
+                repo.update_run_progress(run_id, progress, message)
+    """
+    session = session_factory()
+    try:
+        yield session
+        if commit:
+            session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

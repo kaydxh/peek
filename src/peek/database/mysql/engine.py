@@ -47,11 +47,16 @@ async def create_mysql_engine(
         logger.debug("MySQL is disabled, skipping")
         return None
 
+    # 当未显式配置 max_life_time 时，默认 1800s 回收连接，
+    # 避免连接闲置超过 MySQL 服务端 wait_timeout 后被默默关闭，
+    # 复用时报 "read of closed file" / "MySQL server has gone away".
+    pool_recycle = int(config.max_life_time) if config.max_life_time > 0 else 1800
+
     engine = create_async_engine(
         config.dsn,
         pool_size=config.max_idle_connections,
         max_overflow=max(config.max_connections - config.max_idle_connections, 0),
-        pool_recycle=int(config.max_life_time) if config.max_life_time > 0 else -1,
+        pool_recycle=pool_recycle,
         pool_pre_ping=config.pool_pre_ping,
         pool_timeout=config.pool_timeout if config.pool_timeout > 0 else 30,
         echo=False,
@@ -208,11 +213,15 @@ def create_sync_mysql_engine(
         logger.debug("MySQL is disabled, skipping")
         return None
 
+    # 同步引擎同样：未显式配置 max_life_time 时，默认 1800s 回收，
+    # 避免连接被 MySQL wait_timeout 静默关闭后复用报 "read of closed file".
+    pool_recycle = int(config.max_life_time) if config.max_life_time > 0 else 1800
+
     engine = create_engine(
         config.sync_dsn,
         pool_size=config.max_idle_connections,
         max_overflow=max(config.max_connections - config.max_idle_connections, 0),
-        pool_recycle=int(config.max_life_time) if config.max_life_time > 0 else -1,
+        pool_recycle=pool_recycle,
         pool_pre_ping=config.pool_pre_ping,
         pool_timeout=config.pool_timeout if config.pool_timeout > 0 else 30,
         echo=False,
