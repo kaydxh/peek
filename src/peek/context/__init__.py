@@ -10,6 +10,7 @@
 子模块：
 - peek.context.context: 请求上下文核心实现
 - peek.context.cancel: 通用取消令牌（CancellationToken）
+- peek.context.task_registry: 后台长任务注册中心，配合优雅关停使用
 """
 
 from peek.context.cancel import (
@@ -29,6 +30,10 @@ from peek.context.context import (
     set_trace_id,
     set_user_id,
 )
+from peek.context.task_registry import (
+    BackgroundTaskRegistry,
+    get_task_registry,
+)
 
 __all__ = [
     "RequestContext",
@@ -44,4 +49,6 @@ __all__ = [
     "CancellationTokenSource",
     "CancelledError",
     "with_cancel_check",
+    "BackgroundTaskRegistry",
+    "get_task_registry",
 ]
