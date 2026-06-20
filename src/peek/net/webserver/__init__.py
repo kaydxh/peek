@@ -49,6 +49,13 @@ from peek.net.webserver.hooks import (
     PreShutdownHookFunc,
 )
 from peek.net.webserver.server import GenericWebServer, WebHandler
+from peek.net.webserver.sse import (
+    EventBus,
+    format_sse,
+    get_event_bus,
+    sse_event_stream,
+    sse_response,
+)
 
 __all__ = [
     # Server
@@ -90,4 +97,10 @@ __all__ = [
     "create_web_server",
     "install_grpc_interceptors",
     "install_qps_limit_middleware",
+    # SSE
+    "EventBus",
+    "get_event_bus",
+    "format_sse",
+    "sse_event_stream",
+    "sse_response",
 ]
