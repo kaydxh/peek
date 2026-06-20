@@ -9,8 +9,15 @@
 
 子模块：
 - peek.context.context: 请求上下文核心实现
+- peek.context.cancel: 通用取消令牌（CancellationToken）
 """
 
+from peek.context.cancel import (
+    CancellationToken,
+    CancellationTokenSource,
+    CancelledError,
+    with_cancel_check,
+)
 from peek.context.context import (
     RequestContext,
     get_extra,
@@ -33,4 +40,8 @@ __all__ = [
     "set_user_id",
     "get_extra",
     "set_extra",
+    "CancellationToken",
+    "CancellationTokenSource",
+    "CancelledError",
+    "with_cancel_check",
 ]
