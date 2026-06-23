@@ -288,10 +288,9 @@ class LoggerMiddleware(BaseHTTPMiddleware):
             async for chunk in response.body_iterator:
                 if isinstance(chunk, str):
                     chunk = chunk.encode("utf-8")
-                if not body_exceeded:
-                    body_buffer.extend(chunk)
-                    if len(body_buffer) > self.max_body_log_bytes:
-                        body_exceeded = True
+                body_buffer.extend(chunk)
+                if not body_exceeded and len(body_buffer) > self.max_body_log_bytes:
+                    body_exceeded = True
 
             response_body = bytes(body_buffer)
 
