@@ -362,13 +362,16 @@ class RotatingFileWriter:
                     if filepath not in files_to_delete:
                         files_to_delete.append(filepath)
 
-        # 执行删除
+        # 执行删除。
+        # 注意：本方法会在 RotatingFileWriter.write() 持有 self._lock 时调用。
+        # 这里不能再调用 logger.*，否则会重入同一个 RotatingFileHandler.emit()
+        # 并再次尝试获取 self._lock，导致启动阶段清理旧日志时死锁。
         for filepath in files_to_delete:
             try:
                 os.remove(filepath)
-                logger.debug("Deleted old log file: %s", filepath)
-            except Exception as e:
-                logger.debug("Failed to delete %s: %s", filepath, e)
+            except Exception:
+                # 日志清理失败不应影响主流程；避免在 logging handler 内部递归写日志。
+                pass
 
     def close(self):
         """关闭文件"""
