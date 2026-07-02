@@ -10,6 +10,7 @@ HTTP 客户端模块
 - 线程安全的 Session 管理（每线程独立 Session）
 - 基于 ExponentialBackOff 的指数退避重试
 - 可配置超时和重试参数
+- 可选的请求/响应 body 日志（支持截断）
 - Google style docstring
 
 使用示例：
@@ -17,14 +18,16 @@ HTTP 客户端模块
     response = get("https://api.example.com/data")
     response = post("https://api.example.com/data", json={"key": "value"})
 
-    # 自定义客户端
-    client = HttpClient(timeout=10, max_retries=5)
+    # 自定义客户端（开启请求/响应日志）
+    client = HttpClient(timeout=10, max_retries=5, log_request_body=True, log_response_body=True)
     response = client.get("https://api.example.com/data")
     client.close()
 """
 
+import json
 import logging
 import threading
+import time
 from typing import Any, Optional
 
 try:
@@ -44,6 +47,8 @@ DEFAULT_TIMEOUT = 30  # 秒
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_INITIAL_INTERVAL = 0.1  # 100ms
 DEFAULT_MAX_INTERVAL = 5.0  # 5s
+# 默认 body 日志截断长度（1024 字节）
+DEFAULT_MAX_BODY_LOG_BYTES = 1024
 
 
 class HttpClient:
@@ -51,6 +56,7 @@ class HttpClient:
 
     每个线程维护独立的 requests.Session，避免多线程竞争。
     内置基于 ExponentialBackOff 的重试机制。
+    支持可选的 outgoing 请求/响应 body 日志记录。
 
     Args:
         timeout: 请求超时时间（秒），默认 30
@@ -58,9 +64,12 @@ class HttpClient:
         initial_interval: 初始重试间隔（秒），默认 0.1
         max_interval: 最大重试间隔（秒），默认 5.0
         headers: 默认请求头
+        log_request_body: 是否记录请求 body，默认 False
+        log_response_body: 是否记录响应 body，默认 False
+        max_body_log_bytes: body 日志最大截断长度（字节），默认 1024
 
     使用示例：
-        client = HttpClient(timeout=10, max_retries=5)
+        client = HttpClient(timeout=10, max_retries=5, log_request_body=True, log_response_body=True)
         response = client.get("https://api.example.com/data")
         client.close()
     """
@@ -72,15 +81,87 @@ class HttpClient:
         initial_interval: float = DEFAULT_INITIAL_INTERVAL,
         max_interval: float = DEFAULT_MAX_INTERVAL,
         headers: Optional[dict] = None,
+        log_request_body: bool = False,
+        log_response_body: bool = False,
+        max_body_log_bytes: int = DEFAULT_MAX_BODY_LOG_BYTES,
     ):
         self.timeout = timeout
         self.max_retries = max_retries
         self.initial_interval = initial_interval
         self.max_interval = max_interval
         self.default_headers = headers or {}
+        self.log_request_body = log_request_body
+        self.log_response_body = log_response_body
+        self.max_body_log_bytes = max_body_log_bytes
         self._local = threading.local()
         self._sessions_lock = threading.Lock()
         self._sessions: list = []  # 跟踪所有线程创建的 session
+
+    # ============================================================
+    # 日志辅助方法
+    # ============================================================
+
+    def _truncate(self, content: str) -> str:
+        """截断字符串，超过限制时保留前 N 字节并附加总长度信息。
+
+        Args:
+            content: 原始字符串
+
+        Returns:
+            截断后的字符串，格式: "前N字节...(total_len:X)"
+        """
+        if len(content) <= self.max_body_log_bytes:
+            return content
+        return f"{content[:self.max_body_log_bytes]}...(total_len:{len(content)})"
+
+    def _format_request_body(self, kwargs: dict) -> str:
+        """从请求参数中提取并格式化 request body 用于日志。
+
+        Args:
+            kwargs: 传递给 requests 的参数字典
+
+        Returns:
+            格式化后的 body 字符串
+        """
+        if "json" in kwargs and kwargs["json"] is not None:
+            try:
+                body_str = json.dumps(kwargs["json"], ensure_ascii=False)
+            except (TypeError, ValueError):
+                body_str = str(kwargs["json"])
+            return self._truncate(body_str)
+        elif "data" in kwargs and kwargs["data"] is not None:
+            data = kwargs["data"]
+            if isinstance(data, bytes):
+                return f"<bytes>(total_len:{len(data)})"
+            body_str = str(data)
+            return self._truncate(body_str)
+        return ""
+
+    def _format_response_body(self, response: "requests.Response") -> str:
+        """格式化响应 body 用于日志。
+
+        Args:
+            response: requests.Response 对象
+
+        Returns:
+            格式化后的 body 字符串
+        """
+        try:
+            content_type = response.headers.get("content-type", "")
+            if "application/json" in content_type:
+                body_str = response.text
+            elif "text/" in content_type:
+                body_str = response.text
+            else:
+                # 二进制内容只记录大小
+                return f"<binary>(total_len:{len(response.content)})"
+            return self._truncate(body_str)
+        except Exception:
+            return "<error reading response body>"
+
+    # ============================================================
+    # 核心请求方法
+    # ============================================================
 
     def _get_session(self) -> requests.Session:
         """获取当前线程的 Session 实例
@@ -102,7 +183,7 @@ class HttpClient:
         url: str,
         **kwargs: Any,
     ) -> requests.Response:
-        """带重试的 HTTP 请求
+        """带重试的 HTTP 请求，支持请求/响应 body 日志。
 
         Args:
             method: HTTP 方法（GET, POST 等）
@@ -120,6 +201,16 @@ class HttpClient:
         kwargs.setdefault("timeout", self.timeout)
         session = self._get_session()
 
+        # 记录请求日志
+        if self.log_request_body:
+            req_body = self._format_request_body(kwargs)
+            if req_body:
+                logger.info(
+                    "--> %s %s | body: %s", method, url, req_body,
+                )
+            else:
+                logger.info("--> %s %s", method, url)
+
         backoff = ExponentialBackOff(
             initial_interval=self.initial_interval,
             max_interval=self.max_interval,
@@ -131,12 +222,31 @@ class HttpClient:
             ),
         )
 
+        start_time = time.perf_counter()
+
         def do_request() -> requests.Response:
             response = session.request(method, url, **kwargs)
             response.raise_for_status()
             return response
 
-        return backoff.retry_sync(do_request)
+        response = backoff.retry_sync(do_request)
+
+        # 记录响应日志
+        if self.log_response_body:
+            cost_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            resp_body = self._format_response_body(response)
+            if resp_body:
+                logger.info(
+                    "<-- %s %s %s | cost: %sms | body: %s",
+                    method, url, response.status_code, cost_ms, resp_body,
+                )
+            else:
+                logger.info(
+                    "<-- %s %s %s | cost: %sms",
+                    method, url, response.status_code, cost_ms,
+                )
+
+        return response
 
     def get(
         self, url: str, params: Any = None, headers: Any = None, **kwargs: Any
