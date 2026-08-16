@@ -13,7 +13,7 @@ vLLM configuration data classes and parsing utilities.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ class VLLMServerConfig:
     runner: str = ""  # vLLM runner 类型，如 "pooling"（分类模型），留空则使用默认 generate runner
     trust_remote_code: bool = False  # 是否信任远程代码
     hf_overrides: Optional[Dict[str, Any]] = None  # HuggingFace 模型配置覆盖
+    chat_template: str = ""  # 自定义 chat template 文件路径（如 reranker 模板），留空则使用模型自带模板
     gpu_memory_utilization: float = 0.9
     tensor_parallel_size: int = 1
     max_num_seqs: int = 256
@@ -73,6 +74,9 @@ class VLLMInferenceConfig:
     seed: int = 42
     scene_cls_threshold: float = 0.1
     max_concurrent_requests: int = 4
+    # 推理探活自定义消息（pooling 模式 /classify 探活使用，
+    # 如 reranker 模型需要 query/document 双角色消息时配置）
+    probe_messages: Optional[List[Dict[str, Any]]] = None
     # 视频解码配置
     video_decode: Optional[Dict[str, Any]] = None
 
@@ -136,6 +140,14 @@ class VLLMConfig:
     @hf_overrides.setter
     def hf_overrides(self, value: Optional[Dict[str, Any]]):
         self.server.hf_overrides = value
+
+    @property
+    def chat_template(self) -> str:
+        return self.server.chat_template
+
+    @chat_template.setter
+    def chat_template(self, value: str):
+        self.server.chat_template = value
 
     @property
     def gpu_memory_utilization(self) -> float:
@@ -365,6 +377,14 @@ class VLLMConfig:
         self.inference.max_concurrent_requests = value
 
     @property
+    def probe_messages(self) -> Optional[List[Dict[str, Any]]]:
+        return self.inference.probe_messages
+
+    @probe_messages.setter
+    def probe_messages(self, value: Optional[List[Dict[str, Any]]]):
+        self.inference.probe_messages = value
+
+    @property
     def video_decode(self) -> Optional[Dict[str, Any]]:
         return self.inference.video_decode
 
@@ -423,6 +443,7 @@ def parse_vllm_config(
         "runner": "",
         "trust_remote_code": False,
         "hf_overrides": None,
+        "chat_template": "",
         "gpu_memory_utilization": 0.9,
         "tensor_parallel_size": 1,
         "max_num_seqs": 256,
@@ -439,6 +460,7 @@ def parse_vllm_config(
         "seed": 42,
         "scene_cls_threshold": 0.1,
         "max_concurrent_requests": 4,
+        "probe_messages": None,
         "video_decode": None,
         "nsys_enabled": False,
         "nsys_output": "/app/log/vllm_nsys_report",
@@ -495,6 +517,7 @@ def parse_vllm_config(
         runner=_get("runner", server_data),
         trust_remote_code=_get("trust_remote_code", server_data),
         hf_overrides=_get("hf_overrides", server_data),
+        chat_template=_get("chat_template", server_data),
         gpu_memory_utilization=_get("gpu_memory_utilization", server_data),
         tensor_parallel_size=_get("tensor_parallel_size", server_data),
         max_num_seqs=_get("max_num_seqs", server_data),
@@ -532,6 +555,7 @@ def parse_vllm_config(
         seed=_get("seed", inference_data),
         scene_cls_threshold=_get("scene_cls_threshold", inference_data),
         max_concurrent_requests=_get("max_concurrent_requests", inference_data),
+        probe_messages=_get("probe_messages", inference_data),
         video_decode=_get("video_decode", inference_data),
     )
 

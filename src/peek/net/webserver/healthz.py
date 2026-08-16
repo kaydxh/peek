@@ -141,6 +141,7 @@ class VLLMInferenceHealthChecker(HealthChecker):
         model_name: str,
         timeout: float = 10.0,
         runner_type: str = "",
+        probe_messages: Optional[list] = None,
     ):
         """
         Args:
@@ -149,12 +150,26 @@ class VLLMInferenceHealthChecker(HealthChecker):
             model_name: 模型名称
             timeout: 推理请求超时时间（秒），默认 10s，应远小于业务超时
             runner_type: vLLM runner 类型，如 "pooling"（分类模型），留空则使用默认 generate runner
+            probe_messages: 自定义探活消息（pooling 模式 /classify 探活使用，
+                如 reranker 模型的 chat template 要求 query/document 双角色消息时必须配置）
         """
         self._name = checker_name
         self.api_url = api_url
         self.model_name = model_name
         self.timeout = timeout
         self.runner_type = runner_type
+        self.probe_messages = probe_messages
+
+    @staticmethod
+    def _classify_url(api_url: str) -> str:
+        """构建 /classify 端点 URL。
+
+        /classify 挂载在根路径（不在 /v1 下），因此需要剥离 api_url 中的 /vN 后缀。
+        """
+        base = api_url.rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        return f"{base}/classify"
 
     @property
     def name(self) -> str:
@@ -172,11 +187,15 @@ class VLLMInferenceHealthChecker(HealthChecker):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 if is_pooling:
                     # pooling 模式（分类模型）使用 /classify 端点探活
+                    # 支持自定义探活消息（如 reranker 模型要求 query/document 双角色）
+                    probe_messages = self.probe_messages or [
+                        {"role": "user", "content": "hi"}
+                    ]
                     response = await client.post(
-                        f"{self.api_url}/classify",
+                        self._classify_url(self.api_url),
                         json={
                             "model": self.model_name,
-                            "messages": [{"role": "user", "content": "hi"}],
+                            "messages": probe_messages,
                         },
                     )
                 else:

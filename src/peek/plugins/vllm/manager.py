@@ -170,6 +170,10 @@ class VLLMServerManager:
         if self.config.trust_remote_code:
             cmd.append("--trust-remote-code")
 
+        # 自定义 chat template（如 reranker 模板：固定 system 提示词、<Input B> 分隔符）
+        if self.config.chat_template:
+            cmd += ["--chat-template", self.config.chat_template]
+
         # HuggingFace 模型配置覆盖
         if self.config.hf_overrides:
             try:
@@ -384,11 +388,19 @@ class VLLMServerManager:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 if is_pooling:
                     # pooling 模式（分类模型）使用 /classify 端点探活
+                    # 支持自定义探活消息（如 reranker 模型要求 query/document 双角色）
+                    probe_messages = self.config.probe_messages or [
+                        {"role": "user", "content": "hi"}
+                    ]
+                    # /classify 挂载在根路径（不在 /v1 下），剥离 /v1 后缀
+                    classify_base_url = self._api_url
+                    if classify_base_url.endswith("/v1"):
+                        classify_base_url = classify_base_url[:-3]
                     response = await client.post(
-                        f"{self._api_url}/classify",
+                        f"{classify_base_url}/classify",
                         json={
                             "model": self.config.model_name,
-                            "messages": [{"role": "user", "content": "hi"}],
+                            "messages": probe_messages,
                         },
                     )
                 else:
