@@ -38,6 +38,9 @@ class VLLMServerConfig:
     # 多模态处理参数
     mm_processor_kwargs: Optional[Dict[str, Any]] = None
     media_io_kwargs: Optional[Dict[str, Any]] = None
+    # 透传给 `vllm serve` 的额外 CLI 参数，例如
+    # ["--limit-mm-per-prompt", '{"image":4}', "--reasoning-parser", "qwen3"]
+    extra_args: Optional[List[str]] = None
 
 
 @dataclass
@@ -236,6 +239,14 @@ class VLLMConfig:
     @media_io_kwargs.setter
     def media_io_kwargs(self, value: Optional[Dict[str, Any]]):
         self.server.media_io_kwargs = value
+
+    @property
+    def extra_args(self) -> Optional[List[str]]:
+        return self.server.extra_args
+
+    @extra_args.setter
+    def extra_args(self, value: Optional[List[str]]):
+        self.server.extra_args = value
 
     # --- VLLMNsysConfig 代理 ---
     @property
@@ -455,6 +466,7 @@ def parse_vllm_config(
         "enable_chunked_prefill": True,
         "mm_processor_kwargs": None,
         "media_io_kwargs": None,
+        "extra_args": None,
         "logprobs": True,
         "top_logprobs": 10,
         "seed": 42,
@@ -529,6 +541,7 @@ def parse_vllm_config(
         enable_chunked_prefill=_get("enable_chunked_prefill", server_data),
         mm_processor_kwargs=_get("mm_processor_kwargs", server_data),
         media_io_kwargs=_get("media_io_kwargs", server_data),
+        extra_args=_get("extra_args", server_data),
     )
 
     nsys_config = VLLMNsysConfig(

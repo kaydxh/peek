@@ -238,6 +238,10 @@ class VLLMServerManager:
         if not is_pooling and self.config.enable_chunked_prefill:
             cmd.append("--enable-chunked-prefill")
 
+        extra_args = getattr(self.config, "extra_args", None)
+        if extra_args:
+            cmd += [str(arg) for arg in extra_args]
+
         return cmd
 
     async def _log_vllm_output(self) -> None:
